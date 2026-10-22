@@ -1,0 +1,7248 @@
+openapi: 3.0.3
+info:
+  title: Dental Clinic Chain API
+  version: 1.0.0
+  description: API quản lý và đặt lịch chuỗi phòng khám nha khoa.
+paths:
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - ht
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/audit/organizations/{organization_id}/events/:
+    get:
+      operationId: v1_audit_organizations_events_list
+      parameters:
+      - in: query
+        name: access_type
+        schema:
+          type: string
+      - in: query
+        name: action
+        schema:
+          type: string
+      - in: query
+        name: branch_id
+        schema:
+          type: integer
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+          description: ''
+  /api/v1/auth/email-verification/confirm/:
+    post:
+      operationId: v1_auth_email_verification_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationConfirm'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+          description: ''
+  /api/v1/auth/email-verification/resend/:
+    post:
+      operationId: v1_auth_email_verification_resend_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: v1_auth_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+          description: ''
+  /api/v1/auth/password-reset/confirm/:
+    post:
+      operationId: v1_auth_password_reset_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+  /api/v1/auth/password-reset/request/:
+    post:
+      operationId: v1_auth_password_reset_request_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: v1_auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: v1_auth_register_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Registration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Registration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Registration'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/v1/branches/:
+    get:
+      operationId: branch_list
+      parameters:
+      - in: query
+        name: dentist_id
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: latitude
+        schema:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+      - in: query
+        name: longitude
+        schema:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      - in: query
+        name: open_now
+        schema:
+          type: boolean
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: province_code
+        schema:
+          type: string
+          maxLength: 20
+          minLength: 1
+      - in: query
+        name: q
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - in: query
+        name: radius_km
+        schema:
+          type: number
+          format: double
+          maximum: 100
+          minimum: 0.1
+      - in: query
+        name: service_id
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: ward_code
+        schema:
+          type: string
+          maxLength: 20
+          minLength: 1
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchListResponse'
+          description: ''
+  /api/v1/branches/{id_branch}/:
+    get:
+      operationId: branch_detail
+      parameters:
+      - in: path
+        name: id_branch
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDetailResponse'
+          description: ''
+  /api/v1/branches/{id_branch}/dentists/:
+    get:
+      operationId: branch_dentists_list
+      parameters:
+      - in: path
+        name: id_branch
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: q
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - in: query
+        name: service_id
+        schema:
+          type: integer
+          minimum: 1
+        required: true
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDentistsResponse'
+          description: ''
+  /api/v1/branches/{id_branch}/services/:
+    get:
+      operationId: branch_services_list
+      parameters:
+      - in: path
+        name: id_branch
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: q
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchServicesResponse'
+          description: ''
+  /api/v1/dentist/me/appointments/{public_code}/:
+    get:
+      operationId: v1_dentist_me_appointments_retrieve
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistAppointment'
+          description: ''
+  /api/v1/dentist/me/appointments/{public_code}/clinical-encounter/:
+    get:
+      operationId: v1_dentist_me_appointments_clinical_encounter_retrieve
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalEncounter'
+          description: ''
+    post:
+      operationId: v1_dentist_me_appointments_clinical_encounter_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicalEncounter'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClinicalEncounter'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClinicalEncounter'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalEncounter'
+          description: ''
+  /api/v1/dentist/me/appointments/{public_code}/complete/:
+    post:
+      operationId: v1_dentist_me_appointments_complete_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistAppointment'
+          description: ''
+  /api/v1/dentist/me/appointments/{public_code}/start/:
+    post:
+      operationId: v1_dentist_me_appointments_start_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistAppointment'
+          description: ''
+  /api/v1/dentist/me/clinical-attachments/{attachment_id}/:
+    get:
+      operationId: v1_dentist_me_clinical_attachments_retrieve
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAttachment'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_clinical_attachments_partial_update
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalAttachment'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAttachment'
+          description: ''
+    delete:
+      operationId: v1_dentist_me_clinical_attachments_destroy
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dentist/me/clinical-attachments/{attachment_id}/download/:
+    get:
+      operationId: v1_dentist_me_clinical_attachments_download_retrieve
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: Nội dung file bệnh án
+    patch:
+      operationId: v1_dentist_me_clinical_attachments_download_partial_update
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalAttachment'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAttachment'
+          description: ''
+    delete:
+      operationId: v1_dentist_me_clinical_attachments_download_destroy
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalEncounter'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_clinical_encounters_partial_update
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalEncounter'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalEncounter'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalEncounter'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalEncounter'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/amendments/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_amendments_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAmendment'
+          description: ''
+    post:
+      operationId: v1_dentist_me_clinical_encounters_amendments_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicalAmendment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClinicalAmendment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClinicalAmendment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAmendment'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/attachments/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_attachments_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAttachment'
+          description: ''
+    post:
+      operationId: v1_dentist_me_clinical_encounters_attachments_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClinicalAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClinicalAttachment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalAttachment'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/finalize/:
+    post:
+      operationId: v1_dentist_me_clinical_encounters_finalize_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalEncounter'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/odontogram/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_odontogram_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OdontogramEntry'
+          description: ''
+    post:
+      operationId: v1_dentist_me_clinical_encounters_odontogram_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OdontogramEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OdontogramEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OdontogramEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OdontogramEntry'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/prescription/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_prescription_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+    post:
+      operationId: v1_dentist_me_clinical_encounters_prescription_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/dentist/me/clinical-encounters/{encounter_id}/treatment-plans/:
+    get:
+      operationId: v1_dentist_me_clinical_encounters_treatment_plans_retrieve
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
+    post:
+      operationId: v1_dentist_me_clinical_encounters_treatment_plans_create
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlan'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlan'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlan'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
+  /api/v1/dentist/me/odontogram/{item_id}/:
+    patch:
+      operationId: v1_dentist_me_odontogram_partial_update
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOdontogramEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOdontogramEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOdontogramEntry'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OdontogramEntry'
+          description: ''
+    delete:
+      operationId: v1_dentist_me_odontogram_destroy
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dentist/me/patients/{patient_profile_id}/summary/:
+    get:
+      operationId: v1_dentist_me_patients_summary_retrieve
+      parameters:
+      - in: query
+        name: appointment_code
+        schema:
+          type: string
+          maxLength: 30
+          minLength: 1
+        required: true
+      - in: path
+        name: patient_profile_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/dentist/me/prescription-items/{item_id}/:
+    patch:
+      operationId: v1_dentist_me_prescription_items_partial_update
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionItem'
+          description: ''
+    delete:
+      operationId: v1_dentist_me_prescription_items_destroy
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dentist/me/prescriptions/{prescription_id}/:
+    patch:
+      operationId: v1_dentist_me_prescriptions_partial_update
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/dentist/me/prescriptions/{prescription_id}/issue/:
+    post:
+      operationId: v1_dentist_me_prescriptions_issue_create
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_prescriptions_issue_partial_update
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/dentist/me/prescriptions/{prescription_id}/items/:
+    get:
+      operationId: v1_dentist_me_prescriptions_items_retrieve
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionItem'
+          description: ''
+    post:
+      operationId: v1_dentist_me_prescriptions_items_create
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescriptionItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescriptionItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionItem'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_prescriptions_items_partial_update
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescriptionItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionItem'
+          description: ''
+  /api/v1/dentist/me/prescriptions/{prescription_id}/void/:
+    post:
+      operationId: v1_dentist_me_prescriptions_void_create
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Prescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_prescriptions_void_partial_update
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescription'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/dentist/me/schedule/:
+    get:
+      operationId: v1_dentist_me_schedule_list
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date-time
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date-time
+        required: true
+      - in: query
+        name: status
+        schema:
+          enum:
+          - HELD
+          - PENDING
+          - CONFIRMED
+          - CHECKED_IN
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - NO_SHOW
+          - EXPIRED
+          type: string
+          minLength: 1
+        description: |-
+          * `HELD` - Giữ chỗ
+          * `PENDING` - Chờ xác nhận
+          * `CONFIRMED` - Đã xác nhận
+          * `CHECKED_IN` - Đã check-in
+          * `IN_PROGRESS` - Đang khám
+          * `COMPLETED` - Hoàn thành
+          * `CANCELLED` - Đã hủy
+          * `NO_SHOW` - Không đến
+          * `EXPIRED` - Hết thời gian giữ chỗ
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DentistAppointment'
+          description: ''
+  /api/v1/dentist/me/treatment-plan-items/{item_id}/:
+    patch:
+      operationId: v1_dentist_me_treatment_plan_items_partial_update
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlanItem'
+          description: ''
+    delete:
+      operationId: v1_dentist_me_treatment_plan_items_destroy
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dentist/me/treatment-plans/{plan_id}/:
+    get:
+      operationId: v1_dentist_me_treatment_plans_retrieve
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_treatment_plans_partial_update
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlan'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlan'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlan'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
+  /api/v1/dentist/me/treatment-plans/{plan_id}/items/:
+    get:
+      operationId: v1_dentist_me_treatment_plans_items_retrieve
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlanItem'
+          description: ''
+    post:
+      operationId: v1_dentist_me_treatment_plans_items_create
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlanItem'
+          description: ''
+    patch:
+      operationId: v1_dentist_me_treatment_plans_items_partial_update
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlanItem'
+          description: ''
+  /api/v1/management/appointments/{public_code}/:
+    get:
+      operationId: v1_management_appointments_retrieve
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarAppointment'
+          description: ''
+  /api/v1/management/appointments/{public_code}/cancel/:
+    post:
+      operationId: v1_management_appointments_cancel_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cancellation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Cancellation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Cancellation'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cancellation'
+          description: ''
+  /api/v1/management/appointments/{public_code}/check-in/:
+    post:
+      operationId: v1_management_appointments_check_in_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarAppointment'
+          description: ''
+  /api/v1/management/appointments/{public_code}/confirm/:
+    post:
+      operationId: v1_management_appointments_confirm_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarAppointment'
+          description: ''
+  /api/v1/management/appointments/{public_code}/no-show/:
+    post:
+      operationId: v1_management_appointments_no_show_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarAppointment'
+          description: ''
+  /api/v1/management/appointments/{public_code}/reschedule/:
+    post:
+      operationId: v1_management_appointments_reschedule_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reschedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reschedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reschedule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reschedule'
+          description: ''
+  /api/v1/management/branch-services/{branch_service_id}/:
+    patch:
+      operationId: v1_management_branch_services_partial_update
+      parameters:
+      - in: path
+        name: branch_service_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchServiceManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchServiceManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchServiceManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchServiceManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/:
+    get:
+      operationId: v1_management_branches_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchManagement'
+          description: ''
+    patch:
+      operationId: v1_management_branches_partial_update
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/appointments/:
+    get:
+      operationId: v1_management_branches_appointments_list
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date-time
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date-time
+        required: true
+      - in: query
+        name: dentist_id
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: status
+        schema:
+          enum:
+          - HELD
+          - PENDING
+          - CONFIRMED
+          - CHECKED_IN
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - NO_SHOW
+          - EXPIRED
+          type: string
+          minLength: 1
+        description: |-
+          * `HELD` - Giữ chỗ
+          * `PENDING` - Chờ xác nhận
+          * `CONFIRMED` - Đã xác nhận
+          * `CHECKED_IN` - Đã check-in
+          * `IN_PROGRESS` - Đang khám
+          * `COMPLETED` - Hoàn thành
+          * `CANCELLED` - Đã hủy
+          * `NO_SHOW` - Không đến
+          * `EXPIRED` - Hết thời gian giữ chỗ
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CalendarAppointment'
+          description: ''
+  /api/v1/management/branches/{branch_id}/chairs/:
+    get:
+      operationId: v1_management_branches_chairs_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChairManagement'
+          description: ''
+    post:
+      operationId: v1_management_branches_chairs_create
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChairManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChairManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChairManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChairManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/invoices/:
+    get:
+      operationId: v1_management_branches_invoices_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+    post:
+      operationId: v1_management_branches_invoices_create
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/management/branches/{branch_id}/opening-hours/:
+    get:
+      operationId: v1_management_branches_opening_hours_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningHourManagement'
+          description: ''
+    put:
+      operationId: v1_management_branches_opening_hours_update
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpeningHoursReplace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OpeningHoursReplace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OpeningHoursReplace'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningHourManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/reports/appointments/:
+    get:
+      operationId: v1_management_branches_reports_appointments_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentReport'
+          description: ''
+  /api/v1/management/branches/{branch_id}/reports/chair-utilization/:
+    get:
+      operationId: v1_management_branches_reports_chair_utilization_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChairUtilizationReport'
+          description: ''
+  /api/v1/management/branches/{branch_id}/reports/revenue/:
+    get:
+      operationId: v1_management_branches_reports_revenue_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: interval
+        schema:
+          enum:
+          - DAY
+          - MONTH
+          type: string
+          default: DAY
+          minLength: 1
+        description: |-
+          * `DAY` - DAY
+          * `MONTH` - MONTH
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueReport'
+          description: ''
+  /api/v1/management/branches/{branch_id}/services/:
+    get:
+      operationId: v1_management_branches_services_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchServiceManagement'
+          description: ''
+    post:
+      operationId: v1_management_branches_services_create
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BranchServiceManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BranchServiceManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BranchServiceManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchServiceManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/time-offs/:
+    get:
+      operationId: v1_management_branches_time_offs_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffManagement'
+          description: ''
+    post:
+      operationId: v1_management_branches_time_offs_create
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeOffManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeOffManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeOffManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffManagement'
+          description: ''
+  /api/v1/management/branches/{branch_id}/work-shifts/:
+    get:
+      operationId: v1_management_branches_work_shifts_retrieve
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkShiftManagement'
+          description: ''
+    post:
+      operationId: v1_management_branches_work_shifts_create
+      parameters:
+      - in: path
+        name: branch_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkShiftManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkShiftManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkShiftManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkShiftManagement'
+          description: ''
+  /api/v1/management/chairs/{chair_id}/:
+    patch:
+      operationId: v1_management_chairs_partial_update
+      parameters:
+      - in: path
+        name: chair_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChairManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChairManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChairManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChairManagement'
+          description: ''
+  /api/v1/management/dentists/{dentist_id}/:
+    get:
+      operationId: v1_management_dentists_retrieve
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistManagement'
+          description: ''
+    patch:
+      operationId: v1_management_dentists_partial_update
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDentistManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDentistManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDentistManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistManagement'
+          description: ''
+  /api/v1/management/dentists/{dentist_id}/branches/:
+    get:
+      operationId: v1_management_dentists_branches_retrieve
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdList'
+          description: ''
+    put:
+      operationId: v1_management_dentists_branches_update
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IdList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IdList'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdList'
+          description: ''
+  /api/v1/management/dentists/{dentist_id}/services/:
+    get:
+      operationId: v1_management_dentists_services_retrieve
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdList'
+          description: ''
+    put:
+      operationId: v1_management_dentists_services_update
+      parameters:
+      - in: path
+        name: dentist_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IdList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IdList'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdList'
+          description: ''
+  /api/v1/management/holidays/{holiday_id}/:
+    patch:
+      operationId: v1_management_holidays_partial_update
+      parameters:
+      - in: path
+        name: holiday_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedHolidayManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedHolidayManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedHolidayManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HolidayManagement'
+          description: ''
+    delete:
+      operationId: v1_management_holidays_destroy
+      parameters:
+      - in: path
+        name: holiday_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/management/invitations/accept/:
+    post:
+      operationId: v1_management_invitations_accept_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffInvitationAccept'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StaffInvitationAccept'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffInvitationAccept'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipManagement'
+          description: ''
+  /api/v1/management/invoices/{invoice_id}/:
+    get:
+      operationId: v1_management_invoices_retrieve
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+    patch:
+      operationId: v1_management_invoices_partial_update
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceDraftUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceDraftUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceDraftUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/management/invoices/{invoice_id}/issue/:
+    post:
+      operationId: v1_management_invoices_issue_create
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/management/invoices/{invoice_id}/payments/:
+    post:
+      operationId: v1_management_invoices_payments_create
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/v1/management/invoices/{invoice_id}/void/:
+    post:
+      operationId: v1_management_invoices_void_create
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/management/memberships/{membership_id}/:
+    patch:
+      operationId: v1_management_memberships_partial_update
+      parameters:
+      - in: path
+        name: membership_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/:
+    get:
+      operationId: v1_management_organizations_retrieve
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationManagement'
+          description: ''
+    patch:
+      operationId: v1_management_organizations_partial_update
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/branches/:
+    get:
+      operationId: v1_management_organizations_branches_list
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BranchManagement'
+          description: ''
+    post:
+      operationId: v1_management_organizations_branches_create
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BranchManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BranchManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BranchManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/dentists/:
+    get:
+      operationId: v1_management_organizations_dentists_retrieve
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistManagement'
+          description: ''
+    post:
+      operationId: v1_management_organizations_dentists_create
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DentistManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DentistManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DentistManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DentistManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/holidays/:
+    get:
+      operationId: v1_management_organizations_holidays_retrieve
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HolidayManagement'
+          description: ''
+    post:
+      operationId: v1_management_organizations_holidays_create
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HolidayManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HolidayManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HolidayManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HolidayManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/memberships/:
+    get:
+      operationId: v1_management_organizations_memberships_retrieve
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipManagement'
+          description: ''
+    post:
+      operationId: v1_management_organizations_memberships_create
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembershipManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MembershipManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MembershipManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipManagement'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/reports/appointments/:
+    get:
+      operationId: v1_management_organizations_reports_appointments_retrieve
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentReport'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/reports/chair-utilization/:
+    get:
+      operationId: v1_management_organizations_reports_chair_utilization_retrieve
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChairUtilizationReport'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/reports/revenue/:
+    get:
+      operationId: v1_management_organizations_reports_revenue_retrieve
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: interval
+        schema:
+          enum:
+          - DAY
+          - MONTH
+          type: string
+          default: DAY
+          minLength: 1
+        description: |-
+          * `DAY` - DAY
+          * `MONTH` - MONTH
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueReport'
+          description: ''
+  /api/v1/management/organizations/{organization_id}/services/:
+    get:
+      operationId: v1_management_organizations_services_retrieve
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceManagement'
+          description: ''
+    post:
+      operationId: v1_management_organizations_services_create
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ServiceManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ServiceManagement'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceManagement'
+          description: ''
+  /api/v1/management/payments/{payment_id}/void/:
+    post:
+      operationId: v1_management_payments_void_create
+      parameters:
+      - in: path
+        name: payment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/v1/management/services/{service_id}/:
+    get:
+      operationId: v1_management_services_retrieve
+      parameters:
+      - in: path
+        name: service_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceManagement'
+          description: ''
+    patch:
+      operationId: v1_management_services_partial_update
+      parameters:
+      - in: path
+        name: service_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedServiceManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedServiceManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedServiceManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceManagement'
+          description: ''
+  /api/v1/management/time-offs/{time_off_id}/:
+    patch:
+      operationId: v1_management_time_offs_partial_update
+      parameters:
+      - in: path
+        name: time_off_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeOffManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeOffManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeOffManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffManagement'
+          description: ''
+  /api/v1/management/work-shifts/{shift_id}/:
+    patch:
+      operationId: v1_management_work_shifts_partial_update
+      parameters:
+      - in: path
+        name: shift_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkShiftManagement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkShiftManagement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkShiftManagement'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkShiftManagement'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: notification_list
+      parameters:
+      - in: query
+        name: unread
+        schema:
+          type: boolean
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/notifications/{notification_id}/read/:
+    post:
+      operationId: v1_notifications_read_create
+      parameters:
+      - in: path
+        name: notification_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/notifications/read-all/:
+    post:
+      operationId: v1_notifications_read_all_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/patients/me/:
+    get:
+      operationId: v1_patients_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientProfileResponse'
+          description: ''
+    patch:
+      operationId: v1_patients_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientProfile'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientProfileResponse'
+          description: ''
+  /api/v1/patients/me/appointments/:
+    get:
+      operationId: v1_patients_me_appointments_list
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+      - in: query
+        name: scope
+        schema:
+          enum:
+          - UPCOMING
+          - HISTORY
+          type: string
+          default: UPCOMING
+          minLength: 1
+        description: |-
+          * `UPCOMING` - UPCOMING
+          * `HISTORY` - HISTORY
+      - in: query
+        name: status
+        schema:
+          enum:
+          - PENDING
+          - CONFIRMED
+          - CHECKED_IN
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - NO_SHOW
+          type: string
+          minLength: 1
+        description: |-
+          * `PENDING` - PENDING
+          * `CONFIRMED` - CONFIRMED
+          * `CHECKED_IN` - CHECKED_IN
+          * `IN_PROGRESS` - IN_PROGRESS
+          * `COMPLETED` - COMPLETED
+          * `CANCELLED` - CANCELLED
+          * `NO_SHOW` - NO_SHOW
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientAppointment'
+          description: ''
+  /api/v1/patients/me/appointments/{public_code}/:
+    get:
+      operationId: v1_patients_me_appointments_retrieve
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientAppointment'
+          description: ''
+  /api/v1/patients/me/appointments/{public_code}/cancel/:
+    post:
+      operationId: v1_patients_me_appointments_cancel_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentCancellation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentCancellation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentCancellation'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientAppointment'
+          description: ''
+  /api/v1/patients/me/appointments/{public_code}/reschedule/:
+    post:
+      operationId: v1_patients_me_appointments_reschedule_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentReschedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentReschedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientAppointmentReschedule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientAppointment'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientAppointment'
+          description: ''
+  /api/v1/patients/me/clinical-attachments/{attachment_id}/download/:
+    get:
+      operationId: v1_patients_me_clinical_attachments_download_retrieve
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/patients/me/clinical-encounters/:
+    get:
+      operationId: patient_clinical_encounter_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientClinicalEncounter'
+          description: ''
+  /api/v1/patients/me/clinical-encounters/{encounter_id}/:
+    get:
+      operationId: patient_clinical_encounter_detail
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientClinicalEncounter'
+          description: ''
+  /api/v1/patients/me/invoices/:
+    get:
+      operationId: patient_invoice_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/patients/me/invoices/{invoice_id}/:
+    get:
+      operationId: patient_invoice_retrieve
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/v1/scheduling/appointments/{public_code}/confirm/:
+    post:
+      operationId: v1_scheduling_appointments_confirm_create
+      parameters:
+      - in: path
+        name: public_code
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+          description: ''
+  /api/v1/scheduling/appointments/holds/:
+    post:
+      operationId: v1_scheduling_appointments_holds_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentHoldCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AppointmentHoldCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AppointmentHoldCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+          description: ''
+  /api/v1/scheduling/slots/:
+    get:
+      operationId: v1_scheduling_slots_retrieve
+      parameters:
+      - in: query
+        name: branch_service_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: date
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: dentist_id
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+components:
+  schemas:
+    AccessTypeEnum:
+      enum:
+      - READ
+      - WRITE
+      type: string
+      description: |-
+        * `READ` - Đọc
+        * `WRITE` - Thay đổi
+    Appointment:
+      type: object
+      properties:
+        public_code:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AppointmentStatusEnum'
+          readOnly: true
+        id_branch:
+          type: integer
+          readOnly: true
+        id_branch_service:
+          type: integer
+          readOnly: true
+        id_dentist:
+          type: integer
+          readOnly: true
+        dentist_name:
+          type: string
+          readOnly: true
+        id_chair:
+          type: integer
+          readOnly: true
+        chair_name:
+          type: string
+          readOnly: true
+        service_name_snapshot:
+          type: string
+          readOnly: true
+        duration_minutes:
+          type: integer
+          readOnly: true
+        buffer_minutes:
+          type: integer
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - buffer_minutes
+      - chair_name
+      - confirmed_at
+      - created_at
+      - dentist_name
+      - duration_minutes
+      - ends_at
+      - expires_at
+      - id_branch
+      - id_branch_service
+      - id_chair
+      - id_dentist
+      - public_code
+      - service_name_snapshot
+      - starts_at
+      - status
+    AppointmentBranchRow:
+      type: object
+      properties:
+        branch_id:
+          type: integer
+        branch_name:
+          type: string
+        total_appointments:
+          type: integer
+        completed_count:
+          type: integer
+        cancelled_count:
+          type: integer
+        no_show_count:
+          type: integer
+        cancellation_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        no_show_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+      required:
+      - branch_id
+      - branch_name
+      - cancellation_rate_percent
+      - cancelled_count
+      - completed_count
+      - no_show_count
+      - no_show_rate_percent
+      - total_appointments
+    AppointmentHoldCreate:
+      type: object
+      properties:
+        branch_service_id:
+          type: integer
+          minimum: 1
+        starts_at:
+          type: string
+          format: date-time
+        dentist_id:
+          type: integer
+          minimum: 1
+      required:
+      - branch_service_id
+      - starts_at
+    AppointmentReport:
+      type: object
+      properties:
+        scope:
+          $ref: '#/components/schemas/ScopeEnum'
+        date_from:
+          type: string
+          format: date
+        date_to:
+          type: string
+          format: date
+        timezone:
+          type: string
+        total_appointments:
+          type: integer
+        completed_count:
+          type: integer
+        cancelled_count:
+          type: integer
+        no_show_count:
+          type: integer
+        cancellation_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        no_show_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        by_branch:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentBranchRow'
+      required:
+      - by_branch
+      - cancellation_rate_percent
+      - cancelled_count
+      - completed_count
+      - date_from
+      - date_to
+      - no_show_count
+      - no_show_rate_percent
+      - scope
+      - timezone
+      - total_appointments
+    AppointmentStatusEnum:
+      enum:
+      - HELD
+      - PENDING
+      - CONFIRMED
+      - CHECKED_IN
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      - NO_SHOW
+      - EXPIRED
+      type: string
+      description: |-
+        * `HELD` - Giữ chỗ
+        * `PENDING` - Chờ xác nhận
+        * `CONFIRMED` - Đã xác nhận
+        * `CHECKED_IN` - Đã check-in
+        * `IN_PROGRESS` - Đang khám
+        * `COMPLETED` - Hoàn thành
+        * `CANCELLED` - Đã hủy
+        * `NO_SHOW` - Không đến
+        * `EXPIRED` - Hết thời gian giữ chỗ
+    AuditEvent:
+      type: object
+      properties:
+        id_audit_event:
+          type: integer
+          readOnly: true
+        actor_user_id:
+          type: integer
+          readOnly: true
+        actor_email:
+          type: string
+          format: email
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        action:
+          type: string
+          maxLength: 100
+        resource_type:
+          type: string
+          maxLength: 100
+        resource_id:
+          type: string
+          nullable: true
+          maxLength: 128
+        access_type:
+          $ref: '#/components/schemas/AccessTypeEnum'
+        before_data: {}
+        after_data: {}
+        ip_address:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          maxLength: 500
+        request_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - access_type
+      - action
+      - actor_email
+      - actor_user_id
+      - branch_id
+      - created_at
+      - id_audit_event
+      - organization_id
+      - resource_type
+    AuthPayload:
+      type: object
+      properties:
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        tokens:
+          allOf:
+          - $ref: '#/components/schemas/TokenPair'
+          readOnly: true
+      required:
+      - tokens
+      - user
+    AuthResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/AuthPayload'
+          readOnly: true
+      required:
+      - data
+    BlankEnum:
+      enum:
+      - ''
+    BranchDentist:
+      type: object
+      properties:
+        id_dentist:
+          type: integer
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        license_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        biography:
+          type: string
+          nullable: true
+      required:
+      - full_name
+      - id_dentist
+    BranchDentistsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchDentist'
+          readOnly: true
+        meta:
+          allOf:
+          - $ref: '#/components/schemas/BranchListMeta'
+          readOnly: true
+        links:
+          allOf:
+          - $ref: '#/components/schemas/BranchListLinks'
+          readOnly: true
+      required:
+      - data
+      - links
+      - meta
+    BranchDetail:
+      type: object
+      properties:
+        id_branch:
+          type: integer
+          readOnly: true
+        id_organization:
+          type: integer
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        province_code:
+          type: string
+          readOnly: true
+        province_name:
+          type: string
+          readOnly: true
+        ward_code:
+          type: string
+          readOnly: true
+        ward_name:
+          type: string
+          readOnly: true
+        address_line:
+          type: string
+        full_address:
+          type: string
+          readOnly: true
+        location:
+          allOf:
+          - $ref: '#/components/schemas/BranchLocation'
+          readOnly: true
+        opening_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchOpeningHour'
+          readOnly: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchImage'
+          readOnly: true
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchService'
+          readOnly: true
+        dentists:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchDentist'
+          readOnly: true
+      required:
+      - address_line
+      - code
+      - dentists
+      - full_address
+      - id_branch
+      - id_organization
+      - images
+      - location
+      - name
+      - opening_hours
+      - organization_name
+      - province_code
+      - province_name
+      - services
+      - ward_code
+      - ward_name
+    BranchDetailResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/BranchDetail'
+          readOnly: true
+      required:
+      - data
+    BranchImage:
+      type: object
+      properties:
+        id_branch_image:
+          type: integer
+          readOnly: true
+        storage_key:
+          type: string
+          maxLength: 512
+        original_name:
+          type: string
+          maxLength: 255
+        mime_type:
+          type: string
+          maxLength: 100
+        is_primary:
+          type: boolean
+        sort_order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+      required:
+      - id_branch_image
+      - mime_type
+      - original_name
+      - storage_key
+    BranchListItem:
+      type: object
+      properties:
+        id_branch:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        province_code:
+          type: string
+          readOnly: true
+        province_name:
+          type: string
+          readOnly: true
+        ward_code:
+          type: string
+          readOnly: true
+        ward_name:
+          type: string
+          readOnly: true
+        address_line:
+          type: string
+        full_address:
+          type: string
+          readOnly: true
+        location:
+          allOf:
+          - $ref: '#/components/schemas/BranchLocation'
+          readOnly: true
+        distance_km:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+        is_open_now:
+          type: boolean
+          readOnly: true
+        primary_image:
+          allOf:
+          - $ref: '#/components/schemas/BranchImage'
+          nullable: true
+          readOnly: true
+      required:
+      - address_line
+      - code
+      - distance_km
+      - full_address
+      - id_branch
+      - is_open_now
+      - location
+      - name
+      - primary_image
+      - province_code
+      - province_name
+      - ward_code
+      - ward_name
+    BranchListLinks:
+      type: object
+      properties:
+        next:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+      required:
+      - next
+      - previous
+    BranchListMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          readOnly: true
+        page:
+          type: integer
+          readOnly: true
+        page_size:
+          type: integer
+          readOnly: true
+        total_pages:
+          type: integer
+          readOnly: true
+      required:
+      - page
+      - page_size
+      - total
+      - total_pages
+    BranchListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchListItem'
+          readOnly: true
+        meta:
+          allOf:
+          - $ref: '#/components/schemas/BranchListMeta'
+          readOnly: true
+        links:
+          allOf:
+          - $ref: '#/components/schemas/BranchListLinks'
+          readOnly: true
+      required:
+      - data
+      - links
+      - meta
+    BranchLocation:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          readOnly: true
+        longitude:
+          type: number
+          format: double
+          readOnly: true
+      required:
+      - latitude
+      - longitude
+    BranchManagement:
+      type: object
+      properties:
+        id_branch:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        province_code:
+          type: string
+        ward_code:
+          type: string
+        address_line:
+          type: string
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          writeOnly: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          writeOnly: true
+        location:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          readOnly: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - address_line
+      - code
+      - created_at
+      - id_branch
+      - latitude
+      - location
+      - longitude
+      - name
+      - organization_id
+      - province_code
+      - updated_at
+      - ward_code
+    BranchOpeningHour:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        weekday_label:
+          type: string
+          readOnly: true
+        is_closed:
+          type: boolean
+        open_time:
+          type: string
+          format: time
+          nullable: true
+        close_time:
+          type: string
+          format: time
+          nullable: true
+      required:
+      - weekday
+      - weekday_label
+    BranchService:
+      type: object
+      properties:
+        id_branch_service:
+          type: integer
+          readOnly: true
+        id_service:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+          nullable: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        duration_minutes:
+          type: integer
+          readOnly: true
+        buffer_minutes:
+          type: integer
+          readOnly: true
+      required:
+      - buffer_minutes
+      - code
+      - description
+      - duration_minutes
+      - id_branch_service
+      - id_service
+      - name
+      - price
+    BranchServiceManagement:
+      type: object
+      properties:
+        id_branch_service:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+        service_name:
+          type: string
+          readOnly: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        is_active:
+          type: boolean
+      required:
+      - branch_id
+      - id_branch_service
+      - price
+      - service_id
+      - service_name
+    BranchServicesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchService'
+          readOnly: true
+        meta:
+          allOf:
+          - $ref: '#/components/schemas/BranchListMeta'
+          readOnly: true
+        links:
+          allOf:
+          - $ref: '#/components/schemas/BranchListLinks'
+          readOnly: true
+      required:
+      - data
+      - links
+      - meta
+    CalendarAppointment:
+      type: object
+      properties:
+        public_code:
+          type: string
+          maxLength: 30
+        branch_id:
+          type: integer
+          readOnly: true
+        branch_service_id:
+          type: integer
+          readOnly: true
+        service_name_snapshot:
+          type: string
+          maxLength: 200
+        patient_name:
+          type: string
+          readOnly: true
+        patient_phone:
+          type: string
+          readOnly: true
+        dentist_id:
+          type: integer
+          readOnly: true
+        dentist_name:
+          type: string
+          readOnly: true
+        chair_id:
+          type: integer
+          readOnly: true
+        chair_name:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        occupied_until:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/AppointmentStatusEnum'
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        no_show_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_reason:
+          type: string
+          nullable: true
+        rescheduled_from_code:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - branch_id
+      - branch_service_id
+      - chair_id
+      - chair_name
+      - created_at
+      - dentist_id
+      - dentist_name
+      - ends_at
+      - occupied_until
+      - patient_name
+      - patient_phone
+      - public_code
+      - rescheduled_from_code
+      - service_name_snapshot
+      - starts_at
+      - status
+      - updated_at
+    Cancellation:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+      required:
+      - reason
+    ChairManagement:
+      type: object
+      properties:
+        id_chair:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 150
+        resource_type:
+          $ref: '#/components/schemas/ResourceTypeEnum'
+        is_active:
+          type: boolean
+      required:
+      - branch_id
+      - code
+      - id_chair
+      - name
+      - resource_type
+    ChairUtilizationBranchRow:
+      type: object
+      properties:
+        branch_id:
+          type: integer
+        branch_name:
+          type: string
+        chair_count:
+          type: integer
+        open_days:
+          type: integer
+        available_minutes:
+          type: integer
+        occupied_minutes:
+          type: integer
+        utilization_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,2})?$
+        by_chair:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChairUtilizationChairRow'
+      required:
+      - available_minutes
+      - branch_id
+      - branch_name
+      - by_chair
+      - chair_count
+      - occupied_minutes
+      - open_days
+      - utilization_rate_percent
+    ChairUtilizationChairRow:
+      type: object
+      properties:
+        chair_id:
+          type: integer
+        chair_code:
+          type: string
+        chair_name:
+          type: string
+        available_minutes:
+          type: integer
+        occupied_minutes:
+          type: integer
+        utilization_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,2})?$
+      required:
+      - available_minutes
+      - chair_code
+      - chair_id
+      - chair_name
+      - occupied_minutes
+      - utilization_rate_percent
+    ChairUtilizationReport:
+      type: object
+      properties:
+        scope:
+          $ref: '#/components/schemas/ScopeEnum'
+        date_from:
+          type: string
+          format: date
+        date_to:
+          type: string
+          format: date
+        timezone:
+          type: string
+        included_statuses:
+          type: array
+          items:
+            type: string
+        total_chairs:
+          type: integer
+        available_minutes:
+          type: integer
+        occupied_minutes:
+          type: integer
+        utilization_rate_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,2})?$
+        by_branch:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChairUtilizationBranchRow'
+      required:
+      - available_minutes
+      - by_branch
+      - date_from
+      - date_to
+      - included_statuses
+      - occupied_minutes
+      - scope
+      - timezone
+      - total_chairs
+      - utilization_rate_percent
+    ClinicalAmendment:
+      type: object
+      properties:
+        id_clinical_amendment:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        reason:
+          type: string
+        author_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author_name
+      - content
+      - created_at
+      - id_clinical_amendment
+      - reason
+    ClinicalAttachment:
+      type: object
+      properties:
+        id_clinical_attachment:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        file:
+          type: string
+          format: uri
+          writeOnly: true
+        content_type:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+        sha256:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        download_url:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_type
+      - created_at
+      - download_url
+      - file
+      - id_clinical_attachment
+      - kind
+      - sha256
+      - size_bytes
+      - updated_at
+    ClinicalEncounter:
+      type: object
+      properties:
+        id_clinical_encounter:
+          type: integer
+          readOnly: true
+        appointment_id:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ClinicalEncounterStatusEnum'
+          readOnly: true
+        chief_complaint:
+          type: string
+        medical_history:
+          type: string
+        diagnosis_summary:
+          type: string
+        notes:
+          type: string
+        finalized_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        odontogram_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/OdontogramEntry'
+          readOnly: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAmendment'
+          readOnly: true
+        prescription:
+          allOf:
+          - $ref: '#/components/schemas/Prescription'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAttachment'
+          readOnly: true
+      required:
+      - amendments
+      - appointment_id
+      - attachments
+      - created_at
+      - finalized_at
+      - id_clinical_encounter
+      - odontogram_entries
+      - prescription
+      - status
+      - updated_at
+    ClinicalEncounterStatusEnum:
+      enum:
+      - DRAFT
+      - FINALIZED
+      type: string
+      description: |-
+        * `DRAFT` - Bản nháp
+        * `FINALIZED` - Đã chốt
+    DentistAppointment:
+      type: object
+      properties:
+        public_code:
+          type: string
+          maxLength: 30
+        branch_id:
+          type: integer
+          readOnly: true
+        branch_name:
+          type: string
+          readOnly: true
+        branch_service_id:
+          type: integer
+          readOnly: true
+        service_name_snapshot:
+          type: string
+          maxLength: 200
+        chair_id:
+          type: integer
+          readOnly: true
+        chair_name:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          readOnly: true
+        patient_phone:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/AppointmentStatusEnum'
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - branch_id
+      - branch_name
+      - branch_service_id
+      - chair_id
+      - chair_name
+      - ends_at
+      - patient_name
+      - patient_phone
+      - public_code
+      - service_name_snapshot
+      - starts_at
+      - status
+    DentistManagement:
+      type: object
+      properties:
+        id_dentist:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        license_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        biography:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - full_name
+      - id_dentist
+      - organization_id
+      - updated_at
+      - user_email
+      - user_id
+    EmailVerificationConfirm:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 200
+      required:
+      - token
+    GenderEnum:
+      enum:
+      - MALE
+      - FEMALE
+      - OTHER
+      type: string
+      description: |-
+        * `MALE` - Nam
+        * `FEMALE` - Nữ
+        * `OTHER` - Khác
+    HolidayManagement:
+      type: object
+      properties:
+        id_holiday:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+        holiday_date:
+          type: string
+          format: date
+        name:
+          type: string
+          maxLength: 200
+        is_closed:
+          type: boolean
+      required:
+      - holiday_date
+      - id_holiday
+      - name
+      - organization_id
+    IdList:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+      required:
+      - ids
+    IntervalEnum:
+      enum:
+      - DAY
+      - MONTH
+      type: string
+      description: |-
+        * `DAY` - DAY
+        * `MONTH` - MONTH
+    Invoice:
+      type: object
+      properties:
+        id_invoice:
+          type: integer
+          readOnly: true
+        invoice_number:
+          type: string
+          maxLength: 40
+        appointment_code:
+          type: string
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        patient_profile_id:
+          type: integer
+          readOnly: true
+        patient_name:
+          type: string
+          readOnly: true
+        replacement_for_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/InvoiceStatusEnum'
+        currency:
+          type: string
+          maxLength: 3
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLine'
+          readOnly: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        voided_at:
+          type: string
+          format: date-time
+          nullable: true
+        void_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - appointment_code
+      - branch_id
+      - created_at
+      - id_invoice
+      - invoice_number
+      - lines
+      - patient_name
+      - patient_profile_id
+      - payments
+      - replacement_for_id
+    InvoiceCreate:
+      type: object
+      properties:
+        appointment_code:
+          type: string
+          maxLength: 30
+        replacement_for_id:
+          type: integer
+          nullable: true
+      required:
+      - appointment_code
+    InvoiceLine:
+      type: object
+      properties:
+        id_invoice_line:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        service_code_snapshot:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        line_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+      required:
+      - description
+      - id_invoice_line
+      - line_total
+      - quantity
+      - service_id
+      - unit_price
+    InvoiceLineWrite:
+      type: object
+      properties:
+        service:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+      required:
+      - description
+      - quantity
+      - unit_price
+    InvoiceStatusEnum:
+      enum:
+      - DRAFT
+      - ISSUED
+      - PAID
+      - VOID
+      type: string
+      description: |-
+        * `DRAFT` - Bản nháp
+        * `ISSUED` - Đã phát hành
+        * `PAID` - Đã thanh toán
+        * `VOID` - Đã hủy
+    KindEnum:
+      enum:
+      - XRAY
+      - PHOTO
+      - DOCUMENT
+      type: string
+      description: |-
+        * `XRAY` - X-quang
+        * `PHOTO` - Ảnh lâm sàng
+        * `DOCUMENT` - Tài liệu
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - refresh
+    Membership:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        organization_id:
+          type: integer
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        branch_name:
+          type: string
+          readOnly: true
+      required:
+      - branch_id
+      - branch_name
+      - organization_id
+      - organization_name
+      - role
+    MembershipManagement:
+      type: object
+      properties:
+        id_membership:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+        user_full_name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id_membership
+      - organization_id
+      - role
+      - user_email
+      - user_full_name
+      - user_id
+    MessagePayload:
+      type: object
+      properties:
+        message:
+          type: string
+          readOnly: true
+      required:
+      - message
+    MessageResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/MessagePayload'
+          readOnly: true
+      required:
+      - data
+    MethodEnum:
+      enum:
+      - CASH
+      - BANK_TRANSFER
+      - CARD
+      type: string
+      description: |-
+        * `CASH` - Tiền mặt
+        * `BANK_TRANSFER` - Chuyển khoản
+        * `CARD` - Thẻ
+    Notification:
+      type: object
+      properties:
+        id_notification:
+          type: integer
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        title:
+          type: string
+          maxLength: 200
+        body:
+          type: string
+        payload: {}
+        resource_type:
+          type: string
+          maxLength: 100
+        resource_id:
+          type: string
+          maxLength: 128
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id_notification
+      - resource_id
+      - resource_type
+      - title
+      - type
+    NullEnum:
+      enum:
+      - null
+    OdontogramEntry:
+      type: object
+      properties:
+        id_odontogram_entry:
+          type: integer
+          readOnly: true
+        tooth_number:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        surface:
+          $ref: '#/components/schemas/SurfaceEnum'
+        condition_code:
+          type: string
+          maxLength: 50
+        treatment_code:
+          type: string
+          maxLength: 50
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - condition_code
+      - created_at
+      - id_odontogram_entry
+      - surface
+      - tooth_number
+      - updated_at
+    OpeningHourManagement:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        is_closed:
+          type: boolean
+        open_time:
+          type: string
+          format: time
+          nullable: true
+        close_time:
+          type: string
+          format: time
+          nullable: true
+      required:
+      - weekday
+    OpeningHoursReplace:
+      type: object
+      properties:
+        opening_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpeningHourManagement'
+      required:
+      - opening_hours
+    OrganizationManagement:
+      type: object
+      properties:
+        id_organization:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        timezone:
+          type: string
+          maxLength: 64
+        auto_confirm:
+          type: boolean
+        slot_hold_minutes:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        cancellation_cutoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        no_show_grace_minutes:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id_organization
+      - name
+      - slug
+      - updated_at
+    PasswordResetConfirm:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 200
+        new_password:
+          type: string
+          writeOnly: true
+        new_password_confirm:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - new_password_confirm
+      - token
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+    PatchedBranchManagement:
+      type: object
+      properties:
+        id_branch:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        province_code:
+          type: string
+        ward_code:
+          type: string
+        address_line:
+          type: string
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          writeOnly: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          writeOnly: true
+        location:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          readOnly: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedBranchServiceManagement:
+      type: object
+      properties:
+        id_branch_service:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+        service_name:
+          type: string
+          readOnly: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        is_active:
+          type: boolean
+    PatchedChairManagement:
+      type: object
+      properties:
+        id_chair:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 150
+        resource_type:
+          $ref: '#/components/schemas/ResourceTypeEnum'
+        is_active:
+          type: boolean
+    PatchedClinicalAttachment:
+      type: object
+      properties:
+        id_clinical_attachment:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        file:
+          type: string
+          format: uri
+          writeOnly: true
+        content_type:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+        sha256:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        download_url:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedClinicalEncounter:
+      type: object
+      properties:
+        id_clinical_encounter:
+          type: integer
+          readOnly: true
+        appointment_id:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ClinicalEncounterStatusEnum'
+          readOnly: true
+        chief_complaint:
+          type: string
+        medical_history:
+          type: string
+        diagnosis_summary:
+          type: string
+        notes:
+          type: string
+        finalized_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        odontogram_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/OdontogramEntry'
+          readOnly: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAmendment'
+          readOnly: true
+        prescription:
+          allOf:
+          - $ref: '#/components/schemas/Prescription'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAttachment'
+          readOnly: true
+    PatchedDentistManagement:
+      type: object
+      properties:
+        id_dentist:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        license_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        biography:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedHolidayManagement:
+      type: object
+      properties:
+        id_holiday:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+        holiday_date:
+          type: string
+          format: date
+        name:
+          type: string
+          maxLength: 200
+        is_closed:
+          type: boolean
+    PatchedInvoiceDraftUpdate:
+      type: object
+      properties:
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineWrite'
+    PatchedMembershipManagement:
+      type: object
+      properties:
+        id_membership:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+        user_full_name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedOdontogramEntry:
+      type: object
+      properties:
+        id_odontogram_entry:
+          type: integer
+          readOnly: true
+        tooth_number:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        surface:
+          $ref: '#/components/schemas/SurfaceEnum'
+        condition_code:
+          type: string
+          maxLength: 50
+        treatment_code:
+          type: string
+          maxLength: 50
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedOrganizationManagement:
+      type: object
+      properties:
+        id_organization:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        timezone:
+          type: string
+          maxLength: 64
+        auto_confirm:
+          type: boolean
+        slot_hold_minutes:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        cancellation_cutoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        no_show_grace_minutes:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPatientProfile:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          readOnly: true
+        email_verified:
+          type: boolean
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 200
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        province_code:
+          type: string
+          nullable: true
+        province_name:
+          type: string
+          readOnly: true
+        ward_code:
+          type: string
+          nullable: true
+        ward_name:
+          type: string
+          readOnly: true
+        address_line:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPrescription:
+      type: object
+      properties:
+        id_prescription:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PrescriptionStatusEnum'
+          readOnly: true
+        instructions:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        void_reason:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItem'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPrescriptionItem:
+      type: object
+      properties:
+        id_prescription_item:
+          type: integer
+          readOnly: true
+        medicine_name:
+          type: string
+          maxLength: 200
+        strength:
+          type: string
+          maxLength: 100
+        dosage:
+          type: string
+          maxLength: 200
+        frequency:
+          type: string
+          maxLength: 200
+        duration:
+          type: string
+          maxLength: 200
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedServiceManagement:
+      type: object
+      properties:
+        id_service:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        standard_duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        standard_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTimeOffManagement:
+      type: object
+      properties:
+        id_time_off:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        dentist_id:
+          type: integer
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        applies_to_all_branches:
+          type: boolean
+          writeOnly: true
+          default: false
+    PatchedTreatmentPlan:
+      type: object
+      properties:
+        id_treatment_plan:
+          type: integer
+          readOnly: true
+        originating_encounter_id:
+          type: integer
+          readOnly: true
+        patient_profile_id:
+          type: integer
+          readOnly: true
+        dentist_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TreatmentPlanStatusEnum'
+          readOnly: true
+        total_estimate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentPlanItem'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTreatmentPlanItem:
+      type: object
+      properties:
+        id_treatment_plan_item:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+        service_name:
+          type: string
+          readOnly: true
+        tooth_number:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+          nullable: true
+        sequence:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        planned_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/TreatmentPlanItemStatusEnum'
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedWorkShiftManagement:
+      type: object
+      properties:
+        id_work_shift:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        dentist_id:
+          type: integer
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        valid_from:
+          type: string
+          format: date
+        valid_to:
+          type: string
+          format: date
+          nullable: true
+        is_active:
+          type: boolean
+    PatientAppointment:
+      type: object
+      properties:
+        public_code:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AppointmentStatusEnum'
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        branch_name:
+          type: string
+          readOnly: true
+        branch_address:
+          type: string
+          readOnly: true
+        branch_service_id:
+          type: integer
+          readOnly: true
+        service_name_snapshot:
+          type: string
+          readOnly: true
+        service_price_snapshot:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        dentist_id:
+          type: integer
+          readOnly: true
+        dentist_name:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+        occupied_until:
+          type: string
+          format: date-time
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        no_show_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancel_reason:
+          type: string
+          readOnly: true
+          nullable: true
+        rescheduled_from_code:
+          type: string
+          readOnly: true
+          nullable: true
+        rescheduled_to_code:
+          type: string
+          readOnly: true
+          nullable: true
+        can_cancel:
+          type: boolean
+          readOnly: true
+        can_reschedule:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - branch_address
+      - branch_id
+      - branch_name
+      - branch_service_id
+      - can_cancel
+      - can_reschedule
+      - cancel_reason
+      - cancelled_at
+      - checked_in_at
+      - completed_at
+      - confirmed_at
+      - created_at
+      - dentist_id
+      - dentist_name
+      - ends_at
+      - no_show_at
+      - occupied_until
+      - public_code
+      - rescheduled_from_code
+      - rescheduled_to_code
+      - service_name_snapshot
+      - service_price_snapshot
+      - started_at
+      - starts_at
+      - status
+      - updated_at
+    PatientAppointmentCancellation:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+      required:
+      - reason
+    PatientAppointmentReschedule:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        dentist_id:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          maxLength: 1000
+        idempotency_key:
+          type: string
+          maxLength: 64
+          minLength: 8
+          pattern: ^[A-Za-z0-9._:-]+$
+      required:
+      - idempotency_key
+      - reason
+      - starts_at
+    PatientClinicalEncounter:
+      type: object
+      properties:
+        id_clinical_encounter:
+          type: integer
+          readOnly: true
+        appointment_code:
+          type: string
+          readOnly: true
+        appointment_status:
+          type: string
+          readOnly: true
+        service_name:
+          type: string
+          readOnly: true
+        dentist_name:
+          type: string
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        branch_name:
+          type: string
+          readOnly: true
+        examined_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+        chief_complaint:
+          type: string
+        medical_history:
+          type: string
+        diagnosis_summary:
+          type: string
+        notes:
+          type: string
+        finalized_at:
+          type: string
+          format: date-time
+          nullable: true
+        odontogram_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/OdontogramEntry'
+          readOnly: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAmendment'
+          readOnly: true
+        prescription:
+          allOf:
+          - $ref: '#/components/schemas/Prescription'
+          nullable: true
+          readOnly: true
+        treatment_plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentPlan'
+          readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalAttachment'
+          readOnly: true
+      required:
+      - amendments
+      - appointment_code
+      - appointment_status
+      - attachments
+      - branch_id
+      - branch_name
+      - completed_at
+      - dentist_name
+      - examined_at
+      - id_clinical_encounter
+      - odontogram_entries
+      - prescription
+      - service_name
+      - treatment_plans
+    PatientProfile:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          readOnly: true
+        email_verified:
+          type: boolean
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 200
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        province_code:
+          type: string
+          nullable: true
+        province_name:
+          type: string
+          readOnly: true
+        ward_code:
+          type: string
+          nullable: true
+        ward_name:
+          type: string
+          readOnly: true
+        address_line:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - email
+      - email_verified
+      - full_name
+      - province_name
+      - updated_at
+      - ward_name
+    PatientProfileResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/PatientProfile'
+          readOnly: true
+      required:
+      - data
+    Payment:
+      type: object
+      properties:
+        id_payment:
+          type: integer
+          readOnly: true
+        payment_number:
+          type: string
+          maxLength: 40
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        external_reference:
+          type: string
+          maxLength: 100
+        posted_at:
+          type: string
+          format: date-time
+        voided_at:
+          type: string
+          format: date-time
+          nullable: true
+        void_reason:
+          type: string
+      required:
+      - amount
+      - id_payment
+      - method
+      - payment_number
+      - posted_at
+    PaymentCreate:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        external_reference:
+          type: string
+          maxLength: 100
+        idempotency_key:
+          type: string
+          maxLength: 64
+          minLength: 8
+      required:
+      - amount
+      - idempotency_key
+      - method
+    PaymentStatusEnum:
+      enum:
+      - POSTED
+      - VOID
+      type: string
+      description: |-
+        * `POSTED` - Đã ghi nhận
+        * `VOID` - Đã hủy
+    Prescription:
+      type: object
+      properties:
+        id_prescription:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PrescriptionStatusEnum'
+          readOnly: true
+        instructions:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        void_reason:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItem'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id_prescription
+      - issued_at
+      - items
+      - status
+      - updated_at
+      - void_reason
+      - voided_at
+    PrescriptionItem:
+      type: object
+      properties:
+        id_prescription_item:
+          type: integer
+          readOnly: true
+        medicine_name:
+          type: string
+          maxLength: 200
+        strength:
+          type: string
+          maxLength: 100
+        dosage:
+          type: string
+          maxLength: 200
+        frequency:
+          type: string
+          maxLength: 200
+        duration:
+          type: string
+          maxLength: 200
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - dosage
+      - duration
+      - frequency
+      - id_prescription_item
+      - medicine_name
+      - quantity
+      - updated_at
+    PrescriptionStatusEnum:
+      enum:
+      - DRAFT
+      - ISSUED
+      - VOID
+      type: string
+      description: |-
+        * `DRAFT` - Bản nháp
+        * `ISSUED` - Đã phát hành
+        * `VOID` - Đã hủy
+    Reason:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 3
+      required:
+      - reason
+    Registration:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        full_name:
+          type: string
+          maxLength: 200
+        password:
+          type: string
+          writeOnly: true
+        password_confirm:
+          type: string
+          writeOnly: true
+        consent_to_data_processing:
+          type: boolean
+          writeOnly: true
+      required:
+      - consent_to_data_processing
+      - email
+      - full_name
+      - password
+      - password_confirm
+    Reschedule:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        dentist_id:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          maxLength: 1000
+        idempotency_key:
+          type: string
+          maxLength: 64
+          minLength: 8
+          pattern: ^[A-Za-z0-9._:-]+$
+      required:
+      - idempotency_key
+      - reason
+      - starts_at
+    ResourceTypeEnum:
+      enum:
+      - CHAIR
+      - ROOM
+      type: string
+      description: |-
+        * `CHAIR` - Ghế nha khoa
+        * `ROOM` - Phòng khám
+    RevenueBranchRow:
+      type: object
+      properties:
+        branch_id:
+          type: integer
+        branch_name:
+          type: string
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        paid_invoice_count:
+          type: integer
+      required:
+      - branch_id
+      - branch_name
+      - paid_invoice_count
+      - revenue
+    RevenuePeriodRow:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        paid_invoice_count:
+          type: integer
+      required:
+      - paid_invoice_count
+      - period_start
+      - revenue
+    RevenueReport:
+      type: object
+      properties:
+        scope:
+          $ref: '#/components/schemas/ScopeEnum'
+        date_from:
+          type: string
+          format: date
+        date_to:
+          type: string
+          format: date
+        timezone:
+          type: string
+        currency:
+          type: string
+        interval:
+          $ref: '#/components/schemas/IntervalEnum'
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        paid_invoice_count:
+          type: integer
+        by_branch:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueBranchRow'
+        by_service:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueServiceRow'
+        by_period:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenuePeriodRow'
+      required:
+      - by_branch
+      - by_period
+      - by_service
+      - currency
+      - date_from
+      - date_to
+      - interval
+      - paid_invoice_count
+      - scope
+      - timezone
+      - total_revenue
+    RevenueServiceRow:
+      type: object
+      properties:
+        service_id:
+          type: integer
+          nullable: true
+        service_code:
+          type: string
+        service_name:
+          type: string
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        paid_invoice_count:
+          type: integer
+      required:
+      - paid_invoice_count
+      - revenue
+      - service_code
+      - service_id
+      - service_name
+    RoleEnum:
+      enum:
+      - PATIENT
+      - ORGANIZATION_ADMIN
+      - BRANCH_ADMIN
+      - DENTIST
+      type: string
+      description: |-
+        * `PATIENT` - Bệnh nhân
+        * `ORGANIZATION_ADMIN` - Quản lý toàn chuỗi
+        * `BRANCH_ADMIN` - Quản lý chi nhánh
+        * `DENTIST` - Nha sĩ
+    ScopeEnum:
+      enum:
+      - ORGANIZATION
+      - BRANCH
+      type: string
+      description: |-
+        * `ORGANIZATION` - ORGANIZATION
+        * `BRANCH` - BRANCH
+    ServiceManagement:
+      type: object
+      properties:
+        id_service:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        standard_duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        standard_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id_service
+      - name
+      - organization_id
+      - standard_duration_minutes
+      - standard_price
+      - updated_at
+    StaffInvitationAccept:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 200
+      required:
+      - token
+    SurfaceEnum:
+      enum:
+      - WHOLE
+      - OCCLUSAL
+      - INCISAL
+      - MESIAL
+      - DISTAL
+      - BUCCAL
+      - LINGUAL
+      type: string
+      description: |-
+        * `WHOLE` - Toàn răng
+        * `OCCLUSAL` - Mặt nhai
+        * `INCISAL` - Rìa cắn
+        * `MESIAL` - Mặt gần
+        * `DISTAL` - Mặt xa
+        * `BUCCAL` - Mặt má
+        * `LINGUAL` - Mặt lưỡi
+    TimeOffManagement:
+      type: object
+      properties:
+        id_time_off:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        dentist_id:
+          type: integer
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        applies_to_all_branches:
+          type: boolean
+          writeOnly: true
+          default: false
+      required:
+      - branch_id
+      - dentist_id
+      - ends_at
+      - id_time_off
+      - starts_at
+    TokenPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/TokenPair'
+          readOnly: true
+      required:
+      - data
+    TreatmentPlan:
+      type: object
+      properties:
+        id_treatment_plan:
+          type: integer
+          readOnly: true
+        originating_encounter_id:
+          type: integer
+          readOnly: true
+        patient_profile_id:
+          type: integer
+          readOnly: true
+        dentist_id:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TreatmentPlanStatusEnum'
+          readOnly: true
+        total_estimate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentPlanItem'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - branch_id
+      - created_at
+      - dentist_id
+      - id_treatment_plan
+      - items
+      - originating_encounter_id
+      - patient_profile_id
+      - status
+      - title
+      - total_estimate
+      - updated_at
+    TreatmentPlanItem:
+      type: object
+      properties:
+        id_treatment_plan_item:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+        service_name:
+          type: string
+          readOnly: true
+        tooth_number:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+          nullable: true
+        sequence:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        planned_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/TreatmentPlanItemStatusEnum'
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id_treatment_plan_item
+      - planned_price
+      - sequence
+      - service_id
+      - service_name
+      - updated_at
+    TreatmentPlanItemStatusEnum:
+      enum:
+      - PLANNED
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `PLANNED` - Dự kiến
+        * `IN_PROGRESS` - Đang thực hiện
+        * `COMPLETED` - Hoàn thành
+        * `CANCELLED` - Đã hủy
+    TreatmentPlanStatusEnum:
+      enum:
+      - DRAFT
+      - ACTIVE
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Bản nháp
+        * `ACTIVE` - Đang điều trị
+        * `COMPLETED` - Hoàn thành
+        * `CANCELLED` - Đã hủy
+    TypeEnum:
+      enum:
+      - INVOICE_ISSUED
+      - INVOICE_PAID
+      - APPOINTMENT_BOOKED
+      - APPOINTMENT_CONFIRMED
+      - APPOINTMENT_CANCELLED
+      - APPOINTMENT_RESCHEDULED
+      - APPOINTMENT_REMINDER_24H
+      - APPOINTMENT_REMINDER_2H
+      type: string
+      description: |-
+        * `INVOICE_ISSUED` - Hóa đơn đã phát hành
+        * `INVOICE_PAID` - Hóa đơn đã thanh toán
+        * `APPOINTMENT_BOOKED` - Lịch hẹn đã đặt
+        * `APPOINTMENT_CONFIRMED` - Lịch hẹn đã xác nhận
+        * `APPOINTMENT_CANCELLED` - Lịch hẹn đã hủy
+        * `APPOINTMENT_RESCHEDULED` - Lịch hẹn đã dời
+        * `APPOINTMENT_REMINDER_24H` - Nhắc lịch trước 24 giờ
+        * `APPOINTMENT_REMINDER_2H` - Nhắc lịch trước 2 giờ
+    User:
+      type: object
+      properties:
+        id_user:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        full_name:
+          type: string
+          maxLength: 200
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        email_verified:
+          type: boolean
+          readOnly: true
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/Membership'
+          readOnly: true
+      required:
+      - email
+      - email_verified
+      - full_name
+      - id_user
+      - memberships
+    UserResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+      required:
+      - data
+    WorkShiftManagement:
+      type: object
+      properties:
+        id_work_shift:
+          type: integer
+          readOnly: true
+        branch_id:
+          type: integer
+          readOnly: true
+        dentist_id:
+          type: integer
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        valid_from:
+          type: string
+          format: date
+        valid_to:
+          type: string
+          format: date
+          nullable: true
+        is_active:
+          type: boolean
+      required:
+      - branch_id
+      - dentist_id
+      - end_time
+      - id_work_shift
+      - start_time
+      - valid_from
+      - weekday
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

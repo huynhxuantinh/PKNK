@@ -1,0 +1,41 @@
+.branch-location-picker {
+    width: min(900px, 100%);
+    margin-bottom: 12px;
+}
+
+.branch-location-picker > label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 600;
+}
+
+.branch-location-search-row {
+    display: flex;
+    gap: 8px;
+}
+
+.branch-location-search-row input {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 11px;
+}
+
+.branch-location-search-row button,
+.branch-location-result {
+    border: 1px solid var(--border-color, #c7c7c7);
+    border-radius: 4px;
+    background: var(--button-bg, #417690);
+    color: var(--button-fg, #fff);
+    cursor: pointer;
+}
+
+.branch-location-search-row button { padding: 8px 16px; }
+.branch-location-status { min-height: 20px; margin-top: 8px; color: var(--body-quiet-color, #666); }
+.branch-location-results { display: grid; gap: 6px; }
+.branch-location-result { padding: 9px 11px; background: var(--darkened-bg, #f8f8f8); color: var(--body-fg, #333); text-align: left; }
+.branch-location-result:hover { border-color: var(--link-fg, #417690); }
+.branch-location-picker .help { margin: 8px 0 0; padding: 0; }
+
+@media (max-width: 600px) {
+    .branch-location-search-row { align-items: stretch; flex-direction: column; }
+}

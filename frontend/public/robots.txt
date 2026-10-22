@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dang-nhap
+Disallow: /dang-ky
+Disallow: /quen-mat-khau
+Disallow: /reset-password
+Disallow: /dat-lich
+
+Sitemap: https://dentavie.id.vn/sitemap.xml
