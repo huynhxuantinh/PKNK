@@ -28,6 +28,8 @@ export interface ManagedBranch {
   name: string
   is_active: boolean
 }
+export interface ManagedWorkShift { id_work_shift: number; branch_id: number; dentist_id: number; weekday: number; start_time: string; end_time: string; valid_from: string; valid_to: string | null; is_active: boolean }
+export interface ManagedTimeOff { id_time_off: number; branch_id: number | null; dentist_id: number; starts_at: string; ends_at: string; reason: string; is_active: boolean }
 
 interface ManagementAppointmentsResponse { data: ManagementAppointment[]; meta: { count: number } }
 
@@ -71,3 +73,10 @@ export function listManagedRescheduleSlots(publicCode: string, date: string, den
 export function rescheduleManagedAppointment(publicCode: string, data: { starts_at: string; reason: string; idempotency_key: string; dentist_id?: number }) {
   return apiRequest<{ data: ManagementAppointment }>(`/management/appointments/${publicCode}/reschedule/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 }
+
+export const listManagedWorkShifts = (branchId: number) => apiRequest<{ data: ManagedWorkShift[] }>(`/management/branches/${branchId}/work-shifts/`, {}, { auth: true })
+export const createManagedWorkShift = (branchId: number, data: Omit<ManagedWorkShift, 'id_work_shift' | 'branch_id'>) => apiRequest<{ data: ManagedWorkShift }>(`/management/branches/${branchId}/work-shifts/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedWorkShift = (id: number, data: Partial<ManagedWorkShift>) => apiRequest<{ data: ManagedWorkShift }>(`/management/work-shifts/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+export const listManagedTimeOffs = (branchId: number) => apiRequest<{ data: ManagedTimeOff[] }>(`/management/branches/${branchId}/time-offs/`, {}, { auth: true })
+export const createManagedTimeOff = (branchId: number, data: Omit<ManagedTimeOff, 'id_time_off' | 'branch_id'> & { applies_to_all_branches?: boolean }) => apiRequest<{ data: ManagedTimeOff }>(`/management/branches/${branchId}/time-offs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
