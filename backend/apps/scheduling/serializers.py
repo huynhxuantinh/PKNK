@@ -25,7 +25,11 @@ class AppointmentHoldCreateSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField()
     dentist_id = serializers.IntegerField(min_value=1, required=False)
     contact_name = serializers.CharField(max_length=200, required=False, allow_blank=False)
-    contact_phone = serializers.RegexField(regex=r"^\+?[0-9]{9,15}$", required=False)
+    contact_phone = serializers.RegexField(
+        regex=r"^\+?[0-9]{9,15}$",
+        required=False,
+        error_messages={"invalid": "Số điện thoại không hợp lệ."},
+    )
     contact_email = serializers.EmailField(required=False)
     patient_note = serializers.CharField(max_length=1000, required=False, allow_blank=True)
 
@@ -66,6 +70,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "buffer_minutes",
             "starts_at",
             "ends_at",
+            "held_at",
             "expires_at",
             "confirmed_at",
             "created_at",

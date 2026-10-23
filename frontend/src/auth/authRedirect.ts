@@ -6,8 +6,10 @@ export function safeReturnPath(value: string | null | undefined, fallback = '/')
 }
 
 export function destinationAfterLogin(user: User, returnTo?: string | null) {
+  const isBranchAdmin = user.memberships?.some((membership) => membership.role === 'BRANCH_ADMIN')
   const isDentist = user.memberships?.some((membership) => membership.role === 'DENTIST')
 
+  if (isBranchAdmin) return '/quan-ly-chi-nhanh'
   if (isDentist) {
     return '/bac-si/chon-chi-nhanh'
   }

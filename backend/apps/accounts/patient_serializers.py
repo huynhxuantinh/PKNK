@@ -11,6 +11,14 @@ class PatientProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
     email_verified = serializers.SerializerMethodField()
     full_name = serializers.CharField(source="user.full_name", max_length=200)
+    phone = serializers.RegexField(
+        regex=r"^\+?[0-9]{9,15}$",
+        allow_null=True,
+        required=False,
+        error_messages={
+            "invalid": "Số điện thoại phải gồm 9–15 chữ số, có thể bắt đầu bằng dấu +.",
+        },
+    )
     province_code = serializers.SlugRelatedField(
         source="province",
         slug_field="code",

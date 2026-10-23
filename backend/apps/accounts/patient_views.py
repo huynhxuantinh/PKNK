@@ -14,6 +14,30 @@ from .patient_serializers import (
 )
 
 
+PROFILE_AUDIT_FIELDS = (
+    "full_name",
+    "date_of_birth",
+    "gender",
+    "phone",
+    "province_code",
+    "ward_code",
+    "address_line",
+)
+
+
+def profile_audit_snapshot(profile, changed_fields):
+    values = {
+        "full_name": profile.user.full_name,
+        "date_of_birth": profile.date_of_birth.isoformat() if profile.date_of_birth else None,
+        "gender": profile.gender,
+        "phone": profile.phone,
+        "province_code": profile.province_id,
+        "ward_code": profile.ward_id,
+        "address_line": profile.address_line,
+    }
+    return {field: values[field] for field in changed_fields}
+
+
 class PatientProfileMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -49,14 +73,25 @@ class PatientProfileMeAPIView(APIView):
             partial=True,
         )
         serializer.is_valid(raise_exception=True)
+        serializer_field_names = {
+            "province_code": "province",
+            "ward_code": "ward",
+        }
+        changed_fields = [
+            field
+            for field in PROFILE_AUDIT_FIELDS
+            if serializer_field_names.get(field, field) in serializer.validated_data
+            or (field == "full_name" and "full_name" in serializer.validated_data.get("user", {}))
+        ]
+        before_data = profile_audit_snapshot(profile, changed_fields)
         serializer.save()
         AuditService.record_write(
             actor_user=request.user,
             action="PATIENT_PROFILE_UPDATED",
             resource_type="PatientProfile",
             resource_id=profile.pk,
-            before_data={"changed_fields": sorted(serializer.validated_data.keys())},
-            after_data={"changed_fields": sorted(serializer.validated_data.keys())},
+            before_data=before_data,
+            after_data=profile_audit_snapshot(profile, changed_fields),
             request=request,
         )
         return Response({"data": serializer.data})

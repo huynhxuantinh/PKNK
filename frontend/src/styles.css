@@ -24,6 +24,8 @@
   scroll-behavior: smooth;
 }
 
+.branch-management-page{min-height:100vh;background:#f4fbfc;color:#082d4a}.branch-management-main{max-width:1180px;margin:0 auto;padding:2.5rem 1.25rem 4rem}.branch-management-hero{display:flex;justify-content:space-between;gap:2rem;align-items:end;padding:2rem 2.25rem;border-radius:24px;background:linear-gradient(115deg,#073d58,#118da8);color:#fff}.branch-management-hero h1{margin:.35rem 0;font-size:clamp(1.9rem,4vw,3rem)}.branch-management-hero p{margin:0;max-width:680px;color:#d9f4f7}.branch-management-hero label{display:grid;gap:.45rem;min-width:230px;font-weight:700;font-size:.82rem}.branch-management-hero select{padding:.75rem;border:0;border-radius:9px;color:#082d4a}.branch-management-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:1.35rem 0}.branch-management-summary article,.branch-management-schedule{background:#fff;border:1px solid #d9e8ed;border-radius:18px}.branch-management-summary article{padding:1.3rem}.branch-management-summary span,.branch-management-summary small{display:block;color:#638095;font-size:.8rem}.branch-management-summary strong{display:block;margin:.35rem 0;font-size:2rem}.branch-management-schedule{padding:1.5rem}.branch-management-schedule>header{display:flex;justify-content:space-between;align-items:center;gap:1rem}.branch-management-schedule h2{margin:.3rem 0 0}.branch-management-schedule header>a{color:#087c9d;font-weight:800;font-size:.9rem}.branch-management-filters{display:flex;gap:1rem;margin:1.25rem 0}.branch-management-filters label{display:grid;gap:.35rem;font-size:.78rem;font-weight:800}.branch-management-filters input,.branch-management-filters select{min-width:190px;padding:.7rem .8rem;border:1px solid #cbdfe7;border-radius:8px;background:#fff;color:#082d4a}.branch-management-list{display:grid;gap:.75rem}.branch-management-appointment{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:1rem;align-items:center;padding:1rem;border:1px solid #dce9ee;border-radius:13px}.branch-management-appointment time{border-right:1px solid #dce9ee;display:grid;gap:.15rem}.branch-management-appointment time strong{font-size:1.2rem;color:#078ba9}.branch-management-appointment time span,.branch-management-appointment small{font-size:.8rem;color:#658095}.branch-management-appointment h3{margin:.35rem 0 .2rem;font-size:1rem}.branch-management-appointment p{margin:0 0 .2rem;color:#355e78}.branch-management-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.45rem}.branch-management-actions button{border:0;border-radius:8px;padding:.6rem .8rem;background:#078fad;color:#fff;font-weight:800;cursor:pointer}.branch-management-actions .button-secondary{background:#fff;color:#087c9d;border:1px solid #abd6df}.branch-management-actions .button-quiet{background:#edf4f6;color:#557483}@media(max-width:760px){.branch-management-hero{align-items:stretch;flex-direction:column;padding:1.5rem}.branch-management-hero label{min-width:0}.branch-management-summary{grid-template-columns:repeat(2,1fr)}.branch-management-schedule{padding:1rem}.branch-management-schedule>header,.branch-management-filters{align-items:flex-start;flex-direction:column}.branch-management-filters{gap:.75rem}.branch-management-filters input,.branch-management-filters select{min-width:0;width:100%}.branch-management-appointment{grid-template-columns:1fr}.branch-management-appointment time{border:0;border-bottom:1px solid #dce9ee;padding-bottom:.6rem;display:flex;gap:.5rem;align-items:baseline}.branch-management-actions{justify-content:flex-start}}
+
 * { box-sizing: border-box; }
 html { scroll-padding-top: 100px; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--cream); font-weight: 400; }
@@ -1867,6 +1869,12 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .patient-record-state strong { color: var(--ink); font-size: 15px; }
 .patient-record-state .button { font-size: 12px; text-decoration: none; }
 .patient-record-list { display: grid; gap: 14px; }
+.patient-record-tabs { display: flex; gap: 8px; margin: 0 0 16px; border-bottom: 1px solid var(--line); }
+.patient-record-tabs button { padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.patient-record-tabs button.is-active { border-bottom-color: var(--primary); color: var(--primary-dark); }
+.patient-record-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; color: var(--muted); font-size: 12px; font-weight: 650; }
+.patient-record-pagination button { min-width: 70px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--primary-dark); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.patient-record-pagination button:disabled { cursor: not-allowed; opacity: .45; }
 .patient-record-card { border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: var(--shadow); }
 .appointment-record { display: grid; grid-template-columns: 92px minmax(0, 1fr); overflow: hidden; }
 .appointment-record > time { min-height: 190px; display: grid; place-content: center; align-content: center; gap: 2px; background: var(--soft); color: var(--primary-dark); text-align: center; text-transform: uppercase; }
@@ -1887,6 +1895,24 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .appointment-record-actions { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 .appointment-record-actions button { padding: 9px 12px; border: 1px solid #e8bbb8; border-radius: 8px; background: #fff; color: #b3423b; font-size: 11px; font-weight: 750; }
 .appointment-record-actions button:hover:not(:disabled) { border-color: #b3423b; background: #fff2f1; }
+.appointment-action-note { margin: 18px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.appointment-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(8, 29, 44, .42); }
+.appointment-modal { display: grid; gap: 14px; width: min(100%, 440px); padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 20px 60px rgba(8, 29, 44, .22); }
+.appointment-modal h2, .appointment-modal p { margin: 0; }.appointment-modal p { color: var(--muted); font-size: 13px; }
+.appointment-modal label { display: grid; gap: 7px; color: var(--ink); font-size: 12px; font-weight: 700; }.appointment-modal textarea { min-height: 105px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; resize: vertical; }
+.appointment-modal > div { display: flex; justify-content: flex-end; gap: 8px; }.appointment-modal button { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--primary-dark); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }.appointment-modal button[type="submit"] { border-color: #b3423b; background: #b3423b; color: #fff; }.appointment-modal button:disabled { opacity: .55; cursor: not-allowed; }
+.reschedule-panel { display: grid; gap: 12px; margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.reschedule-panel > div { display: flex; justify-content: space-between; gap: 12px; }
+.reschedule-panel label { display: grid; gap: 6px; max-width: 220px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.reschedule-panel input, .reschedule-panel > button { min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; }
+.reschedule-slots { display: flex; flex-wrap: wrap; gap: 8px; }
+.reschedule-slots button { padding: 8px 10px; border: 1px solid var(--primary); border-radius: 8px; background: var(--soft); color: var(--primary-dark); font: inherit; font-size: 12px; cursor: pointer; }
+.patient-record-error { margin: 0; color: #b3423b; font-size: 12px; }
+.record-attachments { display: grid; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; }
+.record-attachments button { width: fit-content; padding: 0; border: 0; background: transparent; color: var(--primary); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.invoice-record { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 20px 24px; }
+.invoice-record h2 { margin: 0 0 5px; font-size: 16px; }.invoice-record p { margin: 0; color: var(--muted); font-size: 12px; }
+.notification-record { display: grid; gap: 6px; width: 100%; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }.notification-record.is-unread { border-color: #8ed9e8; background: #f3fcfe; }.notification-record span, .notification-record small { color: var(--muted); font-size: 12px; }
 .record-date { margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 650; }
 .history-meta { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .record-notes { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 15px; }
@@ -1971,6 +1997,8 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .auth-page-success p { max-width: 360px; margin: 0; color: var(--aurelia-body); font-size: 12px; line-height: 1.65; }
 .auth-page-success a { margin-top: 4px; color: var(--aurelia-blue-dark); font-size: 12px; font-weight: 750; text-decoration: none; }
 .auth-page-success a:hover { text-decoration: underline; }
+.auth-verification-pending .auth-submit{width:min(100%,280px);margin-top:4px}.auth-page-message{padding:9px 12px;border-radius:8px;background:#edf9f5;color:#087f63;font-size:11px}.auth-verification-pending .auth-page-error{max-width:360px}
+.booking-held-actions{display:grid;gap:8px}
 
 @media (max-width: 900px) {
   .auth-page { grid-template-columns: 1fr; }

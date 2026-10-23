@@ -258,6 +258,22 @@ class SchedulingApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"]["status"], Appointment.Status.CONFIRMED)
 
+    def test_patient_can_cancel_own_held_appointment(self):
+        self.client.force_authenticate(self.patient_user)
+        hold_response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {"branch_service_id": self.branch_service.id_branch_service, "starts_at": self.start_at().isoformat()},
+            format="json",
+        )
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold-cancel", kwargs={"public_code": hold_response.data["data"]["public_code"]}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["status"], Appointment.Status.CANCELLED)
+
     def test_existing_hold_is_removed_from_available_slots(self):
         self.client.force_authenticate(self.patient_user)
         self.client.post(

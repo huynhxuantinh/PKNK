@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Branch, BranchDentist, BranchService, Slot } from '../../types/api'
-import { bookingSelectionReducer, type BookingSelection } from './bookingState'
+import { bookingSelectionReducer, dateInputValue, type BookingSelection } from './bookingState'
 
 const branch = { id_branch: 1, name: 'Quận 1' } as Branch
 const nextBranch = { id_branch: 2, name: 'Quận 3' } as Branch
@@ -18,6 +18,13 @@ const selected: BookingSelection = {
 }
 
 describe('bookingSelectionReducer', () => {
+  it('dùng ngày tại Thành phố Hồ Chí Minh, không theo múi giờ trình duyệt', () => {
+    const moment = new Date('2026-10-23T18:00:00.000Z')
+
+    expect(dateInputValue(0, moment)).toBe('2026-10-24')
+    expect(dateInputValue(1, moment)).toBe('2026-10-25')
+  })
+
   it('xóa dịch vụ và slot khi đổi chi nhánh', () => {
     const result = bookingSelectionReducer(selected, {
       type: 'select_branch',

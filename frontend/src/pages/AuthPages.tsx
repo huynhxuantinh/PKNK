@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
@@ -82,6 +82,7 @@ export function LoginPage() {
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -98,7 +99,10 @@ export function RegisterPage() {
     try {
       if (!consented) throw new Error('Bạn cần đồng ý xử lý dữ liệu cá nhân.')
       await register({ fullName, phone, email, password, passwordConfirm })
-      navigate('/')
+      const returnTo = searchParams.get('returnTo')
+      const next = new URLSearchParams({ email: email.trim() })
+      if (returnTo) next.set('returnTo', returnTo)
+      navigate(`/xac-minh-email?${next}`, { replace: true })
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể đăng ký.')
     } finally {
@@ -121,7 +125,81 @@ export function RegisterPage() {
         {error && <p className="auth-page-error">{error}</p>}
         <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang tạo tài khoản…' : 'Đăng ký'}</button>
       </form>
-      <p className="auth-switch">Đã có tài khoản? <Link to="/dang-nhap">Đăng nhập</Link></p>
+      <p className="auth-switch">Đã có tài khoản? <Link to={`/dang-nhap${searchParams.get('returnTo') ? `?returnTo=${encodeURIComponent(searchParams.get('returnTo') || '')}` : ''}`}>Đăng nhập</Link></p>
+    </AuthShell>
+  )
+}
+
+export function EmailVerificationPendingPage() {
+  const { isAuthenticated, user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const email = searchParams.get('email') || user?.email || 'email của bạn'
+
+  async function resend() {
+    if (!isAuthenticated) return
+    setIsSubmitting(true)
+    setError('')
+    try {
+      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', { method: 'POST' }, { auth: true })
+      setMessage(response.data.message)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể gửi lại email xác minh.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <AuthShell title="Xác minh email" description="Hoàn tất xác minh để bắt đầu đặt lịch khám." seoPath="/xac-minh-email">
+      <div className="auth-page-success auth-verification-pending">
+        <span>✉</span>
+        <strong>Kiểm tra hộp thư của bạn</strong>
+        <p>Nếu thông tin hợp lệ, liên kết xác minh sẽ được gửi tới email bạn đã cung cấp. Mở liên kết trong email để kích hoạt chức năng đặt lịch.</p>
+        {message && <p className="auth-page-message">{message}</p>}
+        {error && <p className="auth-page-error">{error}</p>}
+        {isAuthenticated ? <button className="auth-submit" type="button" onClick={resend} disabled={isSubmitting}>{isSubmitting ? 'Đang gửi…' : 'Gửi lại email xác minh'}</button> : <Link to="/dang-nhap">Đăng nhập để gửi lại email</Link>}
+      </div>
+    </AuthShell>
+  )
+}
+
+export function VerifyEmailPage() {
+  const { updateUser } = useAuth()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') || ''
+  const returnTo = searchParams.get('returnTo')
+  const [state, setState] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error')
+  const [message, setMessage] = useState(token ? '' : 'Liên kết xác minh không hợp lệ.')
+
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    apiRequest<{ data: import('../types/api').User }>('/auth/email-verification/confirm/', {
+      method: 'POST', body: JSON.stringify({ token }),
+    }).then((response) => {
+      if (!active) return
+      updateUser(response.data)
+      setState('success')
+      setMessage('Email đã được xác minh. Vui lòng đăng nhập để đặt lịch khám.')
+    }).catch((reason) => {
+      if (!active) return
+      setState('error')
+      setMessage(reason instanceof Error ? reason.message : 'Không thể xác minh email.')
+    })
+    return () => { active = false }
+  }, [token, updateUser])
+
+  return (
+    <AuthShell title="Xác minh email" description="Đang kiểm tra liên kết xác minh của bạn." seoPath="/verify-email">
+      <div className="auth-page-success">
+        <span>{state === 'loading' ? '…' : state === 'success' ? '✓' : '!'}</span>
+        <strong>{state === 'loading' ? 'Đang xác minh email' : state === 'success' ? 'Xác minh thành công' : 'Không thể xác minh email'}</strong>
+        <p>{message || 'Vui lòng chờ trong giây lát.'}</p>
+        {state !== 'loading' && <Link to={state === 'success' ? `/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}` : '/xac-minh-email'}>{state === 'success' ? 'Đăng nhập' : 'Gửi lại email xác minh'}</Link>}
+      </div>
     </AuthShell>
   )
 }

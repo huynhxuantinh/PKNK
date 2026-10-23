@@ -15,7 +15,7 @@ from apps.catalog.models import BranchService
 from .availability import AvailabilityService
 from .booking import BookingService
 from .exceptions import BookingValidationError, SchedulingError, SlotUnavailableError
-from .models import Appointment
+from .models import Appointment, AppointmentStatusHistory
 from .serializers import (
     AppointmentHoldCreateSerializer,
     AppointmentSerializer,
@@ -180,5 +180,35 @@ class AppointmentConfirmAPIView(APIView):
             )
             return error_response(scheduling_error, status.HTTP_409_CONFLICT)
 
+        return Response({"data": AppointmentSerializer(appointment).data})
+
+
+class AppointmentHoldCancelAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "appointment_booking"
+
+    @extend_schema(request=None, responses={200: AppointmentSerializer})
+    def post(self, request, public_code):
+        appointment = get_object_or_404(
+            Appointment.objects.select_related("patient_profile__user"),
+            public_code=public_code,
+            patient_profile__user=request.user,
+            status=Appointment.Status.HELD,
+        )
+        try:
+            appointment = AppointmentService.transition_status(
+                appointment_id=appointment.id_appointment,
+                to_status=Appointment.Status.CANCELLED,
+                actor_type=AppointmentStatusHistory.ActorType.PATIENT,
+                actor_user=request.user,
+                reason="Người bệnh bỏ giữ chỗ.",
+                request=request,
+            )
+        except DjangoValidationError as error:
+            scheduling_error = SchedulingError(
+                "; ".join(error.messages), code="hold_cancellation_conflict"
+            )
+            return error_response(scheduling_error, status.HTTP_409_CONFLICT)
         return Response({"data": AppointmentSerializer(appointment).data})
 

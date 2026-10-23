@@ -90,8 +90,10 @@ class PatientProfileAPITests(APITestCase):
         self.assertEqual(self.profile.province, self.province)
         self.assertEqual(self.profile.ward, self.ward)
         event = AuditEvent.objects.get(action="PATIENT_PROFILE_UPDATED")
-        self.assertIn("phone", event.after_data["changed_fields"])
-        self.assertNotIn("0901234567", str(event.after_data))
+        self.assertIsNone(event.before_data["phone"])
+        self.assertEqual(event.after_data["phone"], "0901234567")
+        self.assertEqual(event.before_data["full_name"], "Nguyễn Văn A")
+        self.assertEqual(event.after_data["full_name"], "Nguyễn Văn Bình")
 
     def test_patch_cannot_change_email(self):
         self.client.force_authenticate(self.user)
@@ -110,6 +112,20 @@ class PatientProfileAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.user.email, "patient@example.com")
         self.assertEqual(self.profile.phone, "0900000000")
+
+    def test_patch_rejects_invalid_phone(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(
+            self.url,
+            {"phone": "abc"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", response.data)
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.phone)
 
     def test_patch_rejects_ward_from_another_province(self):
         other_province = Province.objects.create(

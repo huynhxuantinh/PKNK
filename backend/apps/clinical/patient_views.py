@@ -65,8 +65,14 @@ class PatientClinicalEncounterListAPIView(PatientClinicalEncounterBaseAPIView):
     )
     def get(self, request):
         encounters = self.queryset().order_by("-finalized_at")
-        for encounter in encounters:
-            self.audit(request, encounter, "PATIENT_CLINICAL_ENCOUNTER_VIEWED")
+        profile = get_object_or_404(PatientProfile, user=request.user)
+        AuditService.record_read(
+            actor_user=request.user,
+            action="PATIENT_CLINICAL_ENCOUNTER_LIST_VIEWED",
+            resource_type="PatientProfile",
+            resource_id=profile.pk,
+            request=request,
+        )
         return Response(
             {
                 "data": PatientClinicalEncounterSerializer(

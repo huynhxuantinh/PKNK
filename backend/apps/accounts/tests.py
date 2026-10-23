@@ -58,22 +58,31 @@ class AuthenticationAPITests(APITestCase):
         data = {**self.registration_data, **overrides}
         return self.client.post(reverse("accounts:register"), data, format="json")
 
+    def login(self):
+        return self.client.post(
+            reverse("accounts:login"),
+            {
+                "email": self.registration_data["email"],
+                "password": self.registration_data["password"],
+            },
+            format="json",
+        )
+
     def verification_token_from_latest_email(self):
         verification_url = mail.outbox[-1].body.splitlines()[-1]
         return parse_qs(urlparse(verification_url).query)["token"][0]
 
-    def test_register_creates_patient_consent_and_tokens(self):
+    def test_register_creates_patient_and_returns_generic_response(self):
         response = self.register()
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         user = User.objects.get(email="patient@example.com")
         self.assertTrue(user.check_password(self.registration_data["password"]))
         self.assertEqual(PatientProfile.objects.get(user=user).phone, "0901234567")
         self.assertTrue(
             ConsentRecord.objects.filter(user=user, is_granted=True).exists()
         )
-        self.assertIn("access", response.data["data"]["tokens"])
-        self.assertIn("refresh", response.data["data"]["tokens"])
+        self.assertEqual(response.data["data"], {"message": "Nếu thông tin hợp lệ, email xác minh sẽ được gửi."})
 
     def test_register_sends_verification_link_without_storing_raw_token(self):
         self.register()
@@ -128,9 +137,9 @@ class AuthenticationAPITests(APITestCase):
         self.assertIsNone(User.objects.get().email_verified_at)
 
     def test_resend_verification_invalidates_previous_token(self):
-        register_response = self.register()
+        self.register()
         first_raw_token = self.verification_token_from_latest_email()
-        access = register_response.data["data"]["tokens"]["access"]
+        access = self.login().data["data"]["tokens"]["access"]
         mail.outbox.clear()
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
@@ -154,12 +163,13 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(User.objects.exists())
 
-    def test_register_rejects_duplicate_email_case_insensitively(self):
-        self.register()
+    def test_register_does_not_reveal_existing_email(self):
+        first_response = self.register()
 
         response = self.register(email="PATIENT@example.com")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data, first_response.data)
         self.assertEqual(User.objects.count(), 1)
 
     def test_register_rejects_weak_password(self):
@@ -201,8 +211,8 @@ class AuthenticationAPITests(APITestCase):
         self.assertNotIn("missing@example.com", str(event.after_data))
 
     def test_me_requires_access_token_and_returns_account(self):
-        register_response = self.register()
-        access = register_response.data["data"]["tokens"]["access"]
+        self.register()
+        access = self.login().data["data"]["tokens"]["access"]
 
         unauthorized = self.client.get(reverse("accounts:me"))
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
@@ -217,9 +227,10 @@ class AuthenticationAPITests(APITestCase):
         self.assertNotIn("patient_profile_id", authorized.data["data"])
 
     def test_refresh_then_logout_revokes_refresh_token(self):
-        register_response = self.register()
-        access = register_response.data["data"]["tokens"]["access"]
-        refresh = register_response.data["data"]["tokens"]["refresh"]
+        self.register()
+        login_response = self.login()
+        access = login_response.data["data"]["tokens"]["access"]
+        refresh = login_response.data["data"]["tokens"]["refresh"]
 
         refresh_response = self.client.post(
             reverse("accounts:token-refresh"),

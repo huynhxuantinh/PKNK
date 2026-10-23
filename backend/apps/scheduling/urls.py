@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     AppointmentConfirmAPIView,
+    AppointmentHoldCancelAPIView,
     AppointmentHoldCreateAPIView,
     SlotListAPIView,
 )
@@ -20,5 +21,10 @@ urlpatterns = [
         "appointments/<str:public_code>/confirm/",
         AppointmentConfirmAPIView.as_view(),
         name="appointment-confirm",
+    ),
+    path(
+        "appointments/<str:public_code>/holds/cancel/",
+        AppointmentHoldCancelAPIView.as_view(),
+        name="appointment-hold-cancel",
     ),
 ]

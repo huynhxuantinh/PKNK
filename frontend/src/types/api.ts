@@ -185,6 +185,7 @@ export interface Appointment {
   patient_note: string
   starts_at: string
   ends_at: string
+  held_at: string | null
   expires_at: string | null
   confirmed_at: string | null
 }
@@ -208,9 +209,11 @@ export interface PatientAppointment {
   branch_id: number
   branch_name: string
   branch_address: string
+  branch_service_id: number
   service_name_snapshot: string
   patient_note: string
   dentist_name: string
+  dentist_id: number | null
   starts_at: string
   ends_at: string
   can_cancel: boolean
@@ -240,7 +243,50 @@ export interface PatientClinicalEncounter {
   diagnosis_summary: string
   notes: string
   finalized_at: string
+  attachments: ClinicalAttachment[]
 }
+
+export interface ClinicalAttachment {
+  id_clinical_attachment: number
+  kind: 'XRAY' | 'PHOTO' | 'DOCUMENT'
+  content_type: string
+  size_bytes: number
+  description: string
+  download_url: string
+}
+
+export interface PatientInvoice {
+  id_invoice: number
+  invoice_number: string
+  appointment_code: string
+  branch_name: string
+  status: 'ISSUED' | 'PAID'
+  currency: string
+  subtotal: string
+  discount: string
+  total: string
+  issued_at: string | null
+  paid_at: string | null
+}
+
+export interface PatientInvoicesResponse {
+  data: PatientInvoice[]
+  meta: { count: number; page: number; page_size: number; total_pages: number }
+}
+
+export interface Notification {
+  id_notification: number
+  type: string
+  title: string
+  body: string
+  payload: Record<string, unknown>
+  resource_type: string
+  resource_id: string
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse { data: Notification[]; meta: { count: number } }
 
 export interface PatientClinicalEncountersResponse {
   data: PatientClinicalEncounter[]

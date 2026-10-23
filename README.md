@@ -64,6 +64,18 @@ Backup dùng PostgreSQL custom format và SHA-256. Restore chỉ được phép 
 ## Các dịch vụ
 
 - `frontend`: React/Vite, proxy API sang Django trong Docker.
+
+## Deploy frontend
+
+Frontend production được phục vụ bằng Nginx và đã có CSP, chống nhúng trang,
+`nosniff`, `Referrer-Policy` và `Permissions-Policy`. Build image bằng:
+
+```bash
+docker build -f frontend/Dockerfile -t dentavie-frontend frontend
+```
+
+Đặt TLS/HSTS ở reverse proxy hoặc nền tảng deploy phía trước container. CSP chỉ
+cho phép API cùng origin, tile bản đồ HTTPS và dịch vụ định tuyến OSRM.
 - `web`: Django API; tự chạy migration khi khởi động.
 - `db`: PostgreSQL 16 + PostGIS 3.4.
 - `redis`: broker/result backend của Celery.

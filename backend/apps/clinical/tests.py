@@ -426,6 +426,13 @@ class ClinicalAPITests(APITestCase):
                 resource_id=str(encounter.pk),
             ).exists()
         )
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                actor_user=self.patient_user,
+                action="PATIENT_CLINICAL_ENCOUNTER_LIST_VIEWED",
+                resource_id=str(self.patient.pk),
+            ).exists()
+        )
 
     def test_complete_requires_finalized_encounter_and_non_draft_prescription(self):
         appointment = self.appointment()

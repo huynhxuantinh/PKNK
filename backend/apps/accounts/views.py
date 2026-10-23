@@ -69,32 +69,32 @@ def user_with_access_context(user_id):
     )
 
 
+REGISTRATION_MESSAGE = "Nếu thông tin hợp lệ, email xác minh sẽ được gửi."
+
+
 class RegistrationAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_register"
 
-    @extend_schema(request=RegistrationSerializer, responses={201: AuthResponseSerializer})
+    @extend_schema(request=RegistrationSerializer, responses={202: MessageResponseSerializer})
     def post(self, request):
         serializer = RegistrationSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         try:
             user = serializer.save()
-        except IntegrityError as error:
-            raise DRFValidationError(
-                {"email": "Email này đã được sử dụng."}
-            ) from error
-        user = user_with_access_context(user.pk)
-        queue_verification_email(user.pk)
+        except IntegrityError:
+            user = User.objects.filter(
+                email__iexact=serializer.validated_data["email"],
+                is_active=True,
+                email_verified_at__isnull=True,
+            ).first()
+        if user is not None:
+            queue_verification_email(user.pk)
         return Response(
-            {
-                "data": {
-                    "user": UserSerializer(user).data,
-                    "tokens": token_pair_for_user(user),
-                }
-            },
-            status=status.HTTP_201_CREATED,
+            {"data": {"message": REGISTRATION_MESSAGE}},
+            status=status.HTTP_202_ACCEPTED,
         )
 
 

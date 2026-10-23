@@ -1,33 +1,65 @@
+from math import ceil
+
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import PatientProfile
 from apps.audit.services import AuditService
 
-from .management_serializers import InvoiceSerializer
 from .models import Invoice
+from .patient_serializers import PatientInvoiceListQuerySerializer, PatientInvoiceSerializer
 
 
 class PatientInvoiceListAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = InvoiceSerializer
+    serializer_class = PatientInvoiceSerializer
 
-    @extend_schema(operation_id="patient_invoice_list", responses={200: InvoiceSerializer(many=True)})
+    @extend_schema(
+        operation_id="patient_invoice_list",
+        parameters=[PatientInvoiceListQuerySerializer],
+        responses={200: PatientInvoiceSerializer(many=True)},
+    )
     def get(self, request):
+        query = PatientInvoiceListQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        data = query.validated_data
         invoices = Invoice.objects.filter(
             patient_profile__user=request.user,
             status__in=[Invoice.Status.ISSUED, Invoice.Status.PAID],
-        ).select_related("appointment", "branch", "patient_profile__user").prefetch_related("lines", "payments")
-        return Response({"data": InvoiceSerializer(invoices, many=True).data})
+        ).select_related("appointment", "branch", "patient_profile__user").prefetch_related(
+            "lines", "payments"
+        ).order_by("-issued_at", "-id_invoice")
+        total = invoices.count()
+        offset = (data["page"] - 1) * data["page_size"]
+        items = invoices[offset:offset + data["page_size"]]
+        profile = get_object_or_404(PatientProfile, user=request.user)
+        AuditService.record_read(
+            actor_user=request.user,
+            action="PATIENT_INVOICE_LIST_VIEWED",
+            resource_type="PatientProfile",
+            resource_id=profile.pk,
+            after_data={"page": data["page"], "page_size": data["page_size"]},
+            request=request,
+        )
+        return Response({
+            "data": PatientInvoiceSerializer(items, many=True).data,
+            "meta": {
+                "count": total,
+                "page": data["page"],
+                "page_size": data["page_size"],
+                "total_pages": ceil(total / data["page_size"]) if total else 0,
+            },
+        })
 
 
 class PatientInvoiceDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = InvoiceSerializer
+    serializer_class = PatientInvoiceSerializer
 
-    @extend_schema(operation_id="patient_invoice_retrieve", responses={200: InvoiceSerializer})
+    @extend_schema(operation_id="patient_invoice_retrieve", responses={200: PatientInvoiceSerializer})
     def get(self, request, invoice_id):
         invoice = get_object_or_404(
             Invoice.objects.select_related(
@@ -42,4 +74,4 @@ class PatientInvoiceDetailAPIView(APIView):
             branch=invoice.branch, action="PATIENT_INVOICE_VIEWED",
             resource_type="Invoice", resource_id=invoice.pk, request=request,
         )
-        return Response({"data": InvoiceSerializer(invoice).data})
+        return Response({"data": PatientInvoiceSerializer(invoice).data})

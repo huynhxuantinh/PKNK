@@ -1,6 +1,7 @@
 from math import ceil
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -74,8 +75,14 @@ class PatientAppointmentListAPIView(PatientAppointmentBaseAPIView):
         statuses = UPCOMING_STATUSES if is_upcoming else HISTORY_STATUSES
         appointments = self.queryset().filter(status__in=statuses)
         if is_upcoming:
-            # A stale active status must not make a passed appointment appear as upcoming.
-            appointments = appointments.filter(starts_at__gte=timezone.now())
+            # Check-in and in-progress appointments remain actionable after start time.
+            appointments = appointments.filter(
+                Q(starts_at__gte=timezone.now())
+                | Q(status__in=[
+                    Appointment.Status.CHECKED_IN,
+                    Appointment.Status.IN_PROGRESS,
+                ])
+            )
         if data.get("status"):
             appointments = appointments.filter(status=data["status"])
         ordering = "starts_at" if data["scope"] == "UPCOMING" else "-starts_at"

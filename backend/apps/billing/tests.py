@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Dentist, PatientProfile, User
+from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, Service
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
@@ -128,6 +129,7 @@ class CounterBillingTests(APITestCase):
         cross = self.client.get(reverse("management:branch-invoices", kwargs={"branch_id": self.other_branch.pk}))
         self.client.force_authenticate(self.patient_user)
         own = self.client.get(reverse("patients:invoice-detail", kwargs={"invoice_id": invoice_id}))
+        invoice_list = self.client.get(reverse("patients:invoices"), {"page": 1, "page_size": 1})
         stranger = self.user("billing-stranger@example.com", "Stranger")
         PatientProfile.objects.create(user=stranger)
         self.client.force_authenticate(stranger)
@@ -135,6 +137,18 @@ class CounterBillingTests(APITestCase):
 
         self.assertEqual(cross.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(own.status_code, status.HTTP_200_OK)
+        self.assertNotIn("patient_profile_id", own.data["data"])
+        self.assertNotIn("replacement_for_id", own.data["data"])
+        self.assertNotIn("void_reason", own.data["data"])
+        self.assertEqual(invoice_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(invoice_list.data["meta"], {"count": 1, "page": 1, "page_size": 1, "total_pages": 1})
+        self.assertEqual(len(invoice_list.data["data"]), 1)
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                actor_user=self.patient_user,
+                action="PATIENT_INVOICE_LIST_VIEWED",
+            ).exists()
+        )
         self.assertEqual(hidden.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_issued_invoice_line_and_posted_payment_are_database_immutable(self):

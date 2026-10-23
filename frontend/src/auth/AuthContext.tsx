@@ -2,12 +2,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
 
-import { apiRequest, getStoredTokens, storeTokens } from '../api/client'
+import { AUTH_EXPIRED_EVENT, apiRequest, getStoredTokens, storeTokens } from '../api/client'
 import type { LoginResponse, User } from '../types/api'
 
 const USER_STORAGE_KEY = 'pknk_user'
@@ -27,8 +28,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<User>
   register: (input: RegisterInput) => Promise<void>
-  updateUser: (changes: Partial<Pick<User, 'full_name'>>) => void
-  logout: () => void
+  updateUser: (changes: Partial<User>) => void
+  logout: () => Promise<void>
 }
 
 interface RegisterInput {
@@ -44,19 +45,51 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => storedUser())
 
+  const persistUser = useCallback((next: User | null) => {
+    if (next) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next))
+    else localStorage.removeItem(USER_STORAGE_KEY)
+    setUser(next)
+  }, [])
+
+  const synchronizeUser = useCallback(async () => {
+    if (!getStoredTokens()) return
+    try {
+      const response = await apiRequest<{ data: User }>('/auth/me/', {}, { auth: true })
+      persistUser(response.data)
+    } catch {
+      if (!getStoredTokens()) persistUser(null)
+    }
+  }, [persistUser])
+
+  useEffect(() => {
+    void synchronizeUser()
+    const onFocus = () => { void synchronizeUser() }
+    const clearExpiredSession = () => persistUser(null)
+    const syncAcrossTabs = (event: StorageEvent) => {
+      if (event.key === 'pknk_tokens' && !event.newValue) clearExpiredSession()
+    }
+    window.addEventListener('focus', onFocus)
+    window.addEventListener(AUTH_EXPIRED_EVENT, clearExpiredSession)
+    window.addEventListener('storage', syncAcrossTabs)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener(AUTH_EXPIRED_EVENT, clearExpiredSession)
+      window.removeEventListener('storage', syncAcrossTabs)
+    }
+  }, [persistUser, synchronizeUser])
+
   const login = useCallback(async (email: string, password: string) => {
     const response = await apiRequest<LoginResponse>('/auth/login/', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
     storeTokens(response.data.tokens)
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data.user))
-    setUser(response.data.user)
+    persistUser(response.data.user)
     return response.data.user
   }, [])
 
   const register = useCallback(async (input: RegisterInput) => {
-    const response = await apiRequest<LoginResponse>('/auth/register/', {
+    await apiRequest<{ data: { message: string } }>('/auth/register/', {
       method: 'POST',
       body: JSON.stringify({
         full_name: input.fullName,
@@ -67,12 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         consent_to_data_processing: true,
       }),
     })
-    storeTokens(response.data.tokens)
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data.user))
-    setUser(response.data.user)
   }, [])
 
-  const updateUser = useCallback((changes: Partial<Pick<User, 'full_name'>>) => {
+  const updateUser = useCallback((changes: Partial<User>) => {
     setUser((current) => {
       if (!current) return current
       const next = { ...current, ...changes }
@@ -81,10 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const logout = useCallback(() => {
-    storeTokens(null)
-    localStorage.removeItem(USER_STORAGE_KEY)
-    setUser(null)
+  const logout = useCallback(async () => {
+    const tokens = getStoredTokens()
+    try {
+      if (tokens?.refresh) {
+        await apiRequest<void>(
+          '/auth/logout/',
+          { method: 'POST', body: JSON.stringify({ refresh: tokens.refresh }) },
+          { auth: true },
+        )
+      }
+    } catch {
+      // Local logout must still succeed if the user is offline or the token already expired.
+    } finally {
+      storeTokens(null)
+      localStorage.removeItem(USER_STORAGE_KEY)
+      setUser(null)
+    }
   }, [])
 
   const value = useMemo(

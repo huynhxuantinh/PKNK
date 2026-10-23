@@ -25,6 +25,25 @@ describe('safeReturnPath', () => {
     expect(destinationAfterLogin(dentist, '/dat-lich?chi-nhanh=5')).toBe('/bac-si/chon-chi-nhanh')
   })
 
+  it('routes branch managers to the branch management dashboard', () => {
+    const manager = {
+      id_user: 4,
+      email: 'manager@example.com',
+      full_name: 'Branch Manager',
+      email_verified: true,
+      email_verified_at: '2026-10-22T00:00:00Z',
+      memberships: [{
+        role: 'BRANCH_ADMIN',
+        organization_id: 1,
+        organization_name: 'DentaVie',
+        branch_id: 1,
+        branch_name: 'Branch 1',
+      }],
+    } satisfies User
+
+    expect(destinationAfterLogin(manager)).toBe('/quan-ly-chi-nhanh')
+  })
+
   it('routes patient accounts to the home page after a direct login', () => {
     const patient = {
       id_user: 3,

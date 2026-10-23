@@ -42,6 +42,7 @@ export function BranchDetailPage() {
   const [isLocating, setIsLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [roadRoute, setRoadRoute] = useState<RoadRoute | null>(null)
+  const [routeConsentGranted, setRouteConsentGranted] = useState(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -69,10 +70,11 @@ export function BranchDetailPage() {
     return () => controller.abort()
   }, [branchId])
 
-  // Fetch real road route whenever user location is acquired
+  // Route lookup is opt-in because it sends the selected coordinates to OSRM.
   useEffect(() => {
-    if (!userLocation || !branch?.location) {
+    if (!userLocation || !branch?.location || !routeConsentGranted) {
       setRoadRoute(null)
+      setIsLoadingRoute(false)
       return
     }
 
@@ -88,7 +90,7 @@ export function BranchDetailPage() {
       })
 
     return () => controller.abort()
-  }, [userLocation, branch])
+  }, [userLocation, branch, routeConsentGranted])
 
   const todayHours = useMemo(() => {
     const weekday = new Date().getDay() || 7
@@ -246,6 +248,7 @@ export function BranchDetailPage() {
   function handleClearDirections() {
     setUserLocation(null)
     setRoadRoute(null)
+    setRouteConsentGranted(false)
     setShowSteps(false)
     setLocationError('')
   }
@@ -475,15 +478,28 @@ export function BranchDetailPage() {
               <div className="route-info-box">
                 <div className="route-stat">
                   <div>
-                    <small>Khoảng cách theo đường bộ</small>
+                    <small>{roadRoute ? 'Khoảng cách theo đường bộ' : 'Khoảng cách ước tính'}</small>
                     <strong>~{displayDistanceKm} km</strong>
                   </div>
                 </div>
 
                 <div className="route-estimates">
-                  <span>Thời gian lái xe ước tính: ~{displayDurationMinutes} phút</span>
+                  <span>{roadRoute ? `Thời gian lái xe ước tính: ~${displayDurationMinutes} phút` : 'Khoảng cách đường chim bay.'}</span>
                   {isLoadingRoute && <span className="route-loading">Đang tìm đường ngắn nhất…</span>}
                 </div>
+
+                {!routeConsentGranted && (
+                  <div className="route-prompt-box">
+                    <p>Để tìm lộ trình, vị trí hiện tại và điểm đến sẽ được gửi tới OSRM, dịch vụ định tuyến bên thứ ba.</p>
+                    <button
+                      type="button"
+                      className="route-locate-btn"
+                      onClick={() => setRouteConsentGranted(true)}
+                    >
+                      Đồng ý tìm đường
+                    </button>
+                  </div>
+                )}
 
                 {roadRoute && roadRoute.steps.length > 0 && (
                   <div className="route-steps-container">

@@ -128,6 +128,16 @@ class PatientAppointmentApiTests(APITestCase):
             "PATIENT-STALE-UPCOMING",
             starts_at=timezone.now() - timedelta(days=1),
         )
+        checked_in = self.appointment(
+            "PATIENT-CHECKED-IN",
+            appointment_status=Appointment.Status.CHECKED_IN,
+            starts_at=timezone.now() - timedelta(minutes=20),
+        )
+        in_progress = self.appointment(
+            "PATIENT-IN-PROGRESS",
+            appointment_status=Appointment.Status.IN_PROGRESS,
+            starts_at=timezone.now() - timedelta(minutes=10),
+        )
         completed = self.appointment(
             "PATIENT-HISTORY", appointment_status=Appointment.Status.COMPLETED,
             starts_at=self.at(8) - timedelta(days=14),
@@ -146,8 +156,11 @@ class PatientAppointmentApiTests(APITestCase):
         history_response = self.client.get(url, {"scope": "HISTORY"})
 
         self.assertEqual(upcoming_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(upcoming_response.data["meta"]["count"], 1)
-        self.assertEqual(upcoming_response.data["data"][0]["public_code"], upcoming.public_code)
+        self.assertEqual(upcoming_response.data["meta"]["count"], 3)
+        self.assertEqual(
+            {item["public_code"] for item in upcoming_response.data["data"]},
+            {upcoming.public_code, checked_in.public_code, in_progress.public_code},
+        )
         self.assertEqual(history_response.data["meta"]["count"], 1)
         self.assertEqual(history_response.data["data"][0]["public_code"], completed.public_code)
 

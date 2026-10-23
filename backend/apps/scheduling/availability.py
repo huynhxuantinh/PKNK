@@ -10,7 +10,6 @@ from apps.locations.models import BranchOpeningHour, Chair, Holiday
 from apps.organizations.models import Membership
 
 from .models import ACTIVE_APPOINTMENT_STATUSES, Appointment, TimeOff, WorkShift
-from .services import AppointmentService
 
 
 @dataclass(frozen=True)
@@ -53,7 +52,6 @@ class AvailabilityService:
         branch = branch_service.branch
         organization = branch.organization
         service = branch_service.service
-        AppointmentService.expire_due_holds(now=now, branch_id=branch.pk)
         local_timezone = ZoneInfo(organization.timezone)
         local_now = now.astimezone(local_timezone)
 

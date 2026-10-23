@@ -93,10 +93,7 @@ class RegistrationSerializer(serializers.Serializer):
     consent_to_data_processing = serializers.BooleanField(write_only=True)
 
     def validate_email(self, value):
-        normalized = value.strip().lower()
-        if User.objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError("Email này đã được sử dụng.")
-        return normalized
+        return value.strip().lower()
 
     def validate_consent_to_data_processing(self, value):
         if not value:

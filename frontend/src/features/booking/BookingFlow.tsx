@@ -1,6 +1,7 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react'
 
 import {
+  cancelAppointmentHold,
   confirmAppointment,
   createAppointmentHold,
   listBranches,
@@ -13,6 +14,7 @@ import { useAuth } from '../../auth/AuthContext'
 import type { Appointment, Branch, BranchDentist, BranchService, PatientProfileResponse, Slot } from '../../types/api'
 import {
   bookingSelectionReducer,
+  BOOKING_DRAFT_STORAGE_KEY,
   dateInputValue,
   initialBookingSelection,
 } from './bookingState'
@@ -71,6 +73,17 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const [contactDraft, setContactDraft] = useState(contact)
   const [patientNote, setPatientNote] = useState('')
   const initialBranchApplied = useRef(false)
+  const holdMinutes = heldAppointment?.held_at && heldAppointment.expires_at
+    ? Math.max(1, Math.round((new Date(heldAppointment.expires_at).getTime() - new Date(heldAppointment.held_at).getTime()) / 60_000))
+    : null
+
+  useEffect(() => {
+    if (!selection.branch) {
+      sessionStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY)
+      return
+    }
+    sessionStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(selection))
+  }, [selection])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -105,7 +118,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         if (!initialBranchApplied.current && initialBranchId) {
           initialBranchApplied.current = true
           const initialBranch = response.data.find((branch) => branch.id_branch === initialBranchId)
-          if (initialBranch) dispatch({ type: 'select_branch', branch: initialBranch })
+          if (initialBranch && selection.branch?.id_branch !== initialBranch.id_branch) dispatch({ type: 'select_branch', branch: initialBranch })
         }
       })
       .catch((reason) => {
@@ -114,7 +127,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       })
       .finally(() => setBranchesLoading(false))
     return () => controller.abort()
-  }, [branchQuery, initialBranchId])
+  }, [branchQuery, initialBranchId, selection.branch?.id_branch])
 
   useEffect(() => {
     if (!selection.branch) {
@@ -191,6 +204,31 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     setHeldAppointment(null)
   }
 
+  async function releaseHeldAppointment() {
+    if (!heldAppointment) return
+    const releasedCode = heldAppointment.public_code
+    setHeldAppointment(null)
+    try {
+      await cancelAppointmentHold(releasedCode)
+    } catch {
+      // The hold may already have expired or been confirmed; either way it cannot be reused.
+    }
+    if (selection.service && selection.date) {
+      const response = await listSlots(selection.service.id_branch_service, selection.date).catch(() => null)
+      if (response) setSlots(response.data)
+    }
+  }
+
+  function saveContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setContact({
+      name: contactDraft.name.trim(),
+      phone: contactDraft.phone,
+      email: contactDraft.email.trim(),
+    })
+    setIsEditingContact(false)
+  }
+
   async function handleBooking() {
     if (!selection.service || !selection.slot || !selection.dentist) return
     if (!isAuthenticated) {
@@ -222,8 +260,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       await confirmHeld(hold.data)
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout()
-      setError(reason instanceof Error ? reason.message : 'Không thể đặt lịch.')
-      if (!createdHold) {
+      const message = reason instanceof Error ? reason.message : 'Không thể đặt lịch.'
+      setError(createdHold ? `${message} Chỗ giữ đã được giải phóng, vui lòng chọn giờ khác.` : message)
+      if (createdHold) {
+        setHeldAppointment(null)
+        await cancelAppointmentHold(createdHold.public_code).catch(() => undefined)
+      }
+      if (selection.service && selection.date) {
         const response = await listSlots(
           selection.service.id_branch_service,
           selection.date,
@@ -243,7 +286,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       await confirmHeld(heldAppointment)
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout()
-      setError(reason instanceof Error ? reason.message : 'Không thể xác nhận lịch.')
+      setError(`${reason instanceof Error ? reason.message : 'Không thể xác nhận lịch.'} Chỗ giữ đã được giải phóng, vui lòng chọn giờ khác.`)
+      await releaseHeldAppointment()
     } finally {
       setBooking(false)
     }
@@ -280,7 +324,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
               <span>Thông tin lịch hẹn</span>
               <strong>{appointment.service_name_snapshot}</strong>
             </div>
-            <b>Đã xác nhận</b>
+            <b>{appointment.status === 'CONFIRMED' ? 'Đã xác nhận' : 'Chờ xác nhận'}</b>
           </header>
           <dl>
             <div><dt>Thời gian</dt><dd>{fullDateTime.format(new Date(appointment.starts_at))}</dd></div>
@@ -348,15 +392,15 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           </div>
           {!isAuthenticated ? <EmptyState label="Vui lòng đăng nhập để tiếp tục đặt lịch." /> : patientLoading ? <LoadingState label="Đang tải thông tin người đặt…" /> : (
             isEditingContact ? (
-              <div className="booking-contact-editor">
+              <form className="booking-contact-editor" onSubmit={saveContact}>
                 <label>Họ và tên<input value={contactDraft.name} onChange={(event) => setContactDraft({ ...contactDraft, name: event.target.value })} required /></label>
                 <label>Số điện thoại<input type="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" value={contactDraft.phone} onChange={(event) => setContactDraft({ ...contactDraft, phone: event.target.value.replace(/[\s-]/g, '') })} required /></label>
                 <label>Email<input type="email" value={contactDraft.email} onChange={(event) => setContactDraft({ ...contactDraft, email: event.target.value })} required /></label>
                 <div className="booking-contact-actions">
-                  <button type="button" className="button button-primary" disabled={!contactDraft.name.trim() || !contactDraft.phone || !contactDraft.email} onClick={() => { setContact({ name: contactDraft.name.trim(), phone: contactDraft.phone, email: contactDraft.email.trim() }); setIsEditingContact(false) }}>Xong</button>
+                  <button type="submit" className="button button-primary">Xong</button>
                   <button type="button" className="button button-quiet" onClick={() => { setContactDraft(contact); setIsEditingContact(false) }}>Hủy</button>
                 </div>
-              </div>
+              </form>
             ) : (
               <div className="booking-patient-card">
                 <div><span>Họ và tên</span><strong>{contact.name || 'Chưa cập nhật'}</strong></div>
@@ -456,15 +500,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         {!isAuthenticated && <p className="summary-note">Đăng nhập ở góc trên để hoàn tất đặt lịch.</p>}
         {user && !user.email_verified && <p className="summary-note warning">Email cần được xác minh trước khi đặt.</p>}
         {heldAppointment ? (
-          <button className="button button-primary button-wide" type="button" disabled={booking} onClick={retryConfirmation}>
-            {booking ? 'Đang xác nhận…' : 'Xác nhận chỗ đang giữ'}
-          </button>
+          <div className="booking-held-actions"><button className="button button-primary button-wide" type="button" disabled={booking} onClick={retryConfirmation}>{booking ? 'Đang xác nhận…' : 'Xác nhận chỗ đang giữ'}</button><button className="button button-secondary button-wide" type="button" disabled={booking} onClick={() => void releaseHeldAppointment()}>Chọn giờ khác</button></div>
         ) : (
           <button className="button button-primary button-wide" type="button" disabled={!selection.dentist || !contact.name || !contact.phone || !contact.email || booking} onClick={handleBooking}>
             {booking ? 'Đang giữ chỗ…' : 'Đặt lịch ngay'}
           </button>
         )}
-        <small className="policy-note">Slot được giữ tối đa 10 phút trong lúc xác nhận.</small>
+        <small className="policy-note">{holdMinutes ? `Chỗ của bạn được giữ trong ${holdMinutes} phút để xác nhận.` : 'Thời gian giữ chỗ được áp dụng theo chính sách của chi nhánh.'}</small>
       </aside>
     </div>
   )

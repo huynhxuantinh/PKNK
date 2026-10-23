@@ -2,6 +2,8 @@ import type { TokenPair } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const TOKEN_STORAGE_KEY = 'pknk_tokens'
+export const AUTH_EXPIRED_EVENT = 'pknk-auth-expired'
+let refreshPromise: Promise<string | null> | null = null
 
 export class ApiError extends Error {
   constructor(
@@ -31,6 +33,10 @@ export function storeTokens(tokens: TokenPair | null) {
   }
 }
 
+function notifyAuthExpired() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+}
+
 function errorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== 'object') return fallback
   const body = payload as Record<string, unknown>
@@ -46,22 +52,50 @@ function errorMessage(payload: unknown, fallback: string): string {
   return fallback
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  const tokens = getStoredTokens()
-  if (!tokens?.refresh) return null
+type LockManagerLike = {
+  request<T>(name: string, callback: () => Promise<T>): Promise<T>
+}
 
-  const response = await fetch(`${API_BASE_URL}/auth/refresh/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh: tokens.refresh }),
-  })
-  if (!response.ok) {
-    storeTokens(null)
-    return null
+function browserLockManager(): LockManagerLike | null {
+  if (typeof navigator === 'undefined') return null
+  return (navigator as Navigator & { locks?: LockManagerLike }).locks || null
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise
+  const initialRefreshToken = getStoredTokens()?.refresh
+  if (!initialRefreshToken) return null
+
+  const refresh = async () => {
+    const tokens = getStoredTokens()
+    if (!tokens?.refresh) return null
+    // A different tab may have refreshed while this tab was waiting for the lock.
+    if (tokens.refresh !== initialRefreshToken) return tokens.access
+
+    const response = await fetch(`${API_BASE_URL}/auth/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: tokens.refresh }),
+    })
+    if (!response.ok) {
+      // Do not erase a newer session that was written by another tab.
+      if (getStoredTokens()?.refresh === tokens.refresh) {
+        storeTokens(null)
+        notifyAuthExpired()
+      }
+      return null
+    }
+    const payload = (await response.json()) as { data: TokenPair }
+    storeTokens(payload.data)
+    return payload.data.access
   }
-  const payload = (await response.json()) as { data: TokenPair }
-  storeTokens(payload.data)
-  return payload.data.access
+
+  const lockManager = browserLockManager()
+  refreshPromise = (lockManager
+    ? lockManager.request('pknk-auth-refresh', refresh)
+    : refresh()
+  ).finally(() => { refreshPromise = null })
+  return refreshPromise
 }
 
 export async function apiRequest<T>(
@@ -92,4 +126,22 @@ export async function apiRequest<T>(
   }
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export async function downloadAuthenticatedFile(path: string, filename: string) {
+  const downloadUrl = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`
+  const request = async () => fetch(downloadUrl, {
+    headers: { Authorization: `Bearer ${getStoredTokens()?.access || ''}` },
+  })
+  let response = await request()
+  if (response.status === 401 && await refreshAccessToken()) response = await request()
+  if (!response.ok) throw new ApiError(`Không thể tải tệp (${response.status}).`, response.status)
+  const blobUrl = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(blobUrl)
 }

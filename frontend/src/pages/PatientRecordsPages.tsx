@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
-import { apiRequest } from '../api/client'
+import { apiRequest, downloadAuthenticatedFile } from '../api/client'
+import { listSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { Seo } from '../seo/Seo'
@@ -11,6 +12,11 @@ import type {
   PatientClinicalEncounter,
   PatientClinicalEncountersResponse,
   PatientAppointmentStatus,
+  PatientInvoice,
+  PatientInvoicesResponse,
+  Notification,
+  NotificationsResponse,
+  Slot,
 } from '../types/api'
 
 const appointmentStatus: Record<PatientAppointmentStatus, string> = {
@@ -75,27 +81,79 @@ function RecordState({ children }: { children: ReactNode }) {
 export function PatientAppointmentsPage() {
   const { isAuthenticated } = useAuth()
   const [appointments, setAppointments] = useState<PatientAppointment[] | null>(null)
+  const [meta, setMeta] = useState<PatientAppointmentsResponse['meta'] | null>(null)
+  const [scope, setScope] = useState<'UPCOMING' | 'HISTORY'>('UPCOMING')
+  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [cancellingCode, setCancellingCode] = useState('')
+  const [cancellingAppointment, setCancellingAppointment] = useState<PatientAppointment | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [rescheduling, setRescheduling] = useState<PatientAppointment | null>(null)
+  const [rescheduleDate, setRescheduleDate] = useState('')
+  const [slotOptions, setSlotOptions] = useState<Slot[] | null>(null)
+  const [rescheduleError, setRescheduleError] = useState('')
+
+  const loadAppointments = useCallback(async () => {
+    if (!isAuthenticated) return
+    setAppointments(null)
+    setError('')
+    try {
+      const response = await apiRequest<PatientAppointmentsResponse>(
+        `/patients/me/appointments/?scope=${scope}&page=${page}&page_size=10`,
+        {},
+        { auth: true },
+      )
+      setAppointments(response.data)
+      setMeta(response.meta)
+    } catch {
+      setError('Không thể tải lịch hẹn. Vui lòng thử lại.')
+    }
+  }, [isAuthenticated, page, scope])
 
   useEffect(() => {
-    if (!isAuthenticated) return
-    apiRequest<PatientAppointmentsResponse>(
-      '/patients/me/appointments/?scope=UPCOMING&page_size=100',
-      {},
-      { auth: true },
-    )
-      .then((response) => {
-        const now = Date.now()
-        // Keep the list correct if a legacy API response contains a stale active appointment.
-        setAppointments(response.data.filter((appointment) => new Date(appointment.starts_at).getTime() >= now))
-      })
-      .catch(() => setError('Không thể tải lịch đã đặt. Vui lòng thử lại.'))
-  }, [isAuthenticated])
+    void loadAppointments()
+  }, [loadAppointments])
 
-  async function cancelAppointment(appointment: PatientAppointment) {
-    if (!window.confirm(`Bạn có chắc muốn hủy lịch ${formatDateTime(appointment.starts_at)}?`)) return
+  function changeScope(nextScope: 'UPCOMING' | 'HISTORY') {
+    setScope(nextScope)
+    setPage(1)
+    setNotice('')
+  }
+
+  async function findRescheduleSlots() {
+    if (!rescheduling || !rescheduleDate) return
+    setRescheduleError('')
+    setSlotOptions(null)
+    try {
+      const response = await listSlots(rescheduling.branch_service_id, rescheduleDate)
+      setSlotOptions(response.data)
+    } catch (reason) {
+      setRescheduleError(reason instanceof Error ? reason.message : 'Không thể tìm giờ trống.')
+    }
+  }
+
+  async function rescheduleAppointment(slot: Slot) {
+    if (!rescheduling) return
+    setRescheduleError('')
+    try {
+      await apiRequest<{ data: PatientAppointment }>(
+        `/patients/me/appointments/${rescheduling.public_code}/reschedule/`,
+        { method: 'POST', body: JSON.stringify({ starts_at: slot.starts_at, reason: 'Người bệnh chủ động đổi lịch.', idempotency_key: `patient-${crypto.randomUUID()}` }) },
+        { auth: true },
+      )
+      setRescheduling(null)
+      setSlotOptions(null)
+      setNotice('Đã tạo lịch hẹn mới theo thời gian bạn chọn.')
+      await loadAppointments()
+    } catch (reason) {
+      setRescheduleError(reason instanceof Error ? reason.message : 'Không thể đổi lịch. Vui lòng thử lại.')
+    }
+  }
+
+  async function cancelAppointment() {
+    if (!cancellingAppointment || !cancelReason.trim()) return
+    const appointment = cancellingAppointment
     setCancellingCode(appointment.public_code)
     setError('')
     setNotice('')
@@ -104,12 +162,14 @@ export function PatientAppointmentsPage() {
         `/patients/me/appointments/${appointment.public_code}/cancel/`,
         {
           method: 'POST',
-          body: JSON.stringify({ reason: 'Người bệnh chủ động hủy lịch.' }),
+          body: JSON.stringify({ reason: cancelReason.trim() }),
         },
         { auth: true },
       )
-      setAppointments((current) => current?.filter((item) => item.public_code !== appointment.public_code) || [])
       setNotice('Đã hủy lịch khám.')
+      setCancellingAppointment(null)
+      setCancelReason('')
+      await loadAppointments()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể hủy lịch. Vui lòng thử lại.')
     } finally {
@@ -124,16 +184,20 @@ export function PatientAppointmentsPage() {
   return (
     <RecordsLayout
       title="Lịch đã đặt"
-      description="Theo dõi các lịch khám sắp tới của bạn."
+      description={scope === 'UPCOMING' ? 'Theo dõi các lịch khám sắp tới của bạn.' : 'Xem các lịch đã hoàn thành, đã hủy hoặc không đến.'}
       path="/lich-hen"
     >
       {notice && <p className="patient-record-notice" role="status">{notice}</p>}
+      <div className="patient-record-tabs" role="tablist" aria-label="Loại lịch hẹn">
+        <button type="button" role="tab" aria-selected={scope === 'UPCOMING'} className={scope === 'UPCOMING' ? 'is-active' : ''} onClick={() => changeScope('UPCOMING')}>Lịch sắp tới</button>
+        <button type="button" role="tab" aria-selected={scope === 'HISTORY'} className={scope === 'HISTORY' ? 'is-active' : ''} onClick={() => changeScope('HISTORY')}>Lịch sử lịch hẹn</button>
+      </div>
       {error ? <RecordState>{error}</RecordState> : appointments === null ? (
         <RecordState>Đang tải lịch hẹn...</RecordState>
       ) : appointments.length === 0 ? (
         <RecordState>
-          <strong>Bạn chưa có lịch khám sắp tới.</strong>
-          <Link className="button button-primary" to="/dat-lich">Đặt lịch khám</Link>
+          <strong>{scope === 'UPCOMING' ? 'Bạn chưa có lịch khám sắp tới.' : 'Chưa có lịch sử lịch hẹn.'}</strong>
+          {scope === 'UPCOMING' && <Link className="button button-primary" to="/dat-lich">Đặt lịch khám</Link>}
         </RecordState>
       ) : (
         <>
@@ -160,15 +224,49 @@ export function PatientAppointmentsPage() {
                 </dl>
                 {appointment.can_cancel && (
                   <div className="appointment-record-actions">
-                    <button type="button" disabled={cancellingCode === appointment.public_code} onClick={() => cancelAppointment(appointment)}>
+                    <button type="button" disabled={cancellingCode === appointment.public_code} onClick={() => { setCancellingAppointment(appointment); setCancelReason('') }}>
                       {cancellingCode === appointment.public_code ? 'Đang hủy...' : 'Hủy lịch'}
                     </button>
+                  </div>
+                )}
+                {!appointment.can_cancel && ['PENDING', 'CONFIRMED'].includes(appointment.status) && (
+                  <p className="appointment-action-note">Đã qua thời hạn hủy trực tuyến. Vui lòng liên hệ chi nhánh để được hỗ trợ.</p>
+                )}
+                {appointment.can_reschedule && (
+                  <div className="appointment-record-actions">
+                    <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError('') }}>Đổi lịch</button>
                   </div>
                 )}
               </div>
             </article>
             ))}
           </div>
+          {rescheduling && (
+            <section className="reschedule-panel" aria-label="Đổi lịch hẹn">
+              <div><strong>Đổi lịch: {rescheduling.service_name_snapshot}</strong><button type="button" onClick={() => setRescheduling(null)}>Đóng</button></div>
+              <label>Chọn ngày<input type="date" value={rescheduleDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
+              <button type="button" disabled={!rescheduleDate} onClick={findRescheduleSlots}>Tìm giờ trống</button>
+              {rescheduleError && <p className="patient-record-error">{rescheduleError}</p>}
+              {slotOptions && (slotOptions.length ? <div className="reschedule-slots">{slotOptions.map((slot) => <button type="button" key={slot.starts_at} onClick={() => rescheduleAppointment(slot)}>{formatDateTime(slot.starts_at)}</button>)}</div> : <p>Không còn giờ trống trong ngày này.</p>)}
+            </section>
+          )}
+          {cancellingAppointment && (
+            <div className="appointment-modal-backdrop" role="presentation">
+              <form className="appointment-modal" onSubmit={(event) => { event.preventDefault(); void cancelAppointment() }}>
+                <h2>Hủy lịch khám</h2>
+                <p>{cancellingAppointment.service_name_snapshot} · {formatDateTime(cancellingAppointment.starts_at)}</p>
+                <label>Lý do hủy<textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} maxLength={1000} required autoFocus placeholder="Ví dụ: Có việc đột xuất, cần hủy lịch." /></label>
+                <div><button type="button" onClick={() => setCancellingAppointment(null)}>Quay lại</button><button type="submit" disabled={!cancelReason.trim() || cancellingCode === cancellingAppointment.public_code}>{cancellingCode === cancellingAppointment.public_code ? 'Đang hủy...' : 'Xác nhận hủy lịch'}</button></div>
+              </form>
+            </div>
+          )}
+          {meta && meta.total_pages > 1 && (
+            <nav className="patient-record-pagination" aria-label="Phân trang lịch hẹn">
+              <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Trước</button>
+              <span>Trang {meta.page} / {meta.total_pages}</span>
+              <button type="button" disabled={page === meta.total_pages} onClick={() => setPage((current) => current + 1)}>Sau</button>
+            </nav>
+          )}
         </>
       )}
     </RecordsLayout>
@@ -227,10 +325,36 @@ export function PatientHistoryPage() {
                   <p>{encounter.notes}</p>
                 </details>
               )}
+              {encounter.attachments.length > 0 && (
+                <div className="record-attachments"><strong>Tệp đính kèm</strong>{encounter.attachments.map((attachment) => <button type="button" key={attachment.id_clinical_attachment} onClick={() => downloadAuthenticatedFile(attachment.download_url, `${attachment.kind}-${attachment.id_clinical_attachment}`)}>{attachment.description || attachment.kind} · Tải xuống</button>)}</div>
+              )}
             </article>
           ))}
         </div>
       )}
     </RecordsLayout>
   )
+}
+
+export function PatientInvoicesPage() {
+  const { isAuthenticated } = useAuth()
+  const [invoices, setInvoices] = useState<PatientInvoice[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!isAuthenticated) return
+    apiRequest<PatientInvoicesResponse>('/patients/me/invoices/?page=1&page_size=20', {}, { auth: true }).then((response) => setInvoices(response.data)).catch(() => setError('Không thể tải hóa đơn.'))
+  }, [isAuthenticated])
+  if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fhoa-don" replace />
+  return <RecordsLayout title="Hóa đơn" description="Theo dõi các hóa đơn đã phát hành." path="/hoa-don">{error ? <RecordState>{error}</RecordState> : invoices === null ? <RecordState>Đang tải hóa đơn...</RecordState> : invoices.length === 0 ? <RecordState><strong>Chưa có hóa đơn.</strong></RecordState> : <div className="patient-record-list">{invoices.map((invoice) => <article className="patient-record-card invoice-record" key={invoice.id_invoice}><div><h2>{invoice.invoice_number}</h2><p>{invoice.branch_name} · {formatDateTime(invoice.issued_at)}</p></div><strong>{new Intl.NumberFormat('vi-VN').format(Number(invoice.total))} {invoice.currency}</strong><span className={`record-status status-${invoice.status.toLowerCase()}`}>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}</span></article>)}</div>}</RecordsLayout>
+}
+
+export function NotificationsPage() {
+  const { isAuthenticated } = useAuth()
+  const [notifications, setNotifications] = useState<Notification[] | null>(null)
+  const [error, setError] = useState('')
+  const load = useCallback(() => apiRequest<NotificationsResponse>('/notifications/', {}, { auth: true }).then((response) => setNotifications(response.data)).catch(() => setError('Không thể tải thông báo.')), [])
+  useEffect(() => { if (isAuthenticated) void load() }, [isAuthenticated, load])
+  async function markRead(item: Notification) { if (item.read_at) return; await apiRequest(`/notifications/${item.id_notification}/read/`, { method: 'POST' }, { auth: true }); void load() }
+  if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fthong-bao" replace />
+  return <RecordsLayout title="Thông báo" description="Cập nhật mới nhất về lịch hẹn và hóa đơn." path="/thong-bao">{error ? <RecordState>{error}</RecordState> : notifications === null ? <RecordState>Đang tải thông báo...</RecordState> : notifications.length === 0 ? <RecordState><strong>Bạn chưa có thông báo.</strong></RecordState> : <div className="patient-record-list">{notifications.map((item) => <button type="button" className={`patient-record-card notification-record ${item.read_at ? '' : 'is-unread'}`} key={item.id_notification} onClick={() => markRead(item)}><strong>{item.title}</strong><span>{item.body}</span><small>{formatDateTime(item.created_at)}{item.read_at ? '' : ' · Chưa đọc'}</small></button>)}</div>}</RecordsLayout>
 }

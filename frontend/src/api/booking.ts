@@ -116,3 +116,11 @@ export function confirmAppointment(publicCode: string) {
     { auth: true },
   )
 }
+
+export function cancelAppointmentHold(publicCode: string) {
+  return apiRequest<AppointmentResponse>(
+    `/scheduling/appointments/${publicCode}/holds/cancel/`,
+    { method: 'POST' },
+    { auth: true },
+  )
+}
