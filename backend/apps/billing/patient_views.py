@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import PatientProfile
@@ -15,6 +16,8 @@ from .patient_serializers import PatientInvoiceListQuerySerializer, PatientInvoi
 
 class PatientInvoiceListAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
     serializer_class = PatientInvoiceSerializer
 
     @extend_schema(
@@ -57,6 +60,8 @@ class PatientInvoiceListAPIView(APIView):
 
 class PatientInvoiceDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
     serializer_class = PatientInvoiceSerializer
 
     @extend_schema(operation_id="patient_invoice_retrieve", responses={200: PatientInvoiceSerializer})

@@ -1,11 +1,12 @@
 import logging
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.exceptions import Throttled, ValidationError as DRFValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -42,6 +43,7 @@ from .services import (
     RegistrationService,
 )
 from .tasks import send_email_verification, send_password_reset_email
+from .throttles import EmailScopedRateThrottle
 
 
 logger = logging.getLogger(__name__)
@@ -72,12 +74,21 @@ def user_with_access_context(user_id):
 
 
 REGISTRATION_MESSAGE = "Nếu thông tin hợp lệ, email xác minh sẽ được gửi."
+LOGIN_LOCK_SECONDS = 15 * 60
+LOGIN_MAX_FAILURES = 5
+
+
+def login_cache_key(kind, email):
+    import hashlib
+
+    digest = hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
+    return f"auth_login:{kind}:{digest}"
 
 
 class RegistrationAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ScopedRateThrottle, EmailScopedRateThrottle]
     throttle_scope = "auth_register"
 
     @extend_schema(request=RegistrationSerializer, responses={202: MessageResponseSerializer})
@@ -105,11 +116,14 @@ class RegistrationAPIView(APIView):
 class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ScopedRateThrottle, EmailScopedRateThrottle]
     throttle_scope = "auth_login"
 
     @extend_schema(request=LoginSerializer, responses={200: AuthResponseSerializer})
     def post(self, request):
+        email = str(request.data.get("email", "")).strip().lower()
+        if email and cache.get(login_cache_key("locked", email)):
+            raise Throttled(wait=LOGIN_LOCK_SECONDS)
         serializer = LoginSerializer(data=request.data, context={"request": request})
         try:
             serializer.is_valid(raise_exception=True)
@@ -120,8 +134,19 @@ class LoginAPIView(APIView):
                 after_data={"result": "DENIED"},
                 request=request,
             )
+            if email:
+                failures_key = login_cache_key("failures", email)
+                if cache.add(failures_key, 1, timeout=LOGIN_LOCK_SECONDS):
+                    failures = 1
+                else:
+                    failures = cache.incr(failures_key)
+                if failures >= LOGIN_MAX_FAILURES:
+                    cache.set(login_cache_key("locked", email), True, timeout=LOGIN_LOCK_SECONDS)
+                    cache.delete(failures_key)
             raise
         user = user_with_access_context(serializer.validated_data["user"].pk)
+        cache.delete(login_cache_key("failures", email))
+        cache.delete(login_cache_key("locked", email))
         AuditService.record_write(
             actor_user=user,
             action="LOGIN_SUCCEEDED",
@@ -213,7 +238,7 @@ class EmailVerificationConfirmAPIView(APIView):
 class EmailVerificationResendAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ScopedRateThrottle, EmailScopedRateThrottle]
     throttle_scope = "email_verification_resend"
 
     @extend_schema(
@@ -239,7 +264,7 @@ class EmailVerificationResendAPIView(APIView):
 class PasswordResetRequestAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ScopedRateThrottle, EmailScopedRateThrottle]
     throttle_scope = "password_reset_request"
 
     @extend_schema(

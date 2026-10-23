@@ -4,6 +4,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .models import Notification
@@ -16,6 +17,8 @@ class NotificationQuerySerializer(serializers.Serializer):
 
 class NotificationListAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
     serializer_class = NotificationSerializer
 
     @extend_schema(
@@ -35,6 +38,8 @@ class NotificationListAPIView(APIView):
 
 class NotificationReadAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
     serializer_class = NotificationSerializer
 
     @extend_schema(request=None, responses={200: NotificationSerializer})
@@ -50,6 +55,8 @@ class NotificationReadAPIView(APIView):
 
 class NotificationReadAllAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
     serializer_class = NotificationSerializer
 
     @extend_schema(request=None, responses={200: dict})

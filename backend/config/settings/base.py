@@ -162,6 +162,15 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+REDIS_CACHE_URL = os.getenv("REDIS_CACHE_URL")
+if REDIS_CACHE_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_CACHE_URL,
+        }
+    }
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -170,6 +179,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "NUM_PROXIES": int(os.getenv("DRF_NUM_PROXIES", "1")),
     "PAGE_SIZE": 20,
     "DEFAULT_THROTTLE_RATES": {
         "slot_search": "60/min",
@@ -177,10 +187,14 @@ REST_FRAMEWORK = {
         "patient_appointments": "60/min",
         "auth_register": "5/hour",
         "auth_login": "10/min",
+        "auth_login_email": "10/min",
+        "auth_register_email": "3/hour",
         "auth_refresh": "30/min",
         "email_verification_confirm": "30/min",
         "email_verification_resend": "3/hour",
+        "email_verification_resend_email": "3/hour",
         "password_reset_request": "5/hour",
+        "password_reset_request_email": "3/hour",
         "password_reset_confirm": "10/min",
         "branch_list": "60/min",
         "branch_detail": "120/min",
@@ -194,6 +208,7 @@ REST_FRAMEWORK = {
         "clinical_attachment": "30/min",
         "management_reports": "60/min",
         "staff_invitation_accept": "10/min",
+        "patient_read": "120/min",
     },
 }
 

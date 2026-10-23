@@ -18,6 +18,8 @@ from .views import attachment_file_response
 
 class PatientClinicalEncounterBaseAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
 
     def queryset(self):
         profile = get_object_or_404(PatientProfile, user=self.request.user)

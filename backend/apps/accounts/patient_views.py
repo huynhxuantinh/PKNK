@@ -3,6 +3,7 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.audit.services import AuditService
@@ -40,6 +41,8 @@ def profile_audit_snapshot(profile, changed_fields):
 
 class PatientProfileMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "patient_read"
 
     def get_object(self, request):
         return get_object_or_404(

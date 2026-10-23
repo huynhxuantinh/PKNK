@@ -3,6 +3,8 @@ x-django-environment: &django_environment
   DB_PORT: 5432
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/1
+  REDIS_CACHE_URL: redis://redis:6379/2
+  DRF_NUM_PROXIES: "1"
   GIS_BIN_DIR: ""
   GDAL_LIBRARY_PATH: ""
   GEOS_LIBRARY_PATH: ""
