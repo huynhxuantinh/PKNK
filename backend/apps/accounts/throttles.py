@@ -18,6 +18,7 @@ class EmailScopedRateThrottle(ScopedRateThrottle):
             return super().get_cache_key(request, view)
         digest = hashlib.sha256(email.encode("utf-8")).hexdigest()
         return self.cache_format % {"scope": self.scope, "ident": f"email:{digest}"}
+
     def allow_request(self, request, view):
         base_scope = getattr(view, "throttle_scope", None)
         if not base_scope:
@@ -28,4 +29,3 @@ class EmailScopedRateThrottle(ScopedRateThrottle):
             return True
         self.num_requests, self.duration = self.parse_rate(self.rate)
         return SimpleRateThrottle.allow_request(self, request, view)
-
