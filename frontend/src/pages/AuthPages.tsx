@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
@@ -86,8 +86,6 @@ export function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [consented, setConsented] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -98,7 +96,7 @@ export function RegisterPage() {
     setError('')
     try {
       if (!consented) throw new Error('Bạn cần đồng ý xử lý dữ liệu cá nhân.')
-      await register({ fullName, phone, email, password, passwordConfirm })
+      await register({ fullName, phone, email })
       const returnTo = searchParams.get('returnTo')
       const next = new URLSearchParams({ email: email.trim() })
       if (returnTo) next.set('returnTo', returnTo)
@@ -116,11 +114,6 @@ export function RegisterPage() {
         <label>Họ và tên<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" placeholder="Nguyễn Văn A" required /></label>
         <label>Số điện thoại<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value.replace(/[\s-]/g, ''))} autoComplete="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" placeholder="090 123 4567" required /></label>
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
-        <div className="auth-form-row">
-          <label>Mật khẩu<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="Tạo mật khẩu" required /></label>
-          <label>Xác nhận mật khẩu<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="Nhập lại mật khẩu" required /></label>
-        </div>
-        <small className="password-hint">Mật khẩu không được quá giống thông tin cá nhân và không được quá phổ biến.</small>
         <label className="auth-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} required /><span>Tôi đồng ý để DentaVie xử lý dữ liệu cá nhân phục vụ chăm sóc sức khỏe.</span></label>
         {error && <p className="auth-page-error">{error}</p>}
         <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang tạo tài khoản…' : 'Đăng ký'}</button>
@@ -131,19 +124,19 @@ export function RegisterPage() {
 }
 
 export function EmailVerificationPendingPage() {
-  const { isAuthenticated, user } = useAuth()
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const email = searchParams.get('email') || user?.email || 'email của bạn'
+  const email = searchParams.get('email') || user?.email || ''
 
   async function resend() {
-    if (!isAuthenticated) return
+    if (!email) return
     setIsSubmitting(true)
     setError('')
     try {
-      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', { method: 'POST' }, { auth: true })
+      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', { method: 'POST', body: JSON.stringify({ email }) })
       setMessage(response.data.message)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể gửi lại email xác minh.')
@@ -160,7 +153,7 @@ export function EmailVerificationPendingPage() {
         <p>Nếu thông tin hợp lệ, liên kết xác minh sẽ được gửi tới email bạn đã cung cấp. Mở liên kết trong email để kích hoạt chức năng đặt lịch.</p>
         {message && <p className="auth-page-message">{message}</p>}
         {error && <p className="auth-page-error">{error}</p>}
-        {isAuthenticated ? <button className="auth-submit" type="button" onClick={resend} disabled={isSubmitting}>{isSubmitting ? 'Đang gửi…' : 'Gửi lại email xác minh'}</button> : <Link to="/dang-nhap">Đăng nhập để gửi lại email</Link>}
+        {email ? <button className="auth-submit" type="button" onClick={resend} disabled={isSubmitting}>{isSubmitting ? 'Đang gửi…' : 'Gửi lại email xác minh'}</button> : <Link to="/dang-ky">Đăng ký tài khoản</Link>}
       </div>
     </AuthShell>
   )
@@ -171,35 +164,42 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const returnTo = searchParams.get('returnTo')
-  const [state, setState] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error')
+  const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState(token ? '' : 'Liên kết xác minh không hợp lệ.')
-  const verifiedTokenRef = useRef<string | null>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
 
-  useEffect(() => {
-    if (!token || verifiedTokenRef.current === token) return
-    // StrictMode re-runs effects in development. A verification token is
-    // single-use, so record it before sending the request.
-    verifiedTokenRef.current = token
-    apiRequest<{ data: import('../types/api').User }>('/auth/email-verification/confirm/', {
-      method: 'POST', body: JSON.stringify({ token }),
-    }).then((response) => {
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (!token) return
+    setIsSubmitting(true)
+    setMessage('')
+    try {
+      const response = await apiRequest<{ data: import('../types/api').User }>('/auth/email-verification/confirm/', {
+        method: 'POST', body: JSON.stringify({ token, new_password: password, new_password_confirm: passwordConfirm }),
+      })
       updateUser(response.data)
-      setState('success')
-      setMessage('Email đã được xác minh. Vui lòng đăng nhập để đặt lịch khám.')
-    }).catch((reason) => {
-      setState('error')
+      setIsSuccess(true)
+      setMessage('Email đã được xác minh. Bạn có thể đăng nhập để đặt lịch khám.')
+    } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : 'Không thể xác minh email.')
-    })
-  }, [token, updateUser])
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
-    <AuthShell title="Xác minh email" description="Đang kiểm tra liên kết xác minh của bạn." seoPath="/verify-email">
-      <div className="auth-page-success">
-        <span>{state === 'loading' ? '…' : state === 'success' ? '✓' : '!'}</span>
-        <strong>{state === 'loading' ? 'Đang xác minh email' : state === 'success' ? 'Xác minh thành công' : 'Không thể xác minh email'}</strong>
-        <p>{message || 'Vui lòng chờ trong giây lát.'}</p>
-        {state !== 'loading' && <Link to={state === 'success' ? `/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}` : '/xac-minh-email'}>{state === 'success' ? 'Đăng nhập' : 'Gửi lại email xác minh'}</Link>}
-      </div>
+    <AuthShell title="Xác minh email" description="Đặt mật khẩu để kích hoạt tài khoản của bạn." seoPath="/verify-email">
+      {isSuccess ? <div className="auth-page-success"><span>✓</span><strong>Xác minh thành công</strong><p>{message}</p><Link to={`/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}>Đăng nhập</Link></div> : (
+        <form className="auth-page-form" onSubmit={handleSubmit}>
+          <label>Mật khẩu<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="Tạo mật khẩu" required /></label>
+          <label>Xác nhận mật khẩu<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="Nhập lại mật khẩu" required /></label>
+          <small className="password-hint">Mật khẩu không được quá giống thông tin cá nhân và không được quá phổ biến.</small>
+          {message && <p className="auth-page-error">{message}</p>}
+          <button className="auth-submit" disabled={isSubmitting || !token}>{isSubmitting ? 'Đang xác minh…' : 'Xác minh và kích hoạt'}</button>
+        </form>
+      )}
     </AuthShell>
   )
 }

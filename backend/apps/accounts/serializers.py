@@ -1,6 +1,4 @@
 from django.contrib.auth import authenticate
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -88,8 +86,6 @@ class RegistrationSerializer(serializers.Serializer):
         max_length=16,
         error_messages={"invalid": "Số điện thoại không hợp lệ."},
     )
-    password = serializers.CharField(write_only=True, trim_whitespace=False)
-    password_confirm = serializers.CharField(write_only=True, trim_whitespace=False)
     consent_to_data_processing = serializers.BooleanField(write_only=True)
 
     def validate_email(self, value):
@@ -102,25 +98,12 @@ class RegistrationSerializer(serializers.Serializer):
             )
         return value
 
-    def validate(self, attrs):
-        if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError(
-                {"password_confirm": "Mật khẩu xác nhận không khớp."}
-            )
-        candidate = User(email=attrs["email"], full_name=attrs["full_name"])
-        try:
-            validate_password(attrs["password"], user=candidate)
-        except DjangoValidationError as error:
-            raise serializers.ValidationError({"password": error.messages}) from error
-        return attrs
-
     def create(self, validated_data):
         request = self.context["request"]
         return RegistrationService.register_patient(
             email=validated_data["email"],
             full_name=validated_data["full_name"],
             phone=validated_data["phone"],
-            password=validated_data["password"],
             ip_address=request.META.get("REMOTE_ADDR"),
             user_agent=request.META.get("HTTP_USER_AGENT"),
         )
@@ -148,6 +131,22 @@ class LogoutSerializer(serializers.Serializer):
 
 class EmailVerificationConfirmSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=200, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password_confirm = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Mật khẩu xác nhận không khớp."}
+            )
+        return attrs
+
+
+class EmailVerificationResendSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+
+    def validate_email(self, value):
+        return value.strip().lower()
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

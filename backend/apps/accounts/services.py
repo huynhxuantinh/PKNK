@@ -56,7 +56,7 @@ class EmailVerificationService:
 
     @classmethod
     @transaction.atomic
-    def verify_token(cls, raw_token):
+    def verify_token(cls, raw_token, new_password):
         now = timezone.now()
         token_record = (
             EmailVerificationToken.objects.select_for_update()
@@ -74,12 +74,16 @@ class EmailVerificationService:
         if user.email_verified_at is not None:
             raise InvalidEmailVerificationToken
 
+        validate_password(new_password, user=user)
+        user.set_password(new_password)
         user.email_verified_at = now
-        user.save(update_fields=["email_verified_at"])
+        user.save(update_fields=["password", "email_verified_at"])
         EmailVerificationToken.objects.filter(
             user=user,
             used_at__isnull=True,
         ).update(used_at=now)
+        for outstanding_token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding_token)
         return user
 
 
@@ -145,14 +149,13 @@ class RegistrationService:
         email,
         full_name,
         phone,
-        password,
         ip_address=None,
         user_agent=None,
     ):
         user = User.objects.create_user(
             email=email,
             full_name=full_name,
-            password=password,
+            password=None,
         )
         PatientProfile.objects.create(user=user, phone=phone)
         ConsentRecord.objects.create(
@@ -173,16 +176,14 @@ class RegistrationService:
         email,
         full_name,
         phone,
-        password,
         ip_address=None,
         user_agent=None,
     ):
-        """Replace an unverified patient's pending registration safely.
+        """Refresh a pending registration without creating usable credentials.
 
-        Email ownership is proven by the verification link, so a subsequent
-        registration for the same still-unverified email must replace the
-        original credentials. Otherwise a pre-hijacker could keep their
-        password while the real mailbox owner verifies the account.
+        Passwords are set only after the mailbox owner proves control of the
+        email through the verification link. A later registration therefore
+        cannot take over an account by changing its password.
         """
         user = (
             User.objects.select_for_update()
@@ -198,7 +199,7 @@ class RegistrationService:
             return None
 
         user.full_name = full_name
-        user.set_password(password)
+        user.set_unusable_password()
         user.save(update_fields=["full_name", "password"])
         profile = PatientProfile.objects.select_for_update().get(user=user)
         profile.phone = phone

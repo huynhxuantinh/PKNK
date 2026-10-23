@@ -72,12 +72,14 @@ class BookingService:
             )
 
         organization = branch_service.branch.organization
-        if not Membership.objects.filter(
+        membership, _ = Membership.objects.get_or_create(
             user=patient_user,
             organization=organization,
             role=Membership.Role.PATIENT,
-            is_active=True,
-        ).exists():
+            branch=None,
+            defaults={"is_active": True},
+        )
+        if not membership.is_active:
             raise BookingValidationError(
                 "Tài khoản chưa có quyền bệnh nhân tại chuỗi phòng khám này.",
                 code="patient_membership_required",

@@ -36,8 +36,6 @@ interface RegisterInput {
   fullName: string
   phone: string
   email: string
-  password: string
-  passwordConfirm: string
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -95,8 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: input.fullName,
         phone: input.phone,
         email: input.email,
-        password: input.password,
-        password_confirm: input.passwordConfirm,
         consent_to_data_processing: true,
       }),
     })

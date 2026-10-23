@@ -193,6 +193,34 @@ class SchedulingApiTests(APITestCase):
         self.assertEqual(appointment.chair, self.chair)
         self.assertEqual(appointment.status, Appointment.Status.HELD)
 
+    def test_create_hold_creates_patient_membership_for_the_organization(self):
+        Membership.objects.filter(
+            user=self.patient_user,
+            organization=self.organization,
+            role=Membership.Role.PATIENT,
+        ).delete()
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "starts_at": self.start_at().isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            Membership.objects.filter(
+                user=self.patient_user,
+                organization=self.organization,
+                branch__isnull=True,
+                role=Membership.Role.PATIENT,
+                is_active=True,
+            ).exists()
+        )
+
     def test_create_hold_expires_stale_hold_before_claiming_the_same_slot(self):
         self.client.force_authenticate(self.patient_user)
         payload = {

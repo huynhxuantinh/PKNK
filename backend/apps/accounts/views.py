@@ -21,6 +21,7 @@ from .models import User
 from .serializers import (
     AuthResponseSerializer,
     EmailVerificationConfirmSerializer,
+    EmailVerificationResendSerializer,
     InvalidCredentials,
     LoginSerializer,
     LogoutSerializer,
@@ -90,7 +91,6 @@ class RegistrationAPIView(APIView):
                 email=serializer.validated_data["email"],
                 full_name=serializer.validated_data["full_name"],
                 phone=serializer.validated_data["phone"],
-                password=serializer.validated_data["password"],
                 ip_address=request.META.get("REMOTE_ADDR"),
                 user_agent=request.META.get("HTTP_USER_AGENT"),
             )
@@ -196,25 +196,40 @@ class EmailVerificationConfirmAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         try:
             user = EmailVerificationService.verify_token(
-                serializer.validated_data["token"]
+                serializer.validated_data["token"],
+                serializer.validated_data["new_password"],
             )
         except InvalidEmailVerificationToken as error:
             raise DRFValidationError(
                 {"token": "Liên kết xác minh không hợp lệ hoặc đã hết hạn."}
             ) from error
+        except DjangoValidationError as error:
+            raise DRFValidationError({"new_password": error.messages}) from error
 
         user = user_with_access_context(user.pk)
         return Response({"data": UserSerializer(user).data})
 
 
 class EmailVerificationResendAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "email_verification_resend"
 
-    @extend_schema(request=None, responses={202: MessageResponseSerializer})
+    @extend_schema(
+        request=EmailVerificationResendSerializer,
+        responses={202: MessageResponseSerializer},
+    )
     def post(self, request):
-        queue_verification_email(request.user.pk)
+        serializer = EmailVerificationResendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.filter(
+            email__iexact=serializer.validated_data["email"],
+            is_active=True,
+            email_verified_at__isnull=True,
+        ).first()
+        if user is not None:
+            queue_verification_email(user.pk)
         return Response(
             {"data": {"message": "Nếu cần xác minh, email mới sẽ được gửi."}},
             status=status.HTTP_202_ACCEPTED,

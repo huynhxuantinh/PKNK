@@ -46,8 +46,6 @@ class AuthenticationAPITests(APITestCase):
         "email": "Patient@Example.COM",
         "full_name": "Bệnh nhân thử nghiệm",
         "phone": "0901234567",
-        "password": "StrongPassword!2026",
-        "password_confirm": "StrongPassword!2026",
         "consent_to_data_processing": True,
     }
 
@@ -58,12 +56,12 @@ class AuthenticationAPITests(APITestCase):
         data = {**self.registration_data, **overrides}
         return self.client.post(reverse("accounts:register"), data, format="json")
 
-    def login(self):
+    def login(self, password="StrongPassword!2026"):
         return self.client.post(
             reverse("accounts:login"),
             {
                 "email": self.registration_data["email"],
-                "password": self.registration_data["password"],
+                "password": password,
             },
             format="json",
         )
@@ -77,7 +75,7 @@ class AuthenticationAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         user = User.objects.get(email="patient@example.com")
-        self.assertTrue(user.check_password(self.registration_data["password"]))
+        self.assertFalse(user.has_usable_password())
         self.assertEqual(PatientProfile.objects.get(user=user).phone, "0901234567")
         self.assertTrue(
             ConsentRecord.objects.filter(user=user, is_granted=True).exists()
@@ -104,12 +102,12 @@ class AuthenticationAPITests(APITestCase):
 
         first_response = self.client.post(
             reverse("accounts:email-verification-confirm"),
-            {"token": raw_token},
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
             format="json",
         )
         second_response = self.client.post(
             reverse("accounts:email-verification-confirm"),
-            {"token": raw_token},
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
             format="json",
         )
 
@@ -129,7 +127,7 @@ class AuthenticationAPITests(APITestCase):
 
         response = self.client.post(
             reverse("accounts:email-verification-confirm"),
-            {"token": raw_token},
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
             format="json",
         )
 
@@ -139,12 +137,11 @@ class AuthenticationAPITests(APITestCase):
     def test_resend_verification_invalidates_previous_token(self):
         self.register()
         first_raw_token = self.verification_token_from_latest_email()
-        access = self.login().data["data"]["tokens"]["access"]
         mail.outbox.clear()
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
         response = self.client.post(
             reverse("accounts:email-verification-resend"),
+            {"email": self.registration_data["email"]},
             format="json",
         )
         second_raw_token = self.verification_token_from_latest_email()
@@ -172,32 +169,42 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.data, first_response.data)
         self.assertEqual(User.objects.count(), 1)
 
-    def test_register_again_replaces_an_unverified_patients_credentials(self):
+    def test_register_again_keeps_password_unusable_until_email_owner_verifies(self):
         self.register()
 
         response = self.register(
             full_name="Chủ email thực tế",
             phone="0987654321",
-            password="NewStrongPassword!2026",
-            password_confirm="NewStrongPassword!2026",
         )
 
         user = User.objects.get(email="patient@example.com")
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(user.full_name, "Chủ email thực tế")
-        self.assertTrue(user.check_password("NewStrongPassword!2026"))
-        self.assertFalse(user.check_password("StrongPassword!2026"))
+        self.assertFalse(user.has_usable_password())
         self.assertEqual(user.patient_profile.phone, "0987654321")
         self.assertEqual(ConsentRecord.objects.filter(user=user).count(), 2)
 
-    def test_register_rejects_weak_password(self):
-        response = self.register(password="123", password_confirm="123")
+    def test_verification_rejects_weak_password(self):
+        self.register()
+        raw_token = self.verification_token_from_latest_email()
+
+        response = self.client.post(
+            reverse("accounts:email-verification-confirm"),
+            {"token": raw_token, "new_password": "123", "new_password_confirm": "123"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(User.objects.exists())
+        self.assertFalse(User.objects.get().has_usable_password())
 
     def test_login_returns_tokens_and_user(self):
         self.register()
+        raw_token = self.verification_token_from_latest_email()
+        self.client.post(
+            reverse("accounts:email-verification-confirm"),
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
+            format="json",
+        )
 
         response = self.client.post(
             reverse("accounts:login"),
@@ -230,6 +237,12 @@ class AuthenticationAPITests(APITestCase):
 
     def test_me_requires_access_token_and_returns_account(self):
         self.register()
+        raw_token = self.verification_token_from_latest_email()
+        self.client.post(
+            reverse("accounts:email-verification-confirm"),
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
+            format="json",
+        )
         access = self.login().data["data"]["tokens"]["access"]
 
         unauthorized = self.client.get(reverse("accounts:me"))
@@ -246,6 +259,12 @@ class AuthenticationAPITests(APITestCase):
 
     def test_refresh_then_logout_revokes_refresh_token(self):
         self.register()
+        raw_token = self.verification_token_from_latest_email()
+        self.client.post(
+            reverse("accounts:email-verification-confirm"),
+            {"token": raw_token, "new_password": "StrongPassword!2026", "new_password_confirm": "StrongPassword!2026"},
+            format="json",
+        )
         login_response = self.login()
         access = login_response.data["data"]["tokens"]["access"]
         refresh = login_response.data["data"]["tokens"]["refresh"]
