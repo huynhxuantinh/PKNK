@@ -18,6 +18,10 @@ export type BookingAction =
   | { type: 'select_dentist'; dentist: BranchDentist }
   | { type: 'reset' }
 
+export function emptyBookingSelection(): BookingSelection {
+  return { branch: null, service: null, date: dateInputValue(1), slot: null, dentist: null }
+}
+
 export function dateInputValue(offsetDays = 0, now = new Date()) {
   const hcmDate = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Ho_Chi_Minh',
@@ -49,7 +53,7 @@ export function initialBookingSelection(): BookingSelection {
       sessionStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY)
     }
   }
-  return { branch: null, service: null, date: dateInputValue(1), slot: null, dentist: null }
+  return emptyBookingSelection()
 }
 
 export function bookingSelectionReducer(
@@ -68,6 +72,7 @@ export function bookingSelectionReducer(
     case 'select_dentist':
       return { ...state, dentist: action.dentist }
     case 'reset':
-      return initialBookingSelection()
+      // A reset starts a new booking; it must not restore the previous draft.
+      return emptyBookingSelection()
   }
 }

@@ -165,3 +165,55 @@ class RegistrationService:
             evidence={"source": "web_registration"},
         )
         return user
+
+    @staticmethod
+    @transaction.atomic
+    def replace_unverified_patient_registration(
+        *,
+        email,
+        full_name,
+        phone,
+        password,
+        ip_address=None,
+        user_agent=None,
+    ):
+        """Replace an unverified patient's pending registration safely.
+
+        Email ownership is proven by the verification link, so a subsequent
+        registration for the same still-unverified email must replace the
+        original credentials. Otherwise a pre-hijacker could keep their
+        password while the real mailbox owner verifies the account.
+        """
+        user = (
+            User.objects.select_for_update()
+            .filter(
+                email__iexact=email,
+                is_active=True,
+                email_verified_at__isnull=True,
+                patient_profile__isnull=False,
+            )
+            .first()
+        )
+        if user is None:
+            return None
+
+        user.full_name = full_name
+        user.set_password(password)
+        user.save(update_fields=["full_name", "password"])
+        profile = PatientProfile.objects.select_for_update().get(user=user)
+        profile.phone = phone
+        profile.save(update_fields=["phone", "updated_at"])
+        # Sessions created by a previous registrant must not survive a
+        # credential replacement.
+        for outstanding_token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding_token)
+        ConsentRecord.objects.create(
+            user=user,
+            policy_version=settings.PRIVACY_POLICY_VERSION,
+            purpose_code="HEALTHCARE_SERVICE",
+            is_granted=True,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            evidence={"source": "web_registration_replacement"},
+        )
+        return user

@@ -78,8 +78,12 @@ async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify({ refresh: tokens.refresh }),
     })
     if (!response.ok) {
-      // Do not erase a newer session that was written by another tab.
-      if (getStoredTokens()?.refresh === tokens.refresh) {
+      // Only an invalid/revoked refresh token ends the session. Rate limits and
+      // server failures are temporary and must not log the user out.
+      if (
+        (response.status === 400 || response.status === 401)
+        && getStoredTokens()?.refresh === tokens.refresh
+      ) {
         storeTokens(null)
         notifyAuthExpired()
       }
@@ -101,9 +105,13 @@ async function refreshAccessToken(): Promise<string | null> {
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
-  options: { auth?: boolean; retry?: boolean } = {},
+  options: {
+    auth?: boolean
+    retry?: boolean
+    retryInit?: () => RequestInit
+  } = {},
 ): Promise<T> {
-  const { auth = false, retry = true } = options
+  const { auth = false, retry = true, retryInit } = options
   const headers = new Headers(init.headers)
   if (init.body) headers.set('Content-Type', 'application/json')
   if (auth) {
@@ -115,7 +123,9 @@ export async function apiRequest<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (response.status === 401 && auth && retry) {
     const access = await refreshAccessToken()
-    if (access) return apiRequest<T>(path, init, { auth: true, retry: false })
+    if (access) {
+      return apiRequest<T>(path, retryInit ? retryInit() : init, { auth: true, retry: false })
+    }
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => null)
@@ -128,8 +138,18 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
+export function downloadRequestPath(path: string): string {
+  if (/^https?:\/\//.test(path)) {
+    const url = new URL(path)
+    // Django may build an absolute URL using Docker's internal `web:8000`
+    // hostname. Keep only the API path so the browser uses the Vite proxy.
+    return `${url.pathname}${url.search}`
+  }
+  return path.startsWith(API_BASE_URL) ? path : `${API_BASE_URL}${path}`
+}
+
 export async function downloadAuthenticatedFile(path: string, filename: string) {
-  const downloadUrl = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`
+  const downloadUrl = downloadRequestPath(path)
   const request = async () => fetch(downloadUrl, {
     headers: { Authorization: `Bearer ${getStoredTokens()?.access || ''}` },
   })

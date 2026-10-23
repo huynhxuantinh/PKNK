@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
@@ -173,23 +173,23 @@ export function VerifyEmailPage() {
   const returnTo = searchParams.get('returnTo')
   const [state, setState] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error')
   const [message, setMessage] = useState(token ? '' : 'Liên kết xác minh không hợp lệ.')
+  const verifiedTokenRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!token) return
-    let active = true
+    if (!token || verifiedTokenRef.current === token) return
+    // StrictMode re-runs effects in development. A verification token is
+    // single-use, so record it before sending the request.
+    verifiedTokenRef.current = token
     apiRequest<{ data: import('../types/api').User }>('/auth/email-verification/confirm/', {
       method: 'POST', body: JSON.stringify({ token }),
     }).then((response) => {
-      if (!active) return
       updateUser(response.data)
       setState('success')
       setMessage('Email đã được xác minh. Vui lòng đăng nhập để đặt lịch khám.')
     }).catch((reason) => {
-      if (!active) return
       setState('error')
       setMessage(reason instanceof Error ? reason.message : 'Không thể xác minh email.')
     })
-    return () => { active = false }
   }, [token, updateUser])
 
   return (

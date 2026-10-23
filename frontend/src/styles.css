@@ -402,6 +402,7 @@ main section[id] { scroll-margin-top: 92px; }
 .summary-subvalue { margin-top: 4px; display: block; color: var(--muted); font-size: 10px; font-weight: 550; }
 .summary-note { padding: 11px; background: #f0f5f3; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .summary-note.warning { background: #fff5de; color: #825716; }
+.summary-note-link { color: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 .policy-note { margin-top: 11px; display: block; color: var(--muted); text-align: center; line-height: 1.4; }
 
 .state-message { margin: 0; padding: 22px; background: #f6f9f8; color: var(--muted); text-align: center; }

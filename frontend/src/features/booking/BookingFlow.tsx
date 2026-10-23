@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import {
   cancelAppointmentHold,
@@ -42,12 +43,17 @@ function EmptyState({ label }: { label: string }) {
   return <p className="state-message">{label}</p>
 }
 
+function holdIsNoLongerUsable(reason: unknown) {
+  return reason instanceof ApiError && [404, 409].includes(reason.status)
+}
+
 interface BookingFlowProps {
   initialBranchId?: number
 }
 
 export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const { user, isAuthenticated, logout } = useAuth()
+  const location = useLocation()
   const [selection, dispatch] = useReducer(
     bookingSelectionReducer,
     undefined,
@@ -118,7 +124,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         if (!initialBranchApplied.current && initialBranchId) {
           initialBranchApplied.current = true
           const initialBranch = response.data.find((branch) => branch.id_branch === initialBranchId)
-          if (initialBranch && selection.branch?.id_branch !== initialBranch.id_branch) dispatch({ type: 'select_branch', branch: initialBranch })
+          if (initialBranch) dispatch({ type: 'select_branch', branch: initialBranch })
         }
       })
       .catch((reason) => {
@@ -127,7 +133,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       })
       .finally(() => setBranchesLoading(false))
     return () => controller.abort()
-  }, [branchQuery, initialBranchId, selection.branch?.id_branch])
+  }, [branchQuery, initialBranchId])
 
   useEffect(() => {
     if (!selection.branch) {
@@ -261,17 +267,28 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout()
       const message = reason instanceof Error ? reason.message : 'Không thể đặt lịch.'
-      setError(createdHold ? `${message} Chỗ giữ đã được giải phóng, vui lòng chọn giờ khác.` : message)
-      if (createdHold) {
+      if (createdHold && holdIsNoLongerUsable(reason)) {
         setHeldAppointment(null)
         await cancelAppointmentHold(createdHold.public_code).catch(() => undefined)
-      }
-      if (selection.service && selection.date) {
-        const response = await listSlots(
-          selection.service.id_branch_service,
-          selection.date,
-        ).catch(() => null)
-        if (response) setSlots(response.data)
+        if (selection.service && selection.date) {
+          const response = await listSlots(
+            selection.service.id_branch_service,
+            selection.date,
+          ).catch(() => null)
+          if (response) setSlots(response.data)
+        }
+        setError(`${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`)
+      } else if (createdHold) {
+        setError(`${message} Chỗ của bạn vẫn đang được giữ, hãy thử xác nhận lại.`)
+      } else {
+        setError(message)
+        if (selection.service && selection.date) {
+          const response = await listSlots(
+            selection.service.id_branch_service,
+            selection.date,
+          ).catch(() => null)
+          if (response) setSlots(response.data)
+        }
       }
     } finally {
       setBooking(false)
@@ -286,8 +303,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       await confirmHeld(heldAppointment)
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout()
-      setError(`${reason instanceof Error ? reason.message : 'Không thể xác nhận lịch.'} Chỗ giữ đã được giải phóng, vui lòng chọn giờ khác.`)
-      await releaseHeldAppointment()
+      const message = reason instanceof Error ? reason.message : 'Không thể xác nhận lịch.'
+      if (holdIsNoLongerUsable(reason)) {
+        await releaseHeldAppointment()
+        setError(`${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`)
+      } else {
+        setError(`${message} Chỗ của bạn vẫn đang được giữ, hãy thử xác nhận lại.`)
+      }
     } finally {
       setBooking(false)
     }
@@ -498,7 +520,17 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           {patientNote && <div><dt>Ghi chú</dt><dd>{patientNote}</dd></div>}
         </dl>
         {!isAuthenticated && <p className="summary-note">Đăng nhập ở góc trên để hoàn tất đặt lịch.</p>}
-        {user && !user.email_verified && <p className="summary-note warning">Email cần được xác minh trước khi đặt.</p>}
+        {user && !user.email_verified && (
+          <p className="summary-note warning">
+            Email cần được xác minh trước khi đặt.{' '}
+            <Link
+              className="summary-note-link"
+              to={`/xac-minh-email?returnTo=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`}
+            >
+              Xác minh email
+            </Link>
+          </p>
+        )}
         {heldAppointment ? (
           <div className="booking-held-actions"><button className="button button-primary button-wide" type="button" disabled={booking} onClick={retryConfirmation}>{booking ? 'Đang xác nhận…' : 'Xác nhận chỗ đang giữ'}</button><button className="button button-secondary button-wide" type="button" disabled={booking} onClick={() => void releaseHeldAppointment()}>Chọn giờ khác</button></div>
         ) : (

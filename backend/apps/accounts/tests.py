@@ -172,6 +172,24 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.data, first_response.data)
         self.assertEqual(User.objects.count(), 1)
 
+    def test_register_again_replaces_an_unverified_patients_credentials(self):
+        self.register()
+
+        response = self.register(
+            full_name="Chủ email thực tế",
+            phone="0987654321",
+            password="NewStrongPassword!2026",
+            password_confirm="NewStrongPassword!2026",
+        )
+
+        user = User.objects.get(email="patient@example.com")
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(user.full_name, "Chủ email thực tế")
+        self.assertTrue(user.check_password("NewStrongPassword!2026"))
+        self.assertFalse(user.check_password("StrongPassword!2026"))
+        self.assertEqual(user.patient_profile.phone, "0987654321")
+        self.assertEqual(ConsentRecord.objects.filter(user=user).count(), 2)
+
     def test_register_rejects_weak_password(self):
         response = self.register(password="123", password_confirm="123")
 

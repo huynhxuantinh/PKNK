@@ -10,6 +10,8 @@ export function AuthBar() {
   const menuRef = useRef<HTMLDivElement>(null)
   const isDentist = user?.memberships?.some((membership) => membership.role === 'DENTIST')
   const isBranchAdmin = user?.memberships?.some((membership) => membership.role === 'BRANCH_ADMIN')
+  const returnTo = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)
+  const verificationPath = `/xac-minh-email?returnTo=${returnTo}`
 
   useEffect(() => {
     function closeMenu(event: MouseEvent) {
@@ -47,6 +49,7 @@ export function AuthBar() {
           <div className="auth-user-menu" role="menu">
             {isDentist && <Link role="menuitem" to="/bac-si/chon-chi-nhanh" onClick={() => setIsOpen(false)}>Khu vực nha sĩ</Link>}
             {isBranchAdmin && <Link role="menuitem" to="/quan-ly-chi-nhanh" onClick={() => setIsOpen(false)}>Quản lý chi nhánh</Link>}
+            {!user.email_verified && <Link role="menuitem" to={verificationPath} onClick={() => setIsOpen(false)}>Xác minh email</Link>}
             <Link role="menuitem" to="/lich-hen" onClick={() => setIsOpen(false)}>Lịch đã đặt</Link>
             <Link role="menuitem" to="/lich-su-kham" onClick={() => setIsOpen(false)}>Lịch sử khám</Link>
             <Link role="menuitem" to="/hoa-don" onClick={() => setIsOpen(false)}>Hóa đơn</Link>
@@ -59,8 +62,6 @@ export function AuthBar() {
       </div>
     )
   }
-
-  const returnTo = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)
 
   return (
     <nav className="auth-actions" aria-label="Tài khoản">

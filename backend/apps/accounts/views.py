@@ -38,6 +38,7 @@ from .services import (
     InvalidEmailVerificationToken,
     InvalidPasswordResetToken,
     PasswordResetService,
+    RegistrationService,
 )
 from .tasks import send_email_verification, send_password_reset_email
 
@@ -85,11 +86,14 @@ class RegistrationAPIView(APIView):
         try:
             user = serializer.save()
         except IntegrityError:
-            user = User.objects.filter(
-                email__iexact=serializer.validated_data["email"],
-                is_active=True,
-                email_verified_at__isnull=True,
-            ).first()
+            user = RegistrationService.replace_unverified_patient_registration(
+                email=serializer.validated_data["email"],
+                full_name=serializer.validated_data["full_name"],
+                phone=serializer.validated_data["phone"],
+                password=serializer.validated_data["password"],
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT"),
+            )
         if user is not None:
             queue_verification_email(user.pk)
         return Response(

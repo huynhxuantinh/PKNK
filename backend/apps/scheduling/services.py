@@ -304,6 +304,17 @@ class AppointmentService:
         appointment = Appointment.objects.select_related(
             "branch__organization"
         ).get(pk=appointment_id)
+        # A network failure can leave the browser unsure whether the first
+        # confirmation reached the server. Returning an already-confirmed
+        # appointment makes a retry safe instead of reporting a false conflict.
+        if appointment.status in {
+            Appointment.Status.PENDING,
+            Appointment.Status.CONFIRMED,
+            Appointment.Status.CHECKED_IN,
+            Appointment.Status.IN_PROGRESS,
+            Appointment.Status.COMPLETED,
+        }:
+            return appointment
         target_status = (
             Appointment.Status.CONFIRMED
             if appointment.branch.organization.auto_confirm

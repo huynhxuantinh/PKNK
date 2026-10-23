@@ -15,6 +15,7 @@ from apps.organizations.models import Membership
 from .availability import AvailabilityService
 from .exceptions import BookingValidationError, SlotUnavailableError
 from .models import ACTIVE_APPOINTMENT_STATUSES, Appointment, AppointmentStatusHistory
+from .services import AppointmentService
 
 
 class BookingService:
@@ -44,6 +45,11 @@ class BookingService:
         patient_note="",
         request=None,
     ):
+        # Availability intentionally stays read-only. Before claiming a slot, clear
+        # only this branch's expired holds so stale exclusion constraints cannot
+        # reject a slot advertised as available if Celery beat is delayed.
+        AppointmentService.expire_due_holds(branch_id=branch_service.branch_id)
+
         try:
             patient_profile = PatientProfile.objects.select_for_update().get(
                 user=patient_user

@@ -112,13 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    const tokens = getStoredTokens()
+    const logoutRequest = (): RequestInit | null => {
+      const refresh = getStoredTokens()?.refresh
+      return refresh
+        ? { method: 'POST', body: JSON.stringify({ refresh }) }
+        : null
+    }
     try {
-      if (tokens?.refresh) {
+      const initialRequest = logoutRequest()
+      if (initialRequest) {
         await apiRequest<void>(
           '/auth/logout/',
-          { method: 'POST', body: JSON.stringify({ refresh: tokens.refresh }) },
-          { auth: true },
+          initialRequest,
+          { auth: true, retryInit: () => logoutRequest() || initialRequest },
         )
       }
     } catch {

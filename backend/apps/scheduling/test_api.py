@@ -193,6 +193,36 @@ class SchedulingApiTests(APITestCase):
         self.assertEqual(appointment.chair, self.chair)
         self.assertEqual(appointment.status, Appointment.Status.HELD)
 
+    def test_create_hold_expires_stale_hold_before_claiming_the_same_slot(self):
+        self.client.force_authenticate(self.patient_user)
+        payload = {
+            "branch_service_id": self.branch_service.id_branch_service,
+            "starts_at": self.start_at().isoformat(),
+        }
+
+        first_response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            payload,
+            format="json",
+        )
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        stale_hold = Appointment.objects.get(
+            public_code=first_response.data["data"]["public_code"]
+        )
+        Appointment.objects.filter(pk=stale_hold.pk).update(
+            expires_at=timezone.now() - timedelta(seconds=1)
+        )
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        stale_hold.refresh_from_db()
+        self.assertEqual(stale_hold.status, Appointment.Status.EXPIRED)
+
     def test_create_hold_stores_booking_contact_and_patient_note_without_changing_profile(self):
         self.client.force_authenticate(self.patient_user)
 
@@ -257,6 +287,19 @@ class SchedulingApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"]["status"], Appointment.Status.CONFIRMED)
+
+        retry_response = self.client.post(
+            reverse(
+                "scheduling:appointment-confirm",
+                kwargs={"public_code": public_code},
+            ),
+            format="json",
+        )
+
+        self.assertEqual(retry_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            retry_response.data["data"]["status"], Appointment.Status.CONFIRMED
+        )
 
     def test_patient_can_cancel_own_held_appointment(self):
         self.client.force_authenticate(self.patient_user)

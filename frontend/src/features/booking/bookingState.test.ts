@@ -67,4 +67,13 @@ describe('bookingSelectionReducer', () => {
     expect(afterSlot.dentist).toBeNull()
     expect(afterDentist.dentist).toBe(dentist)
   })
+
+  it('reset xóa toàn bộ lựa chọn thay vì đọc lại bản nháp', () => {
+    const result = bookingSelectionReducer(selected, { type: 'reset' })
+
+    expect(result.branch).toBeNull()
+    expect(result.service).toBeNull()
+    expect(result.slot).toBeNull()
+    expect(result.dentist).toBeNull()
+  })
 })
