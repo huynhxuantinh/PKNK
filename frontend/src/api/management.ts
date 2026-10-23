@@ -80,3 +80,5 @@ export const patchManagedWorkShift = (id: number, data: Partial<ManagedWorkShift
 export const listManagedTimeOffs = (branchId: number) => apiRequest<{ data: ManagedTimeOff[] }>(`/management/branches/${branchId}/time-offs/`, {}, { auth: true })
 export const createManagedTimeOff = (branchId: number, data: Omit<ManagedTimeOff, 'id_time_off' | 'branch_id'> & { applies_to_all_branches?: boolean }) => apiRequest<{ data: ManagedTimeOff }>(`/management/branches/${branchId}/time-offs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+
+export const branchReport = (branchId: number, name: 'revenue' | 'appointments' | 'chair-utilization', dateFrom: string, dateTo: string) => apiRequest<{ data: Record<string, unknown> }>(`/management/branches/${branchId}/reports/${name}/?${new URLSearchParams({ date_from: dateFrom, date_to: dateTo, ...(name === 'revenue' ? { interval: 'DAY' } : {}) })}`, {}, { auth: true })

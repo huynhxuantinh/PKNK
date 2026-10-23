@@ -12,6 +12,7 @@ import { DentistBranchSelectionPage } from './pages/DentistBranchSelectionPage'
 import { DentistExaminationPage } from './pages/DentistExaminationPage'
 import { BranchManagementPage } from './pages/BranchManagementPage'
 import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
+import { BranchReportsPage } from './pages/BranchReportsPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/bac-si/kham/:publicCode" element={<DentistExaminationPage />} />
           <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
           <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
+          <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
           <Route path="/dang-ky" element={<RegisterPage />} />
           <Route path="/xac-minh-email" element={<EmailVerificationPendingPage />} />
