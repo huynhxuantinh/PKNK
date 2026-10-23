@@ -144,6 +144,7 @@ class RescheduleService:
         dentist_id=None,
         request=None,
     ):
+        AppointmentService.expire_due_holds(branch_id=appointment.branch_id)
         existing = Appointment.objects.filter(
             reschedule_idempotency_key=idempotency_key
         ).first()

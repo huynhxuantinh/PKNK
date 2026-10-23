@@ -67,6 +67,11 @@ class CalendarQuerySerializer(serializers.Serializer):
         return attrs
 
 
+class RescheduleSlotQuerySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    dentist_id = serializers.IntegerField(min_value=1, required=False)
+
+
 class CalendarAppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient_profile.user.full_name", read_only=True)
     patient_phone = serializers.CharField(source="patient_profile.phone", read_only=True)

@@ -12,6 +12,7 @@ from apps.audit.services import AuditService
 from apps.organizations.models import Membership
 from apps.scheduling.models import Appointment, AppointmentStatusHistory, TimeOff, WorkShift
 from apps.scheduling.services import AppointmentService
+from apps.scheduling.availability import AvailabilityService
 
 from .exceptions import ManagementConflict
 from .scheduling_serializers import (
@@ -19,6 +20,7 @@ from .scheduling_serializers import (
     CalendarQuerySerializer,
     CancellationSerializer,
     RescheduleSerializer,
+    RescheduleSlotQuerySerializer,
     TimeOffManagementSerializer,
     WorkShiftManagementSerializer,
 )
@@ -257,6 +259,38 @@ class ManagementAppointmentDetailAPIView(ManagementAPIView):
             resource_type="Appointment", resource_id=appointment.pk, request=request,
         )
         return Response({"data": self.serializer_class(appointment).data})
+
+
+class AppointmentRescheduleSlotsAPIView(ManagementAPIView):
+    """Return slots while excluding the appointment being moved."""
+
+    def get(self, request, public_code):
+        appointment = scoped_appointment(request.user, public_code)
+        if appointment.status not in {Appointment.Status.PENDING, Appointment.Status.CONFIRMED}:
+            raise ManagementConflict("Chỉ được xem giờ đổi lịch cho lịch chờ xác nhận hoặc đã xác nhận.")
+        query = RescheduleSlotQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        data = query.validated_data
+        dentist = None
+        if data.get("dentist_id"):
+            dentist = get_object_or_404(
+                appointment.branch.organization.dentists.filter(is_active=True),
+                pk=data["dentist_id"],
+            )
+        AppointmentService.expire_due_holds(branch_id=appointment.branch_id)
+        slots = AvailabilityService.list_slots(
+            branch_service=appointment.branch_service,
+            target_date=data["date"],
+            dentist=dentist,
+            exclude_appointment_id=appointment.pk,
+        )
+        return Response({"data": [{
+            "starts_at": item.starts_at,
+            "ends_at": item.ends_at,
+            "available_dentist_ids": item.dentist_ids,
+            "available_dentist_count": len(item.dentist_ids),
+            "available_chair_count": len(item.chair_ids),
+        } for item in slots]})
 
 
 class AppointmentActionAPIView(ManagementAPIView):
