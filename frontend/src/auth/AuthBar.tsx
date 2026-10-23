@@ -8,8 +8,8 @@ export function AuthBar() {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const isDentist = user?.memberships?.some((membership) => membership.role === 'DENTIST')
-  const isBranchAdmin = user?.memberships?.some((membership) => membership.role === 'BRANCH_ADMIN')
+  const isDentist = user?.memberships?.some((membership) => membership.is_active && membership.role === 'DENTIST')
+  const isBranchAdmin = user?.memberships?.some((membership) => membership.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role))
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)
   const verificationPath = `/xac-minh-email?returnTo=${returnTo}`
 

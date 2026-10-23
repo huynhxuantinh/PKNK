@@ -25,6 +25,7 @@ class MembershipSerializer(serializers.ModelSerializer):
         model = Membership
         fields = (
             "role",
+            "is_active",
             "organization_id",
             "organization_name",
             "branch_id",

@@ -2330,3 +2330,13 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
   .dentist-patient-initials { width: 39px; height: 39px; }
   .dentist-appointment-action { grid-column: 3; min-width: 0; margin-top: 5px; text-align: left; }
 }
+
+.branch-management-modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: rgb(8 45 74 / .45); }
+.branch-management-modal { width: min(100%, 440px); display: grid; gap: 1rem; padding: 1.5rem; border-radius: 16px; background: #fff; box-shadow: 0 20px 60px rgb(0 0 0 / .2); }
+.branch-management-modal h2, .branch-management-modal p { margin: 0; }
+.branch-management-modal p { color: #638095; }
+.branch-management-modal label { display: grid; gap: .4rem; font-size: .82rem; font-weight: 800; }
+.branch-management-modal textarea { min-height: 110px; padding: .7rem; border: 1px solid #cbdfe7; border-radius: 8px; resize: vertical; font: inherit; }
+.branch-management-modal > div { display: flex; justify-content: flex-end; gap: .6rem; }
+.branch-management-modal button { border: 0; border-radius: 8px; padding: .65rem .9rem; background: #078fad; color: #fff; font-weight: 800; cursor: pointer; }
+.branch-management-modal .button-secondary { background: #fff; color: #087c9d; border: 1px solid #abd6df; }

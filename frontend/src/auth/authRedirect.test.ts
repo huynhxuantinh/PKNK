@@ -15,6 +15,7 @@ describe('safeReturnPath', () => {
       email_verified_at: '2026-10-22T00:00:00Z',
       memberships: [{
         role: 'DENTIST',
+        is_active: true,
         organization_id: 1,
         organization_name: 'DentaVie',
         branch_id: 1,
@@ -34,6 +35,7 @@ describe('safeReturnPath', () => {
       email_verified_at: '2026-10-22T00:00:00Z',
       memberships: [{
         role: 'BRANCH_ADMIN',
+        is_active: true,
         organization_id: 1,
         organization_name: 'DentaVie',
         branch_id: 1,
@@ -53,6 +55,7 @@ describe('safeReturnPath', () => {
       email_verified_at: '2026-10-22T00:00:00Z',
       memberships: [{
         role: 'PATIENT',
+        is_active: true,
         organization_id: 1,
         organization_name: 'DentaVie',
         branch_id: null,

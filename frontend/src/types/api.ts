@@ -123,6 +123,7 @@ export interface User {
 
 export interface Membership {
   role: 'PATIENT' | 'DENTIST' | 'BRANCH_ADMIN' | 'ORGANIZATION_ADMIN'
+  is_active: boolean
   organization_id: number
   organization_name: string
   branch_id: number | null

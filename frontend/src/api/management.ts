@@ -15,16 +15,28 @@ export interface ManagementAppointment {
   status: ManagementAppointmentStatus
 }
 
+export interface ManagedBranch {
+  id_branch: number
+  name: string
+  is_active: boolean
+}
+
 interface ManagementAppointmentsResponse { data: ManagementAppointment[]; meta: { count: number } }
 
-export function listBranchAppointments(branchId: number, date: Date, status?: ManagementAppointmentStatus) {
-  const start = new Date(date)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 1)
-  const params = new URLSearchParams({ date_from: start.toISOString(), date_to: end.toISOString() })
+function nextHcmDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1, day + 1))
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`
+}
+
+export function listBranchAppointments(branchId: number, date: string, status?: ManagementAppointmentStatus) {
+  const params = new URLSearchParams({ date_from: `${date}T00:00:00+07:00`, date_to: `${nextHcmDate(date)}T00:00:00+07:00` })
   if (status) params.set('status', status)
   return apiRequest<ManagementAppointmentsResponse>(`/management/branches/${branchId}/appointments/?${params}`, {}, { auth: true })
+}
+
+export function listManagedOrganizationBranches(organizationId: number) {
+  return apiRequest<{ data: ManagedBranch[] }>(`/management/organizations/${organizationId}/branches/`, {}, { auth: true })
 }
 
 function updateAppointment(publicCode: string, action: 'confirm' | 'check-in' | 'no-show') {
