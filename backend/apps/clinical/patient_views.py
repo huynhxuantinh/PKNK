@@ -8,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import PatientProfile
+from apps.accounts.permissions import IsPatientOnly
 from apps.audit.services import AuditService
 from apps.scheduling.models import Appointment
 
@@ -17,7 +18,7 @@ from .views import attachment_file_response
 
 
 class PatientClinicalEncounterBaseAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
 
@@ -104,7 +105,7 @@ class PatientClinicalEncounterDetailAPIView(PatientClinicalEncounterBaseAPIView)
 
 
 class PatientClinicalAttachmentDownloadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "clinical_attachment"
 

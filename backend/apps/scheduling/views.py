@@ -9,7 +9,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import Dentist
-from apps.accounts.permissions import IsEmailVerified
+from apps.accounts.permissions import IsEmailVerified, IsPatientOnly
 from apps.catalog.models import BranchService
 
 from .availability import AvailabilityService
@@ -95,7 +95,7 @@ class SlotListAPIView(APIView):
 
 
 class AppointmentHoldCreateAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsEmailVerified]
+    permission_classes = [IsAuthenticated, IsPatientOnly, IsEmailVerified]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "appointment_booking"
 
@@ -156,7 +156,7 @@ class AppointmentHoldCreateAPIView(APIView):
 
 
 class AppointmentConfirmAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsEmailVerified]
+    permission_classes = [IsAuthenticated, IsPatientOnly, IsEmailVerified]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "appointment_booking"
 
@@ -184,7 +184,7 @@ class AppointmentConfirmAPIView(APIView):
 
 
 class AppointmentHoldCancelAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "appointment_booking"
 

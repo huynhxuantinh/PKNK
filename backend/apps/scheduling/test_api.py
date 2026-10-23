@@ -70,17 +70,17 @@ class SchedulingApiTests(APITestCase):
             password="safe-test-password",
             full_name="Người dùng khác",
         )
-        dentist_user = User.objects.create_user(
+        cls.dentist_user = User.objects.create_user(
             email="dentist-api@example.com",
             password="safe-test-password",
             full_name="Nha sĩ API",
         )
         cls.dentist = Dentist.objects.create(
-            user=dentist_user,
+            user=cls.dentist_user,
             organization=cls.organization,
         )
         Membership.objects.create(
-            user=dentist_user,
+            user=cls.dentist_user,
             organization=cls.organization,
             branch=cls.branch,
             role=Membership.Role.DENTIST,
@@ -174,6 +174,62 @@ class SchedulingApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_cannot_create_hold_or_gain_patient_membership(self):
+        manager = User.objects.create_user(
+            email="manager-booking@example.com",
+            password="safe-test-password",
+            email_verified_at=timezone.now(),
+            full_name="Quản lý API",
+        )
+        Membership.objects.create(
+            user=manager,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
+        payload = {
+            "branch_service_id": self.branch_service.id_branch_service,
+            "starts_at": self.start_at().isoformat(),
+        }
+
+        for staff_user in (self.dentist_user, manager):
+            with self.subTest(role=staff_user.email):
+                self.client.force_authenticate(staff_user)
+                response = self.client.post(
+                    reverse("scheduling:appointment-hold"), payload, format="json"
+                )
+                self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+                self.assertFalse(
+                    Membership.objects.filter(
+                        user=staff_user,
+                        role=Membership.Role.PATIENT,
+                        is_active=True,
+                    ).exists()
+                )
+
+    def test_staff_cannot_confirm_or_cancel_patient_hold(self):
+        self.client.force_authenticate(self.patient_user)
+        hold = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "starts_at": self.start_at().isoformat(),
+            },
+            format="json",
+        )
+        public_code = hold.data["data"]["public_code"]
+        self.client.force_authenticate(self.dentist_user)
+
+        confirm = self.client.post(
+            reverse("scheduling:appointment-confirm", kwargs={"public_code": public_code})
+        )
+        cancel = self.client.post(
+            reverse("scheduling:appointment-hold-cancel", kwargs={"public_code": public_code})
+        )
+
+        self.assertEqual(confirm.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(cancel.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_hold_auto_assigns_dentist_and_chair(self):
         self.client.force_authenticate(self.patient_user)

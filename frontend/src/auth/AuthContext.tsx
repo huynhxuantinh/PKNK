@@ -26,6 +26,7 @@ function storedUser(): User | null {
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
+  isAuthReady: boolean
   login: (email: string, password: string) => Promise<User>
   register: (input: RegisterInput) => Promise<void>
   updateUser: (changes: Partial<User>) => void
@@ -42,6 +43,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => storedUser())
+  const [isAuthReady, setIsAuthReady] = useState(false)
 
   const persistUser = useCallback((next: User | null) => {
     if (next) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next))
@@ -60,7 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persistUser])
 
   useEffect(() => {
-    void synchronizeUser()
+    let active = true
+    void synchronizeUser().finally(() => {
+      if (active) setIsAuthReady(true)
+    })
     const onFocus = () => { void synchronizeUser() }
     const clearExpiredSession = () => persistUser(null)
     const syncAcrossTabs = (event: StorageEvent) => {
@@ -70,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(AUTH_EXPIRED_EVENT, clearExpiredSession)
     window.addEventListener('storage', syncAcrossTabs)
     return () => {
+      active = false
       window.removeEventListener('focus', onFocus)
       window.removeEventListener(AUTH_EXPIRED_EVENT, clearExpiredSession)
       window.removeEventListener('storage', syncAcrossTabs)
@@ -136,12 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isAuthenticated: Boolean(user && getStoredTokens()),
+      isAuthReady,
       login,
       register,
       updateUser,
       logout,
     }),
-    [login, logout, register, updateUser, user],
+    [isAuthReady, login, logout, register, updateUser, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

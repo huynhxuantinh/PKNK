@@ -2340,3 +2340,25 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .branch-management-modal > div { display: flex; justify-content: flex-end; gap: .6rem; }
 .branch-management-modal button { border: 0; border-radius: 8px; padding: .65rem .9rem; background: #078fad; color: #fff; font-weight: 800; cursor: pointer; }
 .branch-management-modal .button-secondary { background: #fff; color: #087c9d; border: 1px solid #abd6df; }
+.route-auth-loading,
+.booking-role-blocked {
+  max-width: 760px;
+  margin: 80px auto;
+  padding: 32px;
+  border: 1px solid #d8e8ec;
+  border-radius: 18px;
+  background: #fff;
+  color: #102b3a;
+  text-align: center;
+}
+
+.booking-role-blocked h2 {
+  margin: 0 0 10px;
+}
+
+.booking-role-blocked a {
+  display: inline-block;
+  margin-top: 12px;
+  color: #078aaa;
+  font-weight: 700;
+}

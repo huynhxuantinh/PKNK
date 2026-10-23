@@ -13,6 +13,15 @@ class InvalidStaffInvitation(Exception):
     pass
 
 
+def deactivate_patient_memberships(user):
+    """A staff account is never simultaneously treated as a patient account."""
+    Membership.objects.filter(
+        user=user,
+        role=Membership.Role.PATIENT,
+        is_active=True,
+    ).update(is_active=False)
+
+
 class StaffInvitationService:
     @staticmethod
     def digest(raw_token):
@@ -62,6 +71,7 @@ class StaffInvitationService:
             or not invitation.organization.is_active
         ):
             raise InvalidStaffInvitation
+        deactivate_patient_memberships(user)
         membership, _ = Membership.objects.update_or_create(
             user=user,
             organization=invitation.organization,

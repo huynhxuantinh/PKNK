@@ -18,6 +18,15 @@ afterEach(() => {
 })
 
 describe('apiRequest refresh retry', () => {
+  it('shows a clear message for a forbidden request without an API message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 403 })))
+
+    await expect(apiRequest('/protected/')).rejects.toMatchObject({
+      status: 403,
+      message: 'Bạn không có quyền sử dụng chức năng này.',
+    })
+  })
+
   it('rebuilds a logout request with the rotated refresh token', async () => {
     storeTokens({ access: 'expired-access', refresh: 'old-refresh' })
     const fetchMock = vi.fn()

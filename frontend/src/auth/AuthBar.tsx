@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from './AuthContext'
+import { hasActiveRole, isStaffUser } from './roles'
 
 export function AuthBar() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const isDentist = user?.memberships?.some((membership) => membership.is_active && membership.role === 'DENTIST')
-  const isBranchAdmin = user?.memberships?.some((membership) => membership.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role))
+  const isDentist = hasActiveRole(user, ['DENTIST'])
+  const isBranchAdmin = hasActiveRole(user, ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'])
+  const isStaff = isStaffUser(user)
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)
   const verificationPath = `/xac-minh-email?returnTo=${returnTo}`
 
@@ -50,11 +52,11 @@ export function AuthBar() {
             {isDentist && <Link role="menuitem" to="/bac-si/chon-chi-nhanh" onClick={() => setIsOpen(false)}>Khu vực nha sĩ</Link>}
             {isBranchAdmin && <Link role="menuitem" to="/quan-ly-chi-nhanh" onClick={() => setIsOpen(false)}>Quản lý chi nhánh</Link>}
             {!user.email_verified && <Link role="menuitem" to={verificationPath} onClick={() => setIsOpen(false)}>Xác minh email</Link>}
-            <Link role="menuitem" to="/lich-hen" onClick={() => setIsOpen(false)}>Lịch đã đặt</Link>
-            <Link role="menuitem" to="/lich-su-kham" onClick={() => setIsOpen(false)}>Lịch sử khám</Link>
-            <Link role="menuitem" to="/hoa-don" onClick={() => setIsOpen(false)}>Hóa đơn</Link>
-            <Link role="menuitem" to="/thong-bao" onClick={() => setIsOpen(false)}>Thông báo</Link>
-            <Link role="menuitem" to="/ho-so" onClick={() => setIsOpen(false)}>Hồ sơ</Link>
+            {!isStaff && <Link role="menuitem" to="/lich-hen" onClick={() => setIsOpen(false)}>Lịch đã đặt</Link>}
+            {!isStaff && <Link role="menuitem" to="/lich-su-kham" onClick={() => setIsOpen(false)}>Lịch sử khám</Link>}
+            {!isStaff && <Link role="menuitem" to="/hoa-don" onClick={() => setIsOpen(false)}>Hóa đơn</Link>}
+            {!isStaff && <Link role="menuitem" to="/thong-bao" onClick={() => setIsOpen(false)}>Thông báo</Link>}
+            {!isStaff && <Link role="menuitem" to="/ho-so" onClick={() => setIsOpen(false)}>Hồ sơ</Link>}
             <span className="auth-user-menu-divider" aria-hidden="true" />
             <button role="menuitem" type="button" onClick={() => { setIsOpen(false); logout() }}>Đăng xuất</button>
           </div>

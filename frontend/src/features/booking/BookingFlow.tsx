@@ -12,6 +12,7 @@ import {
 } from '../../api/booking'
 import { apiRequest, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
+import { isStaffUser } from '../../auth/roles'
 import type { Appointment, Branch, BranchDentist, BranchService, PatientProfileResponse, Slot } from '../../types/api'
 import {
   bookingSelectionReducer,
@@ -53,6 +54,7 @@ interface BookingFlowProps {
 
 export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const { user, isAuthenticated, logout } = useAuth()
+  const isStaff = isStaffUser(user)
   const location = useLocation()
   const [selection, dispatch] = useReducer(
     bookingSelectionReducer,
@@ -92,7 +94,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   }, [selection])
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isStaff) {
       return
     }
     setPatientLoading(true)
@@ -112,7 +114,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         setContactDraft(fallback)
       })
       .finally(() => setPatientLoading(false))
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, isStaff, user])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -313,6 +315,16 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     } finally {
       setBooking(false)
     }
+  }
+
+  if (isStaff) {
+    return (
+      <section className="booking-role-blocked" role="alert">
+        <h2>Tài khoản nhân viên không thể đặt lịch</h2>
+        <p>Vui lòng sử dụng tài khoản bệnh nhân để đặt lịch khám.</p>
+        <Link to="/">Về trang phù hợp</Link>
+      </section>
+    )
   }
 
   if (appointment) {

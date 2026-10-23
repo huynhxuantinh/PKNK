@@ -86,6 +86,22 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(cross.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(patch.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_patient_cannot_access_management_api(self):
+        patient = self.make_user("patient-no-management@example.com")
+        PatientProfile.objects.create(user=patient)
+        Membership.objects.create(
+            user=patient,
+            organization=self.org_a,
+            role=Membership.Role.PATIENT,
+        )
+        self.client.force_authenticate(patient)
+
+        response = self.client.get(
+            reverse("management:branch-detail", kwargs={"branch_id": self.branch_a.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_org_admin_creates_branch_and_audit_event(self):
         self.client.force_authenticate(self.org_admin)
         response = self.client.post(
@@ -170,6 +186,12 @@ class ManagementAPITests(APITestCase):
         self.assertFalse(BranchService.objects.exists())
 
     def test_org_admin_assigns_existing_verified_staff(self):
+        PatientProfile.objects.create(user=self.staff_user)
+        Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            role=Membership.Role.PATIENT,
+        )
         self.client.force_authenticate(self.org_admin)
 
         response = self.client.post(
@@ -184,6 +206,13 @@ class ManagementAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Membership.objects.filter(user=self.staff_user, branch=self.branch_a).exists())
+        self.assertFalse(
+            Membership.objects.filter(
+                user=self.staff_user,
+                role=Membership.Role.PATIENT,
+                is_active=True,
+            ).exists()
+        )
 
     def test_invitation_token_is_emailed_hashed_and_single_use(self):
         invite_email = "new-branch-admin@example.com"
@@ -329,4 +358,4 @@ class ManagementAPITests(APITestCase):
 
         response = self.client.get(reverse("management:branch-detail", kwargs={"branch_id": self.branch_a.pk}))
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

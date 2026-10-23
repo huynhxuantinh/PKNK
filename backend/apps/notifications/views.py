@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsPatientOnly
+
 from .models import Notification
 from .serializers import NotificationSerializer
 
@@ -16,7 +18,7 @@ class NotificationQuerySerializer(serializers.Serializer):
 
 
 class NotificationListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
     serializer_class = NotificationSerializer
@@ -37,7 +39,7 @@ class NotificationListAPIView(APIView):
 
 
 class NotificationReadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
     serializer_class = NotificationSerializer
@@ -54,7 +56,7 @@ class NotificationReadAPIView(APIView):
 
 
 class NotificationReadAllAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
     serializer_class = NotificationSerializer

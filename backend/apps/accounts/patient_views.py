@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 
 from apps.audit.services import AuditService
 
+from .permissions import IsPatientOnly
+
 from .models import PatientProfile
 from .patient_serializers import (
     PatientProfileResponseSerializer,
@@ -40,7 +42,7 @@ def profile_audit_snapshot(profile, changed_fields):
 
 
 class PatientProfileMeAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
 

@@ -139,6 +139,18 @@ class ClinicalAPITests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_patient_cannot_access_dentist_clinical_api(self):
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.get(
+            reverse(
+                "dentist_api:clinical-encounter-detail",
+                kwargs={"encounter_id": 999999},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_finalized_encounter_and_odontogram_are_immutable_in_database(self):
         encounter = self.create_encounter(self.appointment())
         entry = OdontogramEntry.objects.create(

@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { isStaffUser } from '../auth/roles'
 import { BranchMap } from '../components/BranchMap'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Seo } from '../seo/Seo'
@@ -35,7 +36,8 @@ function formatVnd(price: string | number): string {
 export function BranchDetailPage() {
   const { branchId } = useParams()
   const location = useLocation()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+  const isStaff = isStaffUser(user)
   const [branch, setBranch] = useState<BranchDetail | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null)
@@ -366,7 +368,9 @@ export function BranchDetailPage() {
 
             {/* Quick Actions */}
             <div className="clinic-hero-actions">
-              <Link to={bookingLink} className="clinic-btn primary">Đặt lịch khám</Link>
+              {isStaff
+                ? <button className="clinic-btn primary" type="button" disabled title="Tài khoản nhân viên không đặt lịch">Đặt lịch khám</button>
+                : <Link to={bookingLink} className="clinic-btn primary">Đặt lịch khám</Link>}
               <a href="#vi-tri-chi-nhanh" className="clinic-btn secondary">Xem bản đồ</a>
             </div>
           </div>

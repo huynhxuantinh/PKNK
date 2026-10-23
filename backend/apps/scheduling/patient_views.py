@@ -12,7 +12,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import PatientProfile
-from apps.accounts.permissions import IsEmailVerified
+from apps.accounts.permissions import IsEmailVerified, IsPatientOnly
 from apps.audit.services import AuditService
 from apps.management_api.exceptions import ManagementConflict
 from apps.management_api.scheduling_services import RescheduleService
@@ -43,7 +43,7 @@ HISTORY_STATUSES = [
 
 
 class PatientAppointmentBaseAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_appointments"
 

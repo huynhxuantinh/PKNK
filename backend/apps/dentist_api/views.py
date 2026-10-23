@@ -8,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import Dentist
+from apps.accounts.permissions import IsDentistOnly
 from apps.audit.services import AuditService
 from apps.organizations.models import Membership
 from apps.scheduling.models import Appointment, AppointmentStatusHistory
@@ -22,7 +23,7 @@ from .exceptions import DentistConflict
 
 
 class DentistAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsDentistOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "dentist_read"
 

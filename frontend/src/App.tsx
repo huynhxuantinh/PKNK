@@ -14,6 +14,7 @@ import { BranchManagementPage } from './pages/BranchManagementPage'
 import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
 import { BranchReportsPage } from './pages/BranchReportsPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { RequireRole } from './auth/RequireRole'
 
 export default function App() {
   return (
@@ -22,19 +23,25 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/chi-nhanh/:branchId" element={<BranchDetailPage />} />
-          <Route path="/dat-lich" element={<BookingPage />} />
           <Route path="/bang-gia" element={<PricingPage />} />
-          <Route path="/ho-so" element={<PatientProfilePage />} />
-          <Route path="/lich-hen" element={<PatientAppointmentsPage />} />
-          <Route path="/lich-su-kham" element={<PatientHistoryPage />} />
-          <Route path="/hoa-don" element={<PatientInvoicesPage />} />
-          <Route path="/thong-bao" element={<NotificationsPage />} />
-          <Route path="/bac-si" element={<DentistDashboardPage />} />
-          <Route path="/bac-si/chon-chi-nhanh" element={<DentistBranchSelectionPage />} />
-          <Route path="/bac-si/kham/:publicCode" element={<DentistExaminationPage />} />
-          <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
-          <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
-          <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
+          <Route element={<RequireRole area="PATIENT" />}>
+            <Route path="/dat-lich" element={<BookingPage />} />
+            <Route path="/ho-so" element={<PatientProfilePage />} />
+            <Route path="/lich-hen" element={<PatientAppointmentsPage />} />
+            <Route path="/lich-su-kham" element={<PatientHistoryPage />} />
+            <Route path="/hoa-don" element={<PatientInvoicesPage />} />
+            <Route path="/thong-bao" element={<NotificationsPage />} />
+          </Route>
+          <Route element={<RequireRole area="DENTIST" />}>
+            <Route path="/bac-si" element={<DentistDashboardPage />} />
+            <Route path="/bac-si/chon-chi-nhanh" element={<DentistBranchSelectionPage />} />
+            <Route path="/bac-si/kham/:publicCode" element={<DentistExaminationPage />} />
+          </Route>
+          <Route element={<RequireRole area="MANAGEMENT" />}>
+            <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
+            <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
+            <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
+          </Route>
           <Route path="/dang-nhap" element={<LoginPage />} />
           <Route path="/dang-ky" element={<RegisterPage />} />
           <Route path="/xac-minh-email" element={<EmailVerificationPendingPage />} />

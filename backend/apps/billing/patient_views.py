@@ -8,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import PatientProfile
+from apps.accounts.permissions import IsPatientOnly
 from apps.audit.services import AuditService
 
 from .models import Invoice
@@ -15,7 +16,7 @@ from .patient_serializers import PatientInvoiceListQuerySerializer, PatientInvoi
 
 
 class PatientInvoiceListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
     serializer_class = PatientInvoiceSerializer
@@ -59,7 +60,7 @@ class PatientInvoiceListAPIView(APIView):
 
 
 class PatientInvoiceDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPatientOnly]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "patient_read"
     serializer_class = PatientInvoiceSerializer

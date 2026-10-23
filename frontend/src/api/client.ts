@@ -130,8 +130,11 @@ export async function apiRequest<T>(
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => null)
+    const fallback = response.status === 403
+      ? 'Bạn không có quyền sử dụng chức năng này.'
+      : `Yêu cầu thất bại (${response.status}).`
     throw new ApiError(
-      errorMessage(payload, `Yêu cầu thất bại (${response.status}).`),
+      errorMessage(payload, fallback),
       response.status,
     )
   }
