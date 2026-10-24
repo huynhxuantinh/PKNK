@@ -234,7 +234,7 @@ class ManagementAPITests(APITestCase):
 
     def test_org_admin_assigns_existing_verified_staff(self):
         PatientProfile.objects.create(user=self.staff_user)
-        Membership.objects.create(
+        patient_membership = Membership.objects.create(
             user=self.staff_user,
             organization=self.org_a,
             role=Membership.Role.PATIENT,
@@ -259,6 +259,22 @@ class ManagementAPITests(APITestCase):
                 role=Membership.Role.PATIENT,
                 is_active=True,
             ).exists()
+        )
+        audit_event = AuditEvent.objects.get(
+            action="PATIENT_MEMBERSHIP_AUTO_DEACTIVATED",
+            resource_type="Membership",
+            resource_id=str(patient_membership.pk),
+        )
+        self.assertEqual(audit_event.actor_user, self.org_admin)
+        self.assertEqual(audit_event.organization, self.org_a)
+        self.assertEqual(audit_event.before_data, {"is_active": True})
+        self.assertEqual(
+            audit_event.after_data,
+            {
+                "is_active": False,
+                "reason": "STAFF_ROLE_ASSIGNED",
+                "source": "ORGANIZATION_MEMBERSHIP_CREATED",
+            },
         )
 
     def test_cannot_assign_staff_role_while_patient_has_active_appointment(self):
