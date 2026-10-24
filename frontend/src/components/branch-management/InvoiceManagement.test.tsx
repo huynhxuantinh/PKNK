@@ -2,7 +2,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import type { ManagedInvoice } from '../../api/management'
-import { InvoiceDetailPanel, InvoiceList, InvoicePagination } from './InvoiceManagement'
+import {
+  InvoiceAppointmentHint,
+  InvoiceDetailPanel,
+  InvoiceList,
+  InvoicePagination,
+} from './InvoiceManagement'
 import { latestVoidedInvoiceId } from './invoicePresentation'
 
 const draftInvoice = {
@@ -80,5 +85,12 @@ describe('invoice management UI', () => {
     }
 
     expect(latestVoidedInvoiceId([older, draftInvoice, newer])).toBe(13)
+  })
+
+  it('explains how to create an invoice for an older appointment', () => {
+    const markup = renderToStaticMarkup(<InvoiceAppointmentHint />)
+
+    expect(markup).toContain('30 ngày gần nhất')
+    expect(markup).toContain('nhập trực tiếp mã lịch hẹn')
   })
 })

@@ -3,6 +3,14 @@ import { invoiceStatusLabels } from './invoicePresentation'
 
 const money = (value: string) => `${new Intl.NumberFormat('vi-VN').format(Number(value))} ₫`
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+
+export function InvoiceAppointmentHint() {
+  return <p className="invoice-appointment-hint">
+    Danh sách chỉ gợi ý lịch đã hoàn tất trong 30 ngày gần nhất. Với lịch cũ hơn,
+    hãy nhập trực tiếp mã lịch hẹn.
+  </p>
+}
+
 export function InvoiceList({ items, onSelect }: { items: ManagedInvoice[]; onSelect: (invoice: ManagedInvoice) => void }) {
   if (!items.length) return <div className="staff-schedule-empty">Chưa có hóa đơn phù hợp.</div>
   return <div className="invoice-management-list">{items.map((invoice) => <article className="invoice-management-card" key={invoice.id_invoice}>
