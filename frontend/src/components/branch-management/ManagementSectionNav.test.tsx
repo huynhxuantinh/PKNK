@@ -16,6 +16,7 @@ describe('ManagementSectionNav', () => {
     expect(markup).toContain('href="/quan-ly-chi-nhanh/ca-lam?chi-nhanh=5"')
     expect(markup).toContain('href="/quan-ly-chi-nhanh/bao-cao?chi-nhanh=5"')
     expect(markup).toContain('href="/quan-ly-chi-nhanh/hoa-don?chi-nhanh=5"')
+    expect(markup).toContain('href="/quan-ly-chi-nhanh/cau-hinh?chi-nhanh=5"')
     expect(markup).toContain('aria-current="page"')
   })
 })
