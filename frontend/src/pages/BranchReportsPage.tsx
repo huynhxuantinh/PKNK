@@ -11,6 +11,8 @@ import {
 } from '../components/branch-management/branchReportPresentation'
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
+import { ManagedBranchSelector } from '../components/branch-management/ManagedBranchSelector'
+import { useManagedBranches } from '../components/branch-management/useManagedBranches'
 
 const iso = (date: Date) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Ho_Chi_Minh',
@@ -21,8 +23,12 @@ const iso = (date: Date) => new Intl.DateTimeFormat('en-CA', {
 
 export function BranchReportsPage() {
   const { user } = useAuth()
-  const [params] = useSearchParams()
-  const branchId = Number(params.get('chi-nhanh')) || 0
+  const [params, setParams] = useSearchParams()
+  const requestedBranchId = Number(params.get('chi-nhanh')) || 0
+  const managedBranches = useManagedBranches(user)
+  const branchId = managedBranches.branches.some(
+    (branch) => branch.id_branch === requestedBranchId,
+  ) ? requestedBranchId : 0
   const [from, setFrom] = useState(() => iso(new Date(Date.now() - 29 * 86400000)))
   const [to, setTo] = useState(() => iso(new Date()))
   const [data, setData] = useState<BranchReportData | null>(null)
@@ -71,8 +77,29 @@ export function BranchReportsPage() {
     }
   }, [branchId, load])
 
-  if (!canAccessArea(user, 'MANAGEMENT') || !branchId) {
+  if (!canAccessArea(user, 'MANAGEMENT')) {
     return <Navigate to="/quan-ly-chi-nhanh" replace />
+  }
+
+  if (!branchId) {
+    return (
+      <div className="branch-management-page">
+        <ManagementPageHeader
+          title="Báo cáo chi nhánh"
+          path="/quan-ly-chi-nhanh/bao-cao"
+        />
+        <main className="branch-management-main">
+          <ManagedBranchSelector
+            branches={managedBranches.branches}
+            loading={managedBranches.loading}
+            error={managedBranches.error}
+            onSelect={(selectedBranchId) => {
+              setParams({ 'chi-nhanh': String(selectedBranchId) })
+            }}
+          />
+        </main>
+      </div>
+    )
   }
 
   return (

@@ -2593,3 +2593,75 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
     padding: 0.8rem 1rem;
   }
 }
+
+.managed-branch-selector {
+  max-width: 680px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border: 1px solid #d9e8ed;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgb(8 45 74 / 8%);
+}
+
+.managed-branch-selector-kicker {
+  color: #078aaa;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.managed-branch-selector h1 {
+  margin: 0.45rem 0 0.5rem;
+}
+
+.managed-branch-selector > p {
+  margin: 0 0 1.5rem;
+  color: #638095;
+}
+
+.managed-branch-selector form,
+.managed-branch-selector label {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.managed-branch-selector label {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.managed-branch-selector form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+}
+
+.managed-branch-selector select {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid #cbdfe7;
+  border-radius: 9px;
+  background: #fff;
+  color: #082d4a;
+}
+
+.managed-branch-selector button {
+  border: 0;
+  border-radius: 9px;
+  padding: 0.8rem 1.25rem;
+  background: #078fad;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .managed-branch-selector {
+    padding: 1.35rem;
+  }
+
+  .managed-branch-selector form > div {
+    grid-template-columns: 1fr;
+  }
+}

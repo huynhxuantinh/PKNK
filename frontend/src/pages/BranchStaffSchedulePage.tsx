@@ -11,11 +11,13 @@ import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
+import { ManagedBranchSelector } from '../components/branch-management/ManagedBranchSelector'
 import {
   StaffTimeOffList, StaffWorkShiftList, type ScheduleDentist,
 } from '../components/branch-management/StaffScheduleList'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import { toHcmLocalInput, weekdayLabels } from '../components/branch-management/staffSchedulePresentation'
+import { useManagedBranches } from '../components/branch-management/useManagedBranches'
 
 interface ShiftFormState { dentist_id: string; weekday: string; start_time: string; end_time: string; valid_from: string }
 interface TimeOffFormState { dentist_id: string; starts_at: string; ends_at: string; reason: string }
@@ -27,8 +29,12 @@ const errorMessage = (error: unknown, fallback: string) => error instanceof ApiE
 
 export function BranchStaffSchedulePage() {
   const { user } = useAuth()
-  const [params] = useSearchParams()
-  const branchId = Number(params.get('chi-nhanh')) || 0
+  const [params, setParams] = useSearchParams()
+  const requestedBranchId = Number(params.get('chi-nhanh')) || 0
+  const managedBranches = useManagedBranches(user)
+  const branchId = managedBranches.branches.some(
+    (branch) => branch.id_branch === requestedBranchId,
+  ) ? requestedBranchId : 0
   const [dentists, setDentists] = useState<ScheduleDentist[]>([])
   const [shifts, setShifts] = useState<ManagedWorkShift[]>([])
   const [offs, setOffs] = useState<ManagedTimeOff[]>([])
@@ -110,7 +116,25 @@ export function BranchStaffSchedulePage() {
     } finally { setBusyId(null) }
   }
 
-  if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
+  if (!canAccessArea(user, 'MANAGEMENT')) {
+    return <Navigate to="/quan-ly-chi-nhanh" replace />
+  }
+
+  if (!branchId) {
+    return <div className="branch-management-page staff-schedule-page">
+      <ManagementPageHeader title="Ca làm & nghỉ phép" path="/quan-ly-chi-nhanh/ca-lam" />
+      <main className="branch-management-main">
+        <ManagedBranchSelector
+          branches={managedBranches.branches}
+          loading={managedBranches.loading}
+          error={managedBranches.error}
+          onSelect={(selectedBranchId) => {
+            setParams({ 'chi-nhanh': String(selectedBranchId) })
+          }}
+        />
+      </main>
+    </div>
+  }
 
   return <div className="branch-management-page staff-schedule-page">
     <ManagementPageHeader title="Ca làm & nghỉ phép" path="/quan-ly-chi-nhanh/ca-lam" />
