@@ -11,6 +11,7 @@ describe('BranchManagementPage structure', () => {
     expect(productionComponents.sort()).toEqual([
       '../components/branch-management/AppointmentList.tsx',
       '../components/branch-management/CancelAppointmentModal.tsx',
+      '../components/branch-management/InvoiceManagement.tsx',
       '../components/branch-management/ManagementSectionNav.tsx',
       '../components/branch-management/RescheduleAppointmentModal.tsx',
       '../components/branch-management/StaffScheduleList.tsx',
