@@ -43,6 +43,13 @@ class InvoiceCreateSerializer(serializers.Serializer):
     replacement_for_id = serializers.IntegerField(required=False, allow_null=True)
 
 
+class InvoiceListQuerySerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Invoice.Status.choices, required=False)
+    appointment_code = serializers.CharField(max_length=30, required=False)
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    offset = serializers.IntegerField(min_value=0, default=0)
+
+
 class InvoiceLineWriteSerializer(serializers.Serializer):
     service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), required=False, allow_null=True)
     description = serializers.CharField(max_length=255)

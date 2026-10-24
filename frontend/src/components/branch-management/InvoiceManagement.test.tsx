@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import type { ManagedInvoice } from '../../api/management'
-import { InvoiceDetailPanel, InvoiceList } from './InvoiceManagement'
+import { InvoiceDetailPanel, InvoiceList, InvoicePagination } from './InvoiceManagement'
 
 const draftInvoice = {
   id_invoice: 11,
@@ -45,5 +45,20 @@ describe('invoice management UI', () => {
     expect(markup).toContain('Ghi nhận thanh toán')
     expect(markup).toContain('disabled=""')
     expect(markup).toContain('Khám tổng quát')
+  })
+
+  it('renders bounded invoice pagination controls', () => {
+    const markup = renderToStaticMarkup(
+      <InvoicePagination
+        count={45}
+        limit={20}
+        offset={20}
+        onChange={() => {}}
+      />,
+    )
+
+    expect(markup).toContain('Trang 2 / 3')
+    expect(markup).toContain('Trang trước')
+    expect(markup).toContain('Trang sau')
   })
 })

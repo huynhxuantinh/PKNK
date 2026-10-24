@@ -151,6 +151,25 @@ class CounterBillingTests(APITestCase):
         )
         self.assertEqual(hidden.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_management_invoice_list_is_paginated(self):
+        for index in range(3):
+            created = self.create_invoice(self.appointment(f"APT-PAGE-{index}"))
+            self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.get(
+            reverse("management:branch-invoices", kwargs={"branch_id": self.branch.pk}),
+            {"limit": 1, "offset": 1},
+        )
+        invalid = self.client.get(
+            reverse("management:branch-invoices", kwargs={"branch_id": self.branch.pk}),
+            {"limit": 101},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["meta"], {"count": 3, "limit": 1, "offset": 1})
+        self.assertEqual(len(response.data["data"]), 1)
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_issued_invoice_line_and_posted_payment_are_database_immutable(self):
         created = self.create_invoice(self.appointment())
         invoice_id = created.data["data"]["id_invoice"]

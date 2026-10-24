@@ -12,6 +12,37 @@ export function InvoiceList({ items, onSelect }: { items: ManagedInvoice[]; onSe
   </article>)}</div>
 }
 
+interface InvoicePaginationProps {
+  count: number
+  limit: number
+  offset: number
+  onChange: (offset: number) => void
+}
+
+export function InvoicePagination({ count, limit, offset, onChange }: InvoicePaginationProps) {
+  if (count <= limit) return null
+  const currentPage = Math.floor(offset / limit) + 1
+  const totalPages = Math.ceil(count / limit)
+
+  return <nav className="invoice-pagination" aria-label="Phân trang hóa đơn">
+    <button
+      type="button"
+      disabled={offset === 0}
+      onClick={() => onChange(Math.max(0, offset - limit))}
+    >
+      Trang trước
+    </button>
+    <span>Trang {currentPage} / {totalPages}</span>
+    <button
+      type="button"
+      disabled={offset + limit >= count}
+      onClick={() => onChange(offset + limit)}
+    >
+      Trang sau
+    </button>
+  </nav>
+}
+
 interface InvoiceDetailPanelProps { invoice: ManagedInvoice; busy: boolean; onClose: () => void; onIssue: () => void; onVoid: () => void }
 export function InvoiceDetailPanel({ invoice, busy, onClose, onIssue, onVoid }: InvoiceDetailPanelProps) {
   return <div className="branch-management-modal-backdrop"><section className="branch-management-modal invoice-detail-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-detail-title">

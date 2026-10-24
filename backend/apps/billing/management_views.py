@@ -13,6 +13,7 @@ from apps.scheduling.models import Appointment
 from .management_serializers import (
     InvoiceCreateSerializer,
     InvoiceDraftUpdateSerializer,
+    InvoiceListQuerySerializer,
     InvoiceSerializer,
     PaymentCreateSerializer,
     PaymentSerializer,
@@ -42,14 +43,28 @@ def scoped_invoice(user, invoice_id):
 class BranchInvoiceListCreateAPIView(ManagementAPIView):
     serializer_class = InvoiceSerializer
 
+    @extend_schema(parameters=[InvoiceListQuerySerializer], responses={200: InvoiceSerializer(many=True)})
     def get(self, request, branch_id):
         branch = self.branch(branch_id)
+        query = InvoiceListQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        filters = query.validated_data
         invoices = Invoice.objects.filter(branch=branch).select_related(
             "appointment", "patient_profile__user"
         ).prefetch_related("lines", "payments")
-        if request.query_params.get("status") in Invoice.Status.values:
-            invoices = invoices.filter(status=request.query_params["status"])
-        return Response({"data": InvoiceSerializer(invoices, many=True).data})
+        if filters.get("status"):
+            invoices = invoices.filter(status=filters["status"])
+        if filters.get("appointment_code"):
+            invoices = invoices.filter(appointment__public_code=filters["appointment_code"])
+        invoices = invoices.order_by("-created_at", "-id_invoice")
+        count = invoices.count()
+        offset = filters["offset"]
+        limit = filters["limit"]
+        page = invoices[offset:offset + limit]
+        return Response({
+            "data": self.serializer_class(page, many=True).data,
+            "meta": {"count": count, "limit": limit, "offset": offset},
+        })
 
     @extend_schema(request=InvoiceCreateSerializer, responses={201: InvoiceSerializer})
     def post(self, request, branch_id):

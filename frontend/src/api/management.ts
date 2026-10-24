@@ -101,9 +101,23 @@ export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) =
 
 export const branchReport = (branchId: number, name: 'revenue' | 'appointments' | 'chair-utilization', dateFrom: string, dateTo: string) => apiRequest<{ data: Record<string, unknown> }>(`/management/branches/${branchId}/reports/${name}/?${new URLSearchParams({ date_from: dateFrom, date_to: dateTo, ...(name === 'revenue' ? { interval: 'DAY' } : {}) })}`, {}, { auth: true })
 
-export function listManagedInvoices(branchId: number, status?: ManagedInvoiceStatus) {
-  const query = status ? `?status=${status}` : ''
-  return apiRequest<{ data: ManagedInvoice[] }>(`/management/branches/${branchId}/invoices/${query}`, {}, { auth: true })
+interface ManagedInvoiceListParams {
+  status?: ManagedInvoiceStatus
+  appointmentCode?: string
+  limit?: number
+  offset?: number
+}
+
+export function listManagedInvoices(branchId: number, options: ManagedInvoiceListParams = {}) {
+  const query = new URLSearchParams()
+  if (options.status) query.set('status', options.status)
+  if (options.appointmentCode) query.set('appointment_code', options.appointmentCode)
+  query.set('limit', String(options.limit ?? 20))
+  query.set('offset', String(options.offset ?? 0))
+  return apiRequest<{
+    data: ManagedInvoice[]
+    meta: { count: number; limit: number; offset: number }
+  }>(`/management/branches/${branchId}/invoices/?${query}`, {}, { auth: true })
 }
 export const getManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, {}, { auth: true })
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })

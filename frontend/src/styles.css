@@ -2403,6 +2403,10 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .invoice-management-section > header label { display: grid; gap: .3rem; color: #64808f; font-size: .7rem; font-weight: 800; }
 .invoice-management-section > header select { min-width: 180px; padding: .65rem .75rem; border: 1px solid #cbdfe7; border-radius: 8px; background: #fff; color: #163f52; }
 .invoice-management-list { display: grid; }
+.invoice-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1rem 1.5rem; border-top: 1px solid #dce9ee; background: #fbfeff; }
+.invoice-pagination span { color: #486b7d; font-size: .8rem; font-weight: 800; }
+.invoice-pagination button { padding: .6rem .8rem; border: 1px solid #a9d3dc; border-radius: 8px; background: #fff; color: #087c9d; font-weight: 800; cursor: pointer; }
+.invoice-pagination button:disabled { cursor: not-allowed; opacity: .45; }
 .invoice-management-card { display: grid; grid-template-columns: minmax(0, 1fr) 160px auto; gap: 1.25rem; align-items: center; padding: 1.15rem 1.5rem; border-bottom: 1px solid #e0ecef; }
 .invoice-management-card:last-child { border-bottom: 0; }
 .invoice-management-card h3 { margin: .35rem 0 .2rem; color: #123e52; font-size: 1rem; }
