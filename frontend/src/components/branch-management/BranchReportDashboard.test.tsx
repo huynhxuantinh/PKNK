@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { BranchReportDashboard, formatVnd } from './BranchReportDashboard'
+import { BranchReportDashboard } from './BranchReportDashboard'
+import { formatVnd } from './branchReportPresentation'
 
 describe('branch report dashboard', () => {
   it('formats decimal money as Vietnamese currency', () => {
