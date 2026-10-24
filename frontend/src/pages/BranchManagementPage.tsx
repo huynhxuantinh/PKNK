@@ -21,6 +21,7 @@ import {
   ManagementErrorBanner,
 } from '../components/branch-management/AppointmentList'
 import { CancelAppointmentModal } from '../components/branch-management/CancelAppointmentModal'
+import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { RescheduleAppointmentModal } from '../components/branch-management/RescheduleAppointmentModal'
 import {
   appointmentStatusLabels,
@@ -284,6 +285,8 @@ export function BranchManagementPage() {
             </label>
           )}
         </section>
+
+        {branchId && <ManagementSectionNav branchId={branchId} active="appointments" />}
 
         {error && <ManagementErrorBanner message={error} />}
 

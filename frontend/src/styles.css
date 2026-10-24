@@ -2340,6 +2340,17 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .branch-management-modal > div { display: flex; justify-content: flex-end; gap: .6rem; }
 .branch-management-modal button { border: 0; border-radius: 8px; padding: .65rem .9rem; background: #078fad; color: #fff; font-weight: 800; cursor: pointer; }
 .branch-management-modal .button-secondary { background: #fff; color: #087c9d; border: 1px solid #abd6df; }
+.management-section-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1rem 0 1.35rem; }
+.management-section-nav a { display: flex; align-items: center; gap: .85rem; padding: 1rem 1.15rem; border: 1px solid #d5e6eb; border-radius: 14px; background: #fff; color: #264f64; text-decoration: none; box-shadow: 0 8px 24px rgb(24 91 109 / .05); transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.management-section-nav a:hover { transform: translateY(-2px); border-color: #8fcbd6; box-shadow: 0 12px 26px rgb(24 91 109 / .1); }
+.management-section-nav a > span { display: grid; width: 2rem; height: 2rem; flex: none; place-items: center; border-radius: 9px; background: #edf6f8; color: #5b7987; font-size: .65rem; font-weight: 900; }
+.management-section-nav a > div { display: grid; gap: .18rem; }
+.management-section-nav strong { font-size: .86rem; }
+.management-section-nav small { color: #78909b; font-size: .68rem; }
+.management-section-nav a.is-active { border-color: #078fad; background: #eaf7f9; color: #086c84; }
+.management-section-nav a.is-active > span { background: #078fad; color: #fff; }
+@media(max-width:760px) { .management-section-nav { grid-template-columns: 1fr; } .management-section-nav a { padding: .85rem 1rem; } }
+
 .staff-schedule-page { background: linear-gradient(180deg, #edf8fa 0, #f8fcfd 360px); }
 .staff-schedule-back { display: inline-block; margin-bottom: 1.2rem; color: #087c9d; font-size: .82rem; font-weight: 800; text-decoration: none; }
 .staff-schedule-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 1.5rem; padding: 2rem 2.2rem; border-radius: 22px; background: #0b465d; color: #fff; box-shadow: 0 18px 45px rgb(17 86 105 / .14); }
