@@ -2,11 +2,18 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { BranchReportDashboard } from './BranchReportDashboard'
-import { formatVnd } from './branchReportPresentation'
+import { formatVnd, validateReportDateRange } from './branchReportPresentation'
 
 describe('branch report dashboard', () => {
   it('formats decimal money as Vietnamese currency', () => {
     expect(formatVnd('12345.00')).toBe('12.345 ₫')
+  })
+
+  it('rejects a report range whose start date is after its end date', () => {
+    expect(validateReportDateRange('2026-10-25', '2026-10-24')).toBe(
+      'Từ ngày không được sau đến ngày.',
+    )
+    expect(validateReportDateRange('2026-10-24', '2026-10-24')).toBe('')
   })
 
   it('renders daily revenue returned by the backend', () => {

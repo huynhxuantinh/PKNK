@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { branchReport } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import { BranchReportDashboard } from '../components/branch-management/BranchReportDashboard'
-import type { BranchReportData } from '../components/branch-management/branchReportPresentation'
+import {
+  type BranchReportData,
+  validateReportDateRange,
+} from '../components/branch-management/branchReportPresentation'
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 
@@ -25,8 +28,18 @@ export function BranchReportsPage() {
   const [data, setData] = useState<BranchReportData | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const loadedBranchRef = useRef<number | null>(null)
 
   const load = useCallback(async () => {
+    const rangeError = validateReportDateRange(from, to)
+
+    if (rangeError) {
+      setLoading(false)
+      setData(null)
+      setError(rangeError)
+      return
+    }
+
     setLoading(true)
     setData(null)
     setError('')
@@ -52,7 +65,10 @@ export function BranchReportsPage() {
   }, [branchId, from, to])
 
   useEffect(() => {
-    if (branchId) void load()
+    if (branchId && loadedBranchRef.current !== branchId) {
+      loadedBranchRef.current = branchId
+      void load()
+    }
   }, [branchId, load])
 
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) {
@@ -82,6 +98,7 @@ export function BranchReportsPage() {
             <input
               type="date"
               value={from}
+              max={to}
               onChange={(event) => setFrom(event.target.value)}
             />
           </label>
@@ -90,6 +107,7 @@ export function BranchReportsPage() {
             <input
               type="date"
               value={to}
+              min={from}
               onChange={(event) => setTo(event.target.value)}
             />
           </label>
@@ -103,7 +121,11 @@ export function BranchReportsPage() {
             {error}
           </div>
         )}
-        {loading && <p className="branch-report-loading">Đang tải báo cáo...</p>}
+        {loading && (
+          <p className="branch-report-loading" role="status" aria-live="polite">
+            Đang tải báo cáo...
+          </p>
+        )}
         {!loading && data && <BranchReportDashboard data={data} />}
       </main>
     </div>

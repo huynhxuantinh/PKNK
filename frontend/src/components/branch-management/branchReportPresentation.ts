@@ -49,3 +49,8 @@ export function formatPercent(value: string | number) {
     ? `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(percentage)}%`
     : '—'
 }
+
+export function validateReportDateRange(from: string, to: string) {
+  if (!from || !to) return 'Vui lòng chọn đầy đủ khoảng ngày.'
+  return from > to ? 'Từ ngày không được sau đến ngày.' : ''
+}
