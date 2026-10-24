@@ -17,8 +17,16 @@ class ActivePatientAppointmentsExist(Exception):
     pass
 
 
-def deactivate_patient_memberships(user):
+@transaction.atomic
+def deactivate_patient_memberships(
+    user,
+    *,
+    actor_user=None,
+    request=None,
+    source="STAFF_ROLE_ASSIGNED",
+):
     """A staff account is never simultaneously treated as a patient account."""
+    from apps.audit.services import AuditService
     from apps.scheduling.models import ACTIVE_APPOINTMENT_STATUSES, Appointment
 
     has_active_appointments = (
@@ -37,11 +45,36 @@ def deactivate_patient_memberships(user):
             "Tài khoản còn lịch hẹn bệnh nhân đang hoạt động. "
             "Hãy hủy hoặc chuyển lịch trước khi gán quyền nhân viên."
         )
-    Membership.objects.filter(
-        user=user,
-        role=Membership.Role.PATIENT,
-        is_active=True,
-    ).update(is_active=False)
+    memberships = list(
+        Membership.objects.select_for_update(of=("self",))
+        .select_related("organization", "branch")
+        .filter(
+            user=user,
+            role=Membership.Role.PATIENT,
+            is_active=True,
+        )
+    )
+    if not memberships:
+        return
+    Membership.objects.filter(pk__in=[membership.pk for membership in memberships]).update(
+        is_active=False
+    )
+    for membership in memberships:
+        AuditService.record_write(
+            actor_user=actor_user,
+            organization=membership.organization,
+            branch=membership.branch,
+            action="PATIENT_MEMBERSHIP_AUTO_DEACTIVATED",
+            resource_type="Membership",
+            resource_id=membership.pk,
+            before_data={"is_active": True},
+            after_data={
+                "is_active": False,
+                "reason": "STAFF_ROLE_ASSIGNED",
+                "source": source,
+            },
+            request=request,
+        )
 
 
 class StaffInvitationService:
@@ -75,7 +108,7 @@ class StaffInvitationService:
 
     @classmethod
     @transaction.atomic
-    def accept(cls, *, raw_token, user):
+    def accept(cls, *, raw_token, user, request=None):
         try:
             invitation = StaffInvitation.objects.select_for_update(of=("self",)).select_related(
                 "organization", "branch"
@@ -93,7 +126,12 @@ class StaffInvitationService:
             or not invitation.organization.is_active
         ):
             raise InvalidStaffInvitation
-        deactivate_patient_memberships(user)
+        deactivate_patient_memberships(
+            user,
+            actor_user=user,
+            request=request,
+            source="STAFF_INVITATION_ACCEPTED",
+        )
         membership, _ = Membership.objects.update_or_create(
             user=user,
             organization=invitation.organization,
