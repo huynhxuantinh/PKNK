@@ -45,12 +45,12 @@ class PatientAppointmentApiTests(APITestCase):
             user=cls.other_user, organization=cls.organization,
             role=Membership.Role.PATIENT,
         )
-        dentist_user = cls.make_user("dentist-appointments@example.com", "Dentist")
+        cls.dentist_user = cls.make_user("dentist-appointments@example.com", "Dentist")
         cls.dentist = Dentist.objects.create(
-            user=dentist_user, organization=cls.organization
+            user=cls.dentist_user, organization=cls.organization
         )
         Membership.objects.create(
-            user=dentist_user, organization=cls.organization, branch=cls.branch,
+            user=cls.dentist_user, organization=cls.organization, branch=cls.branch,
             role=Membership.Role.DENTIST,
         )
         cls.service = Service.objects.create(
@@ -298,6 +298,23 @@ class PatientAppointmentApiTests(APITestCase):
         )
         original.refresh_from_db()
         self.assertEqual(original.status, Appointment.Status.CONFIRMED)
+
+    def test_staff_cannot_reschedule_patient_appointment(self):
+        appointment = self.appointment(
+            "STAFF-CANNOT-RESCHEDULE", starts_at=self.at(9)
+        )
+        self.client.force_authenticate(self.dentist_user)
+
+        response = self.client.post(
+            reverse(
+                "patients:appointment-reschedule",
+                kwargs={"public_code": appointment.public_code},
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_patient_cannot_mutate_another_patients_appointment(self):
         other = self.appointment(
