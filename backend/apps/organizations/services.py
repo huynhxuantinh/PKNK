@@ -13,8 +13,30 @@ class InvalidStaffInvitation(Exception):
     pass
 
 
+class ActivePatientAppointmentsExist(Exception):
+    pass
+
+
 def deactivate_patient_memberships(user):
     """A staff account is never simultaneously treated as a patient account."""
+    from apps.scheduling.models import ACTIVE_APPOINTMENT_STATUSES, Appointment
+
+    has_active_appointments = (
+        Appointment.objects.filter(
+            patient_profile__user=user,
+            status__in=ACTIVE_APPOINTMENT_STATUSES,
+        )
+        .exclude(
+            status=Appointment.Status.HELD,
+            expires_at__lte=timezone.now(),
+        )
+        .exists()
+    )
+    if has_active_appointments:
+        raise ActivePatientAppointmentsExist(
+            "Tài khoản còn lịch hẹn bệnh nhân đang hoạt động. "
+            "Hãy hủy hoặc chuyển lịch trước khi gán quyền nhân viên."
+        )
     Membership.objects.filter(
         user=user,
         role=Membership.Role.PATIENT,

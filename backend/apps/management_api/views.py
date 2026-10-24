@@ -23,6 +23,7 @@ from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday
 from apps.organizations.models import Membership, Organization
 from apps.organizations.services import (
+    ActivePatientAppointmentsExist,
     InvalidStaffInvitation,
     StaffInvitationService,
     deactivate_patient_memberships,
@@ -52,6 +53,13 @@ from .services import audit_model_change, ensure_no_active_future_appointments
 
 ORG_ADMIN = [Membership.Role.ORGANIZATION_ADMIN]
 BRANCH_MANAGERS = [Membership.Role.ORGANIZATION_ADMIN, Membership.Role.BRANCH_ADMIN]
+
+
+def deactivate_patient_role_for_staff(user):
+    try:
+        deactivate_patient_memberships(user)
+    except ActivePatientAppointmentsExist as error:
+        raise ManagementConflict(str(error)) from error
 
 
 class ManagementAPIView(APIView):
@@ -489,7 +497,7 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
             )
         if Membership.objects.filter(user=user, organization=organization, branch=branch, role=role).exists():
             raise ValidationError("Membership đã tồn tại.")
-        deactivate_patient_memberships(user)
+        deactivate_patient_role_for_staff(user)
         membership = Membership.objects.create(
             user=user, organization=organization, branch=branch, role=role
         )
@@ -516,6 +524,8 @@ class StaffInvitationAcceptAPIView(APIView):
             raise ValidationError(
                 {"token": "Lời mời không hợp lệ, đã dùng hoặc đã hết hạn."}
             ) from error
+        except ActivePatientAppointmentsExist as error:
+            raise ManagementConflict(str(error)) from error
         AuditService.record_write(
             actor_user=request.user,
             organization=membership.organization,
@@ -570,7 +580,7 @@ class MembershipDetailAPIView(ManagementAPIView):
             if not other_admins.exists():
                 raise ManagementConflict("Không thể vô hiệu hóa Organization Admin cuối cùng.")
         if active:
-            deactivate_patient_memberships(membership.user)
+            deactivate_patient_role_for_staff(membership.user)
         serializer.save()
         audit_model_change(request=request, instance=membership, action="MEMBERSHIP_UPDATED")
         return Response({"data": serializer.data})
@@ -719,7 +729,7 @@ class DentistBranchesAPIView(ManagementAPIView):
             raise ValidationError({"ids": "Có chi nhánh không thuộc organization."})
         target_ids = {branch.pk for branch in branches}
         if target_ids:
-            deactivate_patient_memberships(dentist.user)
+            deactivate_patient_role_for_staff(dentist.user)
         memberships = Membership.objects.select_for_update().filter(
             user=dentist.user,
             organization=dentist.organization,
