@@ -16,7 +16,10 @@ import {
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
-import { AppointmentList } from '../components/branch-management/AppointmentList'
+import {
+  AppointmentList,
+  ManagementErrorBanner,
+} from '../components/branch-management/AppointmentList'
 import { CancelAppointmentModal } from '../components/branch-management/CancelAppointmentModal'
 import { RescheduleAppointmentModal } from '../components/branch-management/RescheduleAppointmentModal'
 import {
@@ -284,7 +287,7 @@ export function BranchManagementPage() {
           )}
         </section>
 
-        {error && <div className="dentist-error">{error}</div>}
+        {error && <ManagementErrorBanner message={error} />}
 
         <section className="branch-management-schedule">
           <header>

@@ -17,6 +17,39 @@ interface RescheduleAppointmentModalProps {
   ) => Promise<void>
 }
 
+interface RescheduleSlotResultsProps {
+  slots: Slot[]
+  busy: boolean
+  reason: string
+  onSelect: (slot: Slot) => void
+}
+
+export function RescheduleSlotResults({
+  slots,
+  busy,
+  reason,
+  onSelect,
+}: RescheduleSlotResultsProps) {
+  if (slots.length === 0) {
+    return <p role="status">Không có giờ trống phù hợp trong ngày đã chọn.</p>
+  }
+
+  return (
+    <div className="reschedule-slots">
+      {slots.map((slot) => (
+        <button
+          type="button"
+          key={slot.starts_at}
+          disabled={!reason.trim() || busy}
+          onClick={() => onSelect(slot)}
+        >
+          {hcmTime(slot.starts_at)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function RescheduleAppointmentModal({
   appointment,
   dentists,
@@ -87,18 +120,12 @@ export function RescheduleAppointmentModal({
           {loadingSlots ? 'Đang tìm...' : 'Tìm giờ trống'}
         </button>
         {slots && (
-          <div className="reschedule-slots">
-            {slots.map((slot) => (
-              <button
-                type="button"
-                key={slot.starts_at}
-                disabled={!reason.trim() || busy}
-                onClick={() => onConfirm(slot, reason.trim(), dentistId, idempotencyKey)}
-              >
-                {hcmTime(slot.starts_at)}
-              </button>
-            ))}
-          </div>
+          <RescheduleSlotResults
+            slots={slots}
+            busy={busy}
+            reason={reason}
+            onSelect={(slot) => onConfirm(slot, reason.trim(), dentistId, idempotencyKey)}
+          />
         )}
         <button type="button" className="button-secondary" onClick={onClose} disabled={busy}>
           Đóng

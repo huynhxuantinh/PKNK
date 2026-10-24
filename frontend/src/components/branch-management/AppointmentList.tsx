@@ -11,6 +11,14 @@ interface AppointmentListProps {
   onReschedule: (item: ManagementAppointment) => void
 }
 
+export function ManagementErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="dentist-error" role="alert">
+      {message}
+    </div>
+  )
+}
+
 export function AppointmentList({
   items,
   busyCode,
