@@ -152,7 +152,7 @@ class PatientAppointmentCancelAPIView(PatientAppointmentBaseAPIView):
 
 
 class PatientAppointmentRescheduleAPIView(PatientAppointmentBaseAPIView):
-    permission_classes = [IsAuthenticated, IsEmailVerified]
+    permission_classes = [IsAuthenticated, IsPatientOnly, IsEmailVerified]
     serializer_class = PatientAppointmentRescheduleSerializer
     throttle_scope = "appointment_booking"
 
