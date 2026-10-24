@@ -277,6 +277,32 @@ class SchedulingApiTests(APITestCase):
             ).exists()
         )
 
+    def test_create_hold_does_not_reactivate_locked_patient_membership(self):
+        membership = Membership.objects.get(
+            user=self.patient_user,
+            organization=self.organization,
+            role=Membership.Role.PATIENT,
+        )
+        membership.is_active = False
+        membership.save(update_fields=["is_active"])
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "starts_at": self.start_at().isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["error"]["code"], "patient_membership_required"
+        )
+        membership.refresh_from_db()
+        self.assertFalse(membership.is_active)
+
     def test_create_hold_expires_stale_hold_before_claiming_the_same_slot(self):
         self.client.force_authenticate(self.patient_user)
         payload = {
