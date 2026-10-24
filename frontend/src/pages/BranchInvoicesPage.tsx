@@ -16,7 +16,10 @@ import {
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
-import { invoiceStatusLabels } from '../components/branch-management/invoicePresentation'
+import {
+  invoiceStatusLabels,
+  latestVoidedInvoiceId,
+} from '../components/branch-management/invoicePresentation'
 
 const INVOICE_PAGE_SIZE = 20
 
@@ -90,9 +93,7 @@ export function BranchInvoicesPage() {
       if (existing.data.some((invoice) => invoice.status !== 'VOID')) {
         throw new Error('Lịch hẹn này đã có hóa đơn đang hoạt động.')
       }
-      const replacementId = existing.data.find(
-        (invoice) => invoice.status === 'VOID',
-      )?.id_invoice
+      const replacementId = latestVoidedInvoiceId(existing.data)
       const response = await createManagedInvoice(branchId, code, replacementId)
       setShowCreate(false); setAppointmentCode(''); setSelected(response.data); setNotice('Đã tạo hóa đơn nháp.'); await loadInvoices()
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể tạo hóa đơn.') }

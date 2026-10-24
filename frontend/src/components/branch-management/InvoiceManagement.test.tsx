@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ManagedInvoice } from '../../api/management'
 import { InvoiceDetailPanel, InvoiceList, InvoicePagination } from './InvoiceManagement'
+import { latestVoidedInvoiceId } from './invoicePresentation'
 
 const draftInvoice = {
   id_invoice: 11,
@@ -60,5 +61,24 @@ describe('invoice management UI', () => {
     expect(markup).toContain('Trang 2 / 3')
     expect(markup).toContain('Trang trước')
     expect(markup).toContain('Trang sau')
+  })
+
+  it('selects the most recently voided invoice for replacement', () => {
+    const older = {
+      ...draftInvoice,
+      id_invoice: 12,
+      status: 'VOID' as const,
+      voided_at: '2026-10-20T10:00:00+07:00',
+      created_at: '2026-10-24T10:00:00+07:00',
+    }
+    const newer = {
+      ...draftInvoice,
+      id_invoice: 13,
+      status: 'VOID' as const,
+      voided_at: '2026-10-23T10:00:00+07:00',
+      created_at: '2026-10-19T10:00:00+07:00',
+    }
+
+    expect(latestVoidedInvoiceId([older, draftInvoice, newer])).toBe(13)
   })
 })
