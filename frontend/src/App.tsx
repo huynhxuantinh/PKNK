@@ -14,6 +14,7 @@ import { BranchManagementPage } from './pages/BranchManagementPage'
 import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
 import { BranchReportsPage } from './pages/BranchReportsPage'
 import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
+import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
 
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
             <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
             <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
+            <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
           </Route>
           <Route path="/dang-nhap" element={<LoginPage />} />
           <Route path="/dang-ky" element={<RegisterPage />} />

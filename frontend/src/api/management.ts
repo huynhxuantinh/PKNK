@@ -40,6 +40,12 @@ export interface ManagedInvoice {
   lines: ManagedInvoiceLine[]; payments: ManagedInvoicePayment[]; issued_at: string | null
   paid_at: string | null; voided_at: string | null; void_reason: string; created_at: string
 }
+export interface ManagedBranchDetail { id_branch: number; organization_id: number; code: string; name: string; is_active: boolean }
+export interface ManagedOpeningHour { weekday: number; is_closed: boolean; open_time: string | null; close_time: string | null }
+export interface ManagedChair { id_chair: number; branch_id: number; code: string; name: string; resource_type: 'CHAIR' | 'ROOM'; is_active: boolean }
+export interface ManagedService { id_service: number; organization_id: number; code: string; name: string; description: string | null; standard_duration_minutes: number; buffer_minutes: number; standard_price: string; is_active: boolean }
+export interface ManagedBranchService { id_branch_service: number; branch_id: number; service_id: number; service_name: string; price: string; duration_minutes: number | null; buffer_minutes: number | null; is_active: boolean }
+export interface ManagedHoliday { id_holiday: number; organization_id: number; branch_id: number | null; holiday_date: string; name: string; is_closed: boolean }
 
 interface ManagementAppointmentsResponse { data: ManagementAppointment[]; meta: { count: number } }
 
@@ -101,3 +107,18 @@ export const getManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoi
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
+
+export const getManagedBranch = (branchId: number) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, {}, { auth: true })
+export const listManagedOpeningHours = (branchId: number) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, {}, { auth: true })
+export const replaceManagedOpeningHours = (branchId: number, openingHours: ManagedOpeningHour[]) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, { method: 'PUT', body: JSON.stringify({ opening_hours: openingHours }) }, { auth: true })
+export const listManagedChairs = (branchId: number) => apiRequest<{ data: ManagedChair[] }>(`/management/branches/${branchId}/chairs/`, {}, { auth: true })
+export const createManagedChair = (branchId: number, data: Omit<ManagedChair, 'id_chair' | 'branch_id'>) => apiRequest<{ data: ManagedChair }>(`/management/branches/${branchId}/chairs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedChair = (chairId: number, data: Partial<ManagedChair>) => apiRequest<{ data: ManagedChair }>(`/management/chairs/${chairId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+export const listManagedOrganizationServices = (organizationId: number) => apiRequest<{ data: ManagedService[] }>(`/management/organizations/${organizationId}/services/`, {}, { auth: true })
+export const listManagedBranchServices = (branchId: number) => apiRequest<{ data: ManagedBranchService[] }>(`/management/branches/${branchId}/services/`, {}, { auth: true })
+export const createManagedBranchService = (branchId: number, data: Omit<ManagedBranchService, 'id_branch_service' | 'branch_id' | 'service_name'>) => apiRequest<{ data: ManagedBranchService }>(`/management/branches/${branchId}/services/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedBranchService = (branchServiceId: number, data: Partial<ManagedBranchService>) => apiRequest<{ data: ManagedBranchService }>(`/management/branch-services/${branchServiceId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+export const listManagedHolidays = (organizationId: number) => apiRequest<{ data: ManagedHoliday[] }>(`/management/organizations/${organizationId}/holidays/`, {}, { auth: true })
+export const createManagedHoliday = (organizationId: number, data: Omit<ManagedHoliday, 'id_holiday' | 'organization_id'>) => apiRequest<{ data: ManagedHoliday }>(`/management/organizations/${organizationId}/holidays/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedHoliday = (holidayId: number, data: Partial<ManagedHoliday>) => apiRequest<{ data: ManagedHoliday }>(`/management/holidays/${holidayId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+export const deleteManagedHoliday = (holidayId: number) => apiRequest<void>(`/management/holidays/${holidayId}/`, { method: 'DELETE' }, { auth: true })
