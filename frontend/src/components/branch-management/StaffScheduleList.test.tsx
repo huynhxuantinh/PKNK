@@ -5,7 +5,7 @@ import {
   StaffTimeOffList,
   StaffWorkShiftList,
 } from './StaffScheduleList'
-import { toHcmLocalInput } from './staffSchedulePresentation'
+import { buildWorkShiftPayload, toHcmLocalInput } from './staffSchedulePresentation'
 
 const dentists = [{ id_dentist: 7, full_name: 'BS. Lê Quốc Huy' }]
 
@@ -36,7 +36,7 @@ describe('staff schedule management UI', () => {
     expect(markup).toContain('Đang áp dụng')
   })
 
-  it('renders edit and delete actions for an active time off', () => {
+  it('describes time-off deactivation without implying data deletion', () => {
     const markup = renderToStaticMarkup(
       <StaffTimeOffList
         dentists={dentists}
@@ -56,11 +56,23 @@ describe('staff schedule management UI', () => {
     )
 
     expect(markup).toContain('Chỉnh sửa')
-    expect(markup).toContain('Xóa lịch nghỉ')
+    expect(markup).toContain('Ngừng áp dụng')
+    expect(markup).not.toContain('Xóa lịch nghỉ')
     expect(markup).toContain('Nghỉ phép')
   })
 
   it('converts API timestamps to Ho Chi Minh datetime-local values', () => {
     expect(toHcmLocalInput('2026-10-25T01:30:00Z')).toBe('2026-10-25T08:30')
+  })
+
+  it('includes the optional end date in work-shift create and edit payloads', () => {
+    expect(buildWorkShiftPayload({
+      dentist_id: '7',
+      weekday: '1',
+      start_time: '08:00',
+      end_time: '17:00',
+      valid_from: '2026-10-24',
+      valid_to: '2026-12-31',
+    })).toMatchObject({ valid_from: '2026-10-24', valid_to: '2026-12-31' })
   })
 })

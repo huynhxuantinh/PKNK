@@ -56,7 +56,7 @@ export function StaffTimeOffList({ dentists, items, busyId, onEdit, onToggle }: 
       <div className="staff-schedule-detail"><ScheduleStatus active={item.is_active} /><h3>{dentistName(dentists, item.dentist_id)}</h3><p>{item.reason}</p></div>
       <div className="branch-management-actions">
         <button type="button" className="button-secondary" onClick={() => onEdit(item)}>Chỉnh sửa</button>
-        <button type="button" className="button-quiet" disabled={busyId === item.id_time_off} onClick={() => onToggle(item)}>{item.is_active ? 'Xóa lịch nghỉ' : 'Khôi phục'}</button>
+        <button type="button" className="button-quiet" disabled={busyId === item.id_time_off} onClick={() => onToggle(item)}>{item.is_active ? 'Ngừng áp dụng' : 'Khôi phục'}</button>
       </div>
     </article>
   ))}</div>

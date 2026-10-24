@@ -2454,7 +2454,7 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .staff-schedule-section > header > div { display: flex; align-items: center; gap: .75rem; }
 .staff-schedule-section > header > span { color: #658095; font-size: .78rem; font-weight: 800; }
 .staff-schedule-section-index { display: grid; width: 2.1rem; height: 2.1rem; place-items: center; border-radius: 9px; background: #def3f6; color: #087c9d; font-size: .72rem; font-weight: 900; }
-.staff-schedule-form { display: grid; grid-template-columns: 1.4fr repeat(4, minmax(110px, .75fr)) auto; gap: .8rem; align-items: end; padding: 1.25rem 1.5rem; border-bottom: 1px solid #dce9ee; background: #f5fafb; }
+.staff-schedule-form { display: grid; grid-template-columns: 1.4fr repeat(5, minmax(110px, .75fr)) auto; gap: .8rem; align-items: end; padding: 1.25rem 1.5rem; border-bottom: 1px solid #dce9ee; background: #f5fafb; }
 .staff-schedule-form.is-time-off { grid-template-columns: 1.1fr 1fr 1fr 1.2fr auto; }
 .staff-schedule-form-title { grid-column: 1 / -1; display: flex; align-items: baseline; gap: .75rem; }
 .staff-schedule-form-title strong { color: #123e52; font-size: .95rem; }

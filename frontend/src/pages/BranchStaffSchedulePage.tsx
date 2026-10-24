@@ -16,14 +16,18 @@ import {
   StaffTimeOffList, StaffWorkShiftList, type ScheduleDentist,
 } from '../components/branch-management/StaffScheduleList'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
-import { toHcmLocalInput, weekdayLabels } from '../components/branch-management/staffSchedulePresentation'
+import {
+  buildWorkShiftPayload,
+  toHcmLocalInput,
+  type WorkShiftFormValues,
+  weekdayLabels,
+} from '../components/branch-management/staffSchedulePresentation'
 import { useManagedBranches } from '../components/branch-management/useManagedBranches'
 
-interface ShiftFormState { dentist_id: string; weekday: string; start_time: string; end_time: string; valid_from: string }
 interface TimeOffFormState { dentist_id: string; starts_at: string; ends_at: string; reason: string }
 type PendingToggle = { kind: 'shift'; item: ManagedWorkShift } | { kind: 'time-off'; item: ManagedTimeOff }
 
-const emptyShift = (): ShiftFormState => ({ dentist_id: '', weekday: '1', start_time: '08:00', end_time: '17:00', valid_from: hcmDate(new Date()) })
+const emptyShift = (): WorkShiftFormValues => ({ dentist_id: '', weekday: '1', start_time: '08:00', end_time: '17:00', valid_from: hcmDate(new Date()), valid_to: '' })
 const emptyTimeOff = (): TimeOffFormState => ({ dentist_id: '', starts_at: '', ends_at: '', reason: '' })
 const errorMessage = (error: unknown, fallback: string) => error instanceof ApiError || error instanceof Error ? error.message : fallback
 
@@ -38,7 +42,7 @@ export function BranchStaffSchedulePage() {
   const [dentists, setDentists] = useState<ScheduleDentist[]>([])
   const [shifts, setShifts] = useState<ManagedWorkShift[]>([])
   const [offs, setOffs] = useState<ManagedTimeOff[]>([])
-  const [shift, setShift] = useState<ShiftFormState>(emptyShift)
+  const [shift, setShift] = useState<WorkShiftFormValues>(emptyShift)
   const [off, setOff] = useState<TimeOffFormState>(emptyTimeOff)
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null)
   const [editingOffId, setEditingOffId] = useState<number | null>(null)
@@ -67,7 +71,7 @@ export function BranchStaffSchedulePage() {
   const resetOffForm = () => { setOff(emptyTimeOff()); setEditingOffId(null) }
 
   function editShift(item: ManagedWorkShift) {
-    setShift({ dentist_id: String(item.dentist_id), weekday: String(item.weekday), start_time: item.start_time.slice(0, 5), end_time: item.end_time.slice(0, 5), valid_from: item.valid_from })
+    setShift({ dentist_id: String(item.dentist_id), weekday: String(item.weekday), start_time: item.start_time.slice(0, 5), end_time: item.end_time.slice(0, 5), valid_from: item.valid_from, valid_to: item.valid_to ?? '' })
     setEditingShiftId(item.id_work_shift)
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -81,10 +85,14 @@ export function BranchStaffSchedulePage() {
 
   async function saveShift(event: FormEvent) {
     event.preventDefault(); setError(''); setNotice('')
-    const payload = { dentist_id: Number(shift.dentist_id), weekday: Number(shift.weekday), start_time: shift.start_time, end_time: shift.end_time, valid_from: shift.valid_from }
+    if (shift.valid_to && shift.valid_to < shift.valid_from) {
+      setError('Ngày kết thúc không được trước ngày bắt đầu.')
+      return
+    }
+    const payload = buildWorkShiftPayload(shift)
     try {
       if (editingShiftId) { await patchManagedWorkShift(editingShiftId, payload); setNotice('Đã cập nhật ca làm.') }
-      else { await createManagedWorkShift(branchId, { ...payload, valid_to: null, is_active: true }); setNotice('Đã tạo ca làm.') }
+      else { await createManagedWorkShift(branchId, { ...payload, is_active: true }); setNotice('Đã tạo ca làm.') }
       resetShiftForm(); await load()
     } catch (saveError) { setError(errorMessage(saveError, 'Không thể lưu ca làm.')) }
   }
@@ -155,6 +163,7 @@ export function BranchStaffSchedulePage() {
           <label>Bắt đầu<input required type="time" value={shift.start_time} onChange={(event) => setShift({ ...shift, start_time: event.target.value })} /></label>
           <label>Kết thúc<input required type="time" value={shift.end_time} onChange={(event) => setShift({ ...shift, end_time: event.target.value })} /></label>
           <label>Áp dụng từ<input required type="date" value={shift.valid_from} onChange={(event) => setShift({ ...shift, valid_from: event.target.value })} /></label>
+          <label>Áp dụng đến<input type="date" min={shift.valid_from} value={shift.valid_to} onChange={(event) => setShift({ ...shift, valid_to: event.target.value })} /></label>
           <div className="staff-schedule-form-actions"><button type="submit">{editingShiftId ? 'Lưu thay đổi' : 'Tạo ca'}</button>{editingShiftId && <button type="button" className="button-secondary" onClick={resetShiftForm}>Hủy sửa</button>}</div>
         </form>
         <StaffWorkShiftList dentists={dentists} items={shifts} busyId={busyId} onEdit={editShift} onToggle={(item) => setPendingToggle({ kind: 'shift', item })} />
@@ -174,7 +183,7 @@ export function BranchStaffSchedulePage() {
       </section>
     </div>
 
-    {pendingToggle && <div className="branch-management-modal-backdrop"><section className="branch-management-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-toggle-title"><h2 id="schedule-toggle-title">Xác nhận thay đổi</h2><p>{pendingToggle.item.is_active ? pendingToggle.kind === 'shift' ? 'Ngừng ca này? Ca sẽ không còn được dùng để xếp lịch.' : 'Xóa lịch nghỉ này? Dữ liệu vẫn được lưu để đối soát.' : 'Khôi phục và áp dụng lại mục này?'}</p><div><button type="button" className="button-secondary" onClick={() => setPendingToggle(null)}>Quay lại</button><button type="button" onClick={() => void confirmToggle()}>Xác nhận</button></div></section></div>}
+    {pendingToggle && <div className="branch-management-modal-backdrop"><section className="branch-management-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-toggle-title"><h2 id="schedule-toggle-title">Xác nhận thay đổi</h2><p>{pendingToggle.item.is_active ? pendingToggle.kind === 'shift' ? 'Ngừng ca này? Ca sẽ không còn được dùng để xếp lịch.' : 'Ngừng áp dụng lịch nghỉ này? Dữ liệu vẫn được lưu để đối soát.' : 'Khôi phục và áp dụng lại mục này?'}</p><div><button type="button" className="button-secondary" onClick={() => setPendingToggle(null)}>Quay lại</button><button type="button" onClick={() => void confirmToggle()}>Xác nhận</button></div></section></div>}
     </main>
   </div>
 }
