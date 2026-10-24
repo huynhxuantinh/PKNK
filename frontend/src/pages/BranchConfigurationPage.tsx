@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import { BranchChairList, BranchHolidayList, BranchServiceList, OpeningHoursEditor } from '../components/branch-management/BranchConfigurationSections'
+import { buildHolidayPayload } from '../components/branch-management/branchConfigurationPresentation'
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 
@@ -35,7 +36,7 @@ export function BranchConfigurationPage() {
   const [holidayForm, setHolidayForm] = useState(emptyHoliday)
   const [editingChair, setEditingChair] = useState<number | null>(null)
   const [editingService, setEditingService] = useState<number | null>(null)
-  const [editingHoliday, setEditingHoliday] = useState<number | null>(null)
+  const [editingHoliday, setEditingHoliday] = useState<ManagedHoliday | null>(null)
   const [deletingHoliday, setDeletingHoliday] = useState<ManagedHoliday | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -100,16 +101,16 @@ export function BranchConfigurationPage() {
 
   async function saveHoliday(event: FormEvent) {
     event.preventDefault(); setBusy(true)
-    const data = { branch_id: branchId, ...holidayForm }
+    const data = buildHolidayPayload(branchId, holidayForm, editingHoliday)
     try {
-      if (editingHoliday) await patchManagedHoliday(editingHoliday, data)
+      if (editingHoliday) await patchManagedHoliday(editingHoliday.id_holiday, data)
       else await createManagedHoliday(organizationId, data)
       setHolidayForm(emptyHoliday()); setEditingHoliday(null); await load(); showSuccess('Đã lưu ngày lễ/nghỉ.')
     } catch (caught) { showError(caught, 'Không thể lưu ngày lễ/nghỉ.') }
     finally { setBusy(false) }
   }
 
-  function editHoliday(item: ManagedHoliday) { setEditingHoliday(item.id_holiday); setHolidayForm({ holiday_date: item.holiday_date, name: item.name, is_closed: item.is_closed }) }
+  function editHoliday(item: ManagedHoliday) { setEditingHoliday(item); setHolidayForm({ holiday_date: item.holiday_date, name: item.name, is_closed: item.is_closed }) }
   async function confirmDeleteHoliday() { if (!deletingHoliday) return; try { await deleteManagedHoliday(deletingHoliday.id_holiday); setDeletingHoliday(null); await load(); showSuccess('Đã xóa ngày lễ/nghỉ.') } catch (caught) { showError(caught, 'Không thể xóa ngày lễ/nghỉ.') } }
 
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />

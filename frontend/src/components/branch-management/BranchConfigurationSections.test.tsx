@@ -7,6 +7,7 @@ import {
   BranchServiceList,
   OpeningHoursEditor,
 } from './BranchConfigurationSections'
+import { buildHolidayPayload } from './branchConfigurationPresentation'
 
 describe('branch configuration sections', () => {
   it('renders all seven opening-hour rows and save action', () => {
@@ -24,5 +25,17 @@ describe('branch configuration sections', () => {
     expect(chairMarkup).toContain('Ngừng sử dụng')
     expect(serviceMarkup).toContain('500.000')
     expect(holidayMarkup).toContain('Xóa')
+  })
+
+  it('preserves organization-wide scope when editing a holiday', () => {
+    const form = {
+      holiday_date: '2026-12-31',
+      name: 'Nghỉ cuối năm',
+      is_closed: true,
+    }
+
+    expect(buildHolidayPayload(5, form, { branch_id: null }).branch_id).toBeNull()
+    expect(buildHolidayPayload(5, form, { branch_id: 3 }).branch_id).toBe(3)
+    expect(buildHolidayPayload(5, form, null).branch_id).toBe(5)
   })
 })
