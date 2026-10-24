@@ -3,6 +3,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.contrib.gis.geos import Point
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -129,6 +130,10 @@ class SchedulingApiTests(APITestCase):
             time(hour, minute),
             tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"),
         )
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
 
     def test_slot_search_returns_available_times(self):
         response = self.client.get(
@@ -319,8 +324,10 @@ class SchedulingApiTests(APITestCase):
         stale_hold = Appointment.objects.get(
             public_code=first_response.data["data"]["public_code"]
         )
+        expired_at = timezone.now() - timedelta(seconds=1)
         Appointment.objects.filter(pk=stale_hold.pk).update(
-            expires_at=timezone.now() - timedelta(seconds=1)
+            held_at=expired_at - timedelta(minutes=10),
+            expires_at=expired_at,
         )
 
         response = self.client.post(

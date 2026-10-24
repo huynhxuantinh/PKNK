@@ -131,12 +131,12 @@ class PatientAppointmentApiTests(APITestCase):
         checked_in = self.appointment(
             "PATIENT-CHECKED-IN",
             appointment_status=Appointment.Status.CHECKED_IN,
-            starts_at=timezone.now() - timedelta(minutes=20),
+            starts_at=timezone.now() - timedelta(hours=2),
         )
         in_progress = self.appointment(
             "PATIENT-IN-PROGRESS",
             appointment_status=Appointment.Status.IN_PROGRESS,
-            starts_at=timezone.now() - timedelta(minutes=10),
+            starts_at=timezone.now() - timedelta(hours=1),
         )
         completed = self.appointment(
             "PATIENT-HISTORY", appointment_status=Appointment.Status.COMPLETED,
