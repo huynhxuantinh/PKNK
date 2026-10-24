@@ -14,6 +14,7 @@ from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization, StaffInvitation
+from apps.organizations.services import StaffInvitationService
 from apps.scheduling.models import Appointment
 
 
@@ -69,6 +70,52 @@ class ManagementAPITests(APITestCase):
             ward=cls.ward,
             address_line=code,
             location="POINT(106.7 10.7)",
+        )
+
+    def create_active_patient_appointment(self, user, public_code):
+        patient = PatientProfile.objects.create(user=user)
+        Membership.objects.create(
+            user=user,
+            organization=self.org_a,
+            role=Membership.Role.PATIENT,
+        )
+        dentist = Dentist.objects.create(
+            user=self.dentist_user,
+            organization=self.org_a,
+        )
+        service = Service.objects.create(
+            organization=self.org_a,
+            code=f"SVC-{public_code}",
+            name="Khám tổng quát",
+            standard_duration_minutes=30,
+            standard_price=100,
+        )
+        branch_service = BranchService.objects.create(
+            branch=self.branch_a,
+            service=service,
+            price=100,
+        )
+        chair = Chair.objects.create(
+            branch=self.branch_a,
+            code=f"C-{public_code}",
+            name="Ghế khám",
+            resource_type=Chair.ResourceType.CHAIR,
+        )
+        starts_at = timezone.now() + timedelta(days=1)
+        return Appointment.objects.create(
+            public_code=public_code,
+            patient_profile=patient,
+            branch=self.branch_a,
+            branch_service=branch_service,
+            dentist=dentist,
+            chair=chair,
+            service_name_snapshot=service.name,
+            service_price_snapshot=branch_service.price,
+            duration_minutes=30,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            occupied_until=starts_at + timedelta(minutes=30),
+            status=Appointment.Status.CONFIRMED,
         )
 
     def test_branch_scope_and_branch_admin_cannot_patch_branch(self):
@@ -210,6 +257,124 @@ class ManagementAPITests(APITestCase):
             Membership.objects.filter(
                 user=self.staff_user,
                 role=Membership.Role.PATIENT,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_cannot_assign_staff_role_while_patient_has_active_appointment(self):
+        self.create_active_patient_appointment(
+            self.staff_user,
+            "APT-PATIENT-TO-STAFF",
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.post(
+            reverse("management:organization-memberships", kwargs={"organization_id": self.org_a.pk}),
+            {
+                "email": self.staff_user.email,
+                "role": Membership.Role.BRANCH_ADMIN,
+                "branch_id": self.branch_a.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("lịch hẹn bệnh nhân", response.data["message"])
+        self.assertTrue(
+            Membership.objects.filter(
+                user=self.staff_user,
+                role=Membership.Role.PATIENT,
+                is_active=True,
+            ).exists()
+        )
+        self.assertFalse(
+            Membership.objects.filter(
+                user=self.staff_user,
+                role=Membership.Role.BRANCH_ADMIN,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_cannot_accept_staff_invitation_while_patient_has_active_appointment(self):
+        invite_email = "patient-invited-as-staff@example.com"
+        invitation, raw_token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=self.branch_a,
+            email=invite_email,
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.org_admin,
+        )
+        invited_user = self.make_user(invite_email)
+        self.create_active_patient_appointment(
+            invited_user,
+            "APT-PATIENT-INVITED",
+        )
+        self.client.force_authenticate(invited_user)
+
+        response = self.client.post(
+            reverse("management:invitation-accept"),
+            {"token": raw_token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("lịch hẹn bệnh nhân", response.data["message"])
+        invitation.refresh_from_db()
+        self.assertIsNone(invitation.accepted_at)
+        self.assertFalse(
+            Membership.objects.filter(
+                user=invited_user,
+                role=Membership.Role.BRANCH_ADMIN,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_cannot_reactivate_staff_role_while_patient_has_active_appointment(self):
+        self.create_active_patient_appointment(
+            self.staff_user,
+            "APT-PATIENT-REACTIVATE",
+        )
+        staff_membership = Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            branch=self.branch_a,
+            role=Membership.Role.BRANCH_ADMIN,
+            is_active=False,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:membership-detail", kwargs={"membership_id": staff_membership.pk}),
+            {"is_active": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        staff_membership.refresh_from_db()
+        self.assertFalse(staff_membership.is_active)
+
+    def test_cannot_assign_dentist_branch_while_patient_has_active_appointment(self):
+        self.create_active_patient_appointment(
+            self.staff_user,
+            "APT-PATIENT-TO-DENTIST",
+        )
+        dentist = Dentist.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.put(
+            reverse("management:dentist-branches", kwargs={"dentist_id": dentist.pk}),
+            {"ids": [self.branch_a.pk]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(
+            Membership.objects.filter(
+                user=self.staff_user,
+                role=Membership.Role.DENTIST,
                 is_active=True,
             ).exists()
         )
