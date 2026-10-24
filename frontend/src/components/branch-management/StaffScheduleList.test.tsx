@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import {
   StaffTimeOffList,
   StaffWorkShiftList,
-  toHcmLocalInput,
 } from './StaffScheduleList'
+import { toHcmLocalInput } from './staffSchedulePresentation'
 
 const dentists = [{ id_dentist: 7, full_name: 'BS. Lê Quốc Huy' }]
 
