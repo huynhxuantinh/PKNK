@@ -85,6 +85,18 @@ class AuditEventAPITests(AuditTestDataMixin, APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_patient_is_rejected_before_audit_scope_lookup(self):
+        patient = User.objects.create_user(
+            email="audit-patient@example.com",
+            password="test",
+            full_name="Audit Patient",
+        )
+        self.client.force_authenticate(patient)
+
+        response = self.client.get(self.url(self.org_a))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_sensitive_keys_are_redacted(self):
         self.event.refresh_from_db()
 
