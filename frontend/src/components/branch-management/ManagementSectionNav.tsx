@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-type ManagementSection = 'appointments' | 'staff' | 'reports'
+type ManagementSection = 'appointments' | 'staff' | 'reports' | 'invoices'
 
 interface ManagementSectionNavProps {
   branchId: number
@@ -11,6 +11,7 @@ const sections: Array<{ id: ManagementSection; label: string; description: strin
   { id: 'appointments', label: 'Lịch hẹn', description: 'Điều phối lịch khám', path: '/quan-ly-chi-nhanh' },
   { id: 'staff', label: 'Ca làm & nghỉ phép', description: 'Sắp xếp nha sĩ', path: '/quan-ly-chi-nhanh/ca-lam' },
   { id: 'reports', label: 'Báo cáo', description: 'Doanh thu & hiệu suất', path: '/quan-ly-chi-nhanh/bao-cao' },
+  { id: 'invoices', label: 'Hóa đơn', description: 'Phát hành & theo dõi', path: '/quan-ly-chi-nhanh/hoa-don' },
 ]
 
 export function ManagementSectionNav({ branchId, active }: ManagementSectionNavProps) {

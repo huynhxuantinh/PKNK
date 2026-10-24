@@ -30,6 +30,16 @@ export interface ManagedBranch {
 }
 export interface ManagedWorkShift { id_work_shift: number; branch_id: number; dentist_id: number; weekday: number; start_time: string; end_time: string; valid_from: string; valid_to: string | null; is_active: boolean }
 export interface ManagedTimeOff { id_time_off: number; branch_id: number | null; dentist_id: number; starts_at: string; ends_at: string; reason: string; is_active: boolean }
+export type ManagedInvoiceStatus = 'DRAFT' | 'ISSUED' | 'PAID' | 'VOID'
+export interface ManagedInvoiceLine { id_invoice_line: number; service_id: number | null; service_code_snapshot: string; description: string; quantity: number; unit_price: string; line_total: string }
+export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: string; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; posted_at: string; voided_at: string | null; void_reason: string }
+export interface ManagedInvoice {
+  id_invoice: number; invoice_number: string; appointment_code: string; branch_id: number
+  patient_profile_id: number; patient_name: string; replacement_for_id: number | null
+  status: ManagedInvoiceStatus; currency: 'VND'; subtotal: string; discount: string; total: string
+  lines: ManagedInvoiceLine[]; payments: ManagedInvoicePayment[]; issued_at: string | null
+  paid_at: string | null; voided_at: string | null; void_reason: string; created_at: string
+}
 
 interface ManagementAppointmentsResponse { data: ManagementAppointment[]; meta: { count: number } }
 
@@ -82,3 +92,12 @@ export const createManagedTimeOff = (branchId: number, data: Omit<ManagedTimeOff
 export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 
 export const branchReport = (branchId: number, name: 'revenue' | 'appointments' | 'chair-utilization', dateFrom: string, dateTo: string) => apiRequest<{ data: Record<string, unknown> }>(`/management/branches/${branchId}/reports/${name}/?${new URLSearchParams({ date_from: dateFrom, date_to: dateTo, ...(name === 'revenue' ? { interval: 'DAY' } : {}) })}`, {}, { auth: true })
+
+export function listManagedInvoices(branchId: number, status?: ManagedInvoiceStatus) {
+  const query = status ? `?status=${status}` : ''
+  return apiRequest<{ data: ManagedInvoice[] }>(`/management/branches/${branchId}/invoices/${query}`, {}, { auth: true })
+}
+export const getManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, {}, { auth: true })
+export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
+export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
+export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
+import type { ManagedInvoice } from '../../api/management'
 import { InvoiceDetailPanel, InvoiceList } from './InvoiceManagement'
 
 const draftInvoice = {
@@ -23,7 +24,7 @@ const draftInvoice = {
   voided_at: null,
   void_reason: '',
   created_at: '2026-10-24T08:00:00+07:00',
-}
+} satisfies ManagedInvoice
 
 describe('invoice management UI', () => {
   it('renders invoice identity, patient, total and detail action', () => {
