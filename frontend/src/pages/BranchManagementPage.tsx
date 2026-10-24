@@ -26,6 +26,7 @@ import {
   appointmentStatusLabels,
   hcmDate,
 } from '../components/branch-management/appointmentPresentation'
+import { resolveManagedBranchId } from '../components/branch-management/managedBranchSelection'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail, Slot } from '../types/api'
 
@@ -81,10 +82,7 @@ export function BranchManagementPage() {
   const activeBranches = branches.filter((item) => item.is_active)
   const branchIds = activeBranches.map((item) => item.id_branch)
   const requestedBranchId = Number(params.get('chi-nhanh')) || null
-  const branchId =
-    requestedBranchId && branchIds.includes(requestedBranchId)
-      ? requestedBranchId
-      : branchIds[0] || null
+  const branchId = resolveManagedBranchId(requestedBranchId, branches, loaded)
   const isManager = user?.memberships?.some(
     (membership) =>
       membership.is_active &&
