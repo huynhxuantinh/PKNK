@@ -7,6 +7,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.access_control.scopes import organization_ids_for
+from apps.accounts.permissions import IsManagementStaff
 from apps.organizations.models import Membership, Organization
 
 from .models import AuditEvent
@@ -15,7 +16,7 @@ from .services import AuditService
 
 
 class OrganizationAuditEventListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsManagementStaff]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "audit_events"
 
