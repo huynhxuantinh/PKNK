@@ -640,6 +640,28 @@ class OrganizationDentistListCreateAPIView(ManagementAPIView):
         return Response({"data": DentistManagementSerializer(dentist).data}, status=status.HTTP_201_CREATED)
 
 
+class BranchDentistListAPIView(ManagementAPIView):
+    serializer_class = DentistManagementSerializer
+
+    @extend_schema(responses={200: DentistManagementSerializer(many=True)})
+    def get(self, request, branch_id):
+        branch = self.branch(branch_id)
+        dentists = (
+            Dentist.objects.filter(
+                organization=branch.organization,
+                is_active=True,
+                user__memberships__organization=branch.organization,
+                user__memberships__branch=branch,
+                user__memberships__role=Membership.Role.DENTIST,
+                user__memberships__is_active=True,
+            )
+            .select_related("user")
+            .distinct()
+            .order_by("user__full_name", "id_dentist")
+        )
+        return Response({"data": self.serializer_class(dentists, many=True).data})
+
+
 class DentistDetailAPIView(ManagementAPIView):
     serializer_class = DentistManagementSerializer
     def get_object(self, dentist_id):

@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     BranchChairListCreateAPIView,
     BranchDetailAPIView,
+    BranchDentistListAPIView,
     BranchOpeningHoursAPIView,
     BranchServiceDetailAPIView,
     BranchServiceListCreateAPIView,
@@ -60,6 +61,7 @@ urlpatterns = [
     path("organizations/<int:organization_id>/", OrganizationDetailAPIView.as_view(), name="organization-detail"),
     path("organizations/<int:organization_id>/branches/", OrganizationBranchListCreateAPIView.as_view(), name="organization-branches"),
     path("branches/<int:branch_id>/", BranchDetailAPIView.as_view(), name="branch-detail"),
+    path("branches/<int:branch_id>/dentists/", BranchDentistListAPIView.as_view(), name="branch-dentists"),
     path("branches/<int:branch_id>/opening-hours/", BranchOpeningHoursAPIView.as_view(), name="branch-opening-hours"),
     path("organizations/<int:organization_id>/holidays/", OrganizationHolidayListCreateAPIView.as_view(), name="organization-holidays"),
     path("holidays/<int:holiday_id>/", HolidayDetailAPIView.as_view(), name="holiday-detail"),

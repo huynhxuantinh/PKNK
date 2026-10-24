@@ -154,6 +154,47 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(valid.status_code, status.HTTP_201_CREATED)
         self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_branch_dentist_list_only_returns_active_assignments(self):
+        inactive_user = self.make_user("inactive-dentist@example.com", "Inactive Dentist")
+        inactive_dentist = Dentist.objects.create(
+            user=inactive_user,
+            organization=self.organization,
+            is_active=False,
+        )
+        Membership.objects.create(
+            user=inactive_user,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.DENTIST,
+        )
+        disabled_assignment_user = self.make_user(
+            "disabled-assignment@example.com",
+            "Disabled Assignment",
+        )
+        Dentist.objects.create(
+            user=disabled_assignment_user,
+            organization=self.organization,
+        )
+        Membership.objects.create(
+            user=disabled_assignment_user,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.DENTIST,
+            is_active=False,
+        )
+
+        self.client.force_authenticate(self.branch_admin)
+        response = self.client.get(
+            reverse("management:branch-dentists", kwargs={"branch_id": self.branch.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["id_dentist"] for item in response.data["data"]],
+            [self.dentist.pk],
+        )
+        self.assertNotContains(response, inactive_dentist.user.full_name)
+
     def test_time_off_overlapping_active_appointment_is_rejected(self):
         self.create_appointment("APT-TIME-OFF")
         self.client.force_authenticate(self.branch_admin)

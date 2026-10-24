@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
-import { getBranchDetail } from '../api/booking'
 import { ApiError } from '../api/client'
 import {
-  createManagedTimeOff, createManagedWorkShift, listManagedTimeOffs, listManagedWorkShifts,
+  createManagedTimeOff, createManagedWorkShift, listManagedBranchDentists,
+  listManagedTimeOffs, listManagedWorkShifts,
   patchManagedTimeOff, patchManagedWorkShift, type ManagedTimeOff, type ManagedWorkShift,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
@@ -54,8 +54,12 @@ export function BranchStaffSchedulePage() {
   const load = useCallback(async () => {
     if (!branchId) return
     try {
-      const [detail, shiftData, offData] = await Promise.all([getBranchDetail(branchId), listManagedWorkShifts(branchId), listManagedTimeOffs(branchId)])
-      setDentists(detail.data.dentists)
+      const [dentistData, shiftData, offData] = await Promise.all([
+        listManagedBranchDentists(branchId),
+        listManagedWorkShifts(branchId),
+        listManagedTimeOffs(branchId),
+      ])
+      setDentists(dentistData.data)
       setShifts(shiftData.data)
       setOffs(offData.data)
       setError('')
