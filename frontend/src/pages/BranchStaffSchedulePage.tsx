@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { createManagedTimeOff, createManagedWorkShift, listManagedTimeOffs, listManagedWorkShifts, type ManagedTimeOff, type ManagedWorkShift } from '../api/management'
 import { getBranchDetail } from '../api/booking'
@@ -13,8 +13,8 @@ export function BranchStaffSchedulePage() {
   const [dentists, setDentists] = useState<{ id_dentist: number; full_name: string }[]>([]); const [shifts, setShifts] = useState<ManagedWorkShift[]>([]); const [offs, setOffs] = useState<ManagedTimeOff[]>([]); const [error, setError] = useState('')
   const [shift, setShift] = useState({ dentist_id: '', weekday: '1', start_time: '08:00', end_time: '17:00', valid_from: new Date().toISOString().slice(0, 10) }); const [off, setOff] = useState({ dentist_id: '', starts_at: '', ends_at: '', reason: '' })
   const manager = user?.memberships?.some((m) => m.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(m.role))
-  async function load() { if (!branchId) return; try { const [detail, shiftData, offData] = await Promise.all([getBranchDetail(branchId), listManagedWorkShifts(branchId), listManagedTimeOffs(branchId)]); setDentists(detail.data.dentists); setShifts(shiftData.data); setOffs(offData.data) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể tải dữ liệu.') } }
-  useEffect(() => { void load() }, [branchId])
+  const load = useCallback(async () => { if (!branchId) return; try { const [detail, shiftData, offData] = await Promise.all([getBranchDetail(branchId), listManagedWorkShifts(branchId), listManagedTimeOffs(branchId)]); setDentists(detail.data.dentists); setShifts(shiftData.data); setOffs(offData.data) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể tải dữ liệu.') } }, [branchId])
+  useEffect(() => { void load() }, [load])
   async function saveShift(event: FormEvent) { event.preventDefault(); try { await createManagedWorkShift(branchId, { dentist_id: Number(shift.dentist_id), weekday: Number(shift.weekday), start_time: shift.start_time, end_time: shift.end_time, valid_from: shift.valid_from, valid_to: null, is_active: true }); await load() } catch (e) { setError(e instanceof ApiError ? e.message : 'Không thể tạo ca làm.') } }
   async function saveOff(event: FormEvent) { event.preventDefault(); try { await createManagedTimeOff(branchId, { dentist_id: Number(off.dentist_id), starts_at: `${off.starts_at}:00+07:00`, ends_at: `${off.ends_at}:00+07:00`, reason: off.reason, is_active: true }); await load() } catch (e) { setError(e instanceof ApiError ? e.message : 'Không thể tạo lịch nghỉ.') } }
   if (!isAuthenticated || !manager || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />

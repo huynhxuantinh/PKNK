@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 
 import type { Branch } from '../types/api'
@@ -52,13 +52,14 @@ export function BranchMap({
     mapRef.current = map
     userLocationRef.current = L.layerGroup().addTo(map)
     markersRef.current = L.layerGroup().addTo(map)
+    const markersMap = markersMapRef.current
 
     return () => {
       map.remove()
       mapRef.current = null
       userLocationRef.current = null
       markersRef.current = null
-      markersMapRef.current.clear()
+      markersMap.clear()
     }
   }, [])
 

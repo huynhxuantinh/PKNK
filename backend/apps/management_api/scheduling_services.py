@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.models import Dentist
@@ -17,7 +16,6 @@ from apps.scheduling.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
     AppointmentStatusHistory,
-    TimeOff,
     WorkShift,
 )
 from apps.scheduling.services import AppointmentService

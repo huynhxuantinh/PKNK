@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeTokens(response.data.tokens)
     persistUser(response.data.user)
     return response.data.user
-  }, [])
+  }, [persistUser])
 
   const register = useCallback(async (input: RegisterInput) => {
     await apiRequest<{ data: { message: string } }>('/auth/register/', {

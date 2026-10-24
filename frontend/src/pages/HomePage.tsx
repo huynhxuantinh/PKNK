@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { listBranches, type BranchFilters } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
@@ -94,7 +94,6 @@ function HeroSlider() {
 }
 
 export function HomePage() {
-  const navigate = useNavigate()
   const [branches, setBranches] = useState<Branch[]>([])
   const [branchDirectory, setBranchDirectory] = useState<Branch[]>([])
   const [branchState, setBranchState] = useState<'loading' | 'ready' | 'error'>('loading')
