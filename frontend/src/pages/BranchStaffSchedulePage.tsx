@@ -8,6 +8,9 @@ import {
   patchManagedTimeOff, patchManagedWorkShift, type ManagedTimeOff, type ManagedWorkShift,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
+import { canAccessArea } from '../auth/roles'
+import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
+import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import {
   StaffTimeOffList, StaffWorkShiftList, type ScheduleDentist,
 } from '../components/branch-management/StaffScheduleList'
@@ -23,7 +26,7 @@ const emptyTimeOff = (): TimeOffFormState => ({ dentist_id: '', starts_at: '', e
 const errorMessage = (error: unknown, fallback: string) => error instanceof ApiError || error instanceof Error ? error.message : fallback
 
 export function BranchStaffSchedulePage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user } = useAuth()
   const [params] = useSearchParams()
   const branchId = Number(params.get('chi-nhanh')) || 0
   const [dentists, setDentists] = useState<ScheduleDentist[]>([])
@@ -37,7 +40,6 @@ export function BranchStaffSchedulePage() {
   const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const manager = user?.memberships?.some((membership) => membership.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role))
 
   const load = useCallback(async () => {
     if (!branchId) return
@@ -108,12 +110,15 @@ export function BranchStaffSchedulePage() {
     } finally { setBusyId(null) }
   }
 
-  if (!isAuthenticated || !manager || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
+  if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
 
-  return <main className="branch-management-page staff-schedule-page">
+  return <div className="branch-management-page staff-schedule-page">
+    <ManagementPageHeader title="Ca làm & nghỉ phép" path="/quan-ly-chi-nhanh/ca-lam" />
+    <main>
     <div className="branch-management-main">
       <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
       <header className="staff-schedule-heading"><div><span className="staff-schedule-kicker">Nhân sự chi nhánh</span><h1>Ca làm & nghỉ phép</h1><p>Sắp xếp thời gian làm việc và ngày vắng mặt của từng nha sĩ.</p></div><div className="staff-schedule-overview" aria-label="Tổng quan lịch làm việc"><span><strong>{activeShiftCount}</strong> ca đang áp dụng</span><span><strong>{activeOffCount}</strong> lịch nghỉ</span></div></header>
+      <ManagementSectionNav branchId={branchId} active="staff" />
       {error && <div className="dentist-error" role="alert">{error}</div>}
       {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
@@ -146,5 +151,6 @@ export function BranchStaffSchedulePage() {
     </div>
 
     {pendingToggle && <div className="branch-management-modal-backdrop"><section className="branch-management-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-toggle-title"><h2 id="schedule-toggle-title">Xác nhận thay đổi</h2><p>{pendingToggle.item.is_active ? pendingToggle.kind === 'shift' ? 'Ngừng ca này? Ca sẽ không còn được dùng để xếp lịch.' : 'Xóa lịch nghỉ này? Dữ liệu vẫn được lưu để đối soát.' : 'Khôi phục và áp dụng lại mục này?'}</p><div><button type="button" className="button-secondary" onClick={() => setPendingToggle(null)}>Quay lại</button><button type="button" onClick={() => void confirmToggle()}>Xác nhận</button></div></section></div>}
-  </main>
+    </main>
+  </div>
 }

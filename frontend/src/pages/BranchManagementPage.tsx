@@ -16,6 +16,7 @@ import {
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { canAccessArea } from '../auth/roles'
 import {
   AppointmentList,
   ManagementErrorBanner,
@@ -84,11 +85,7 @@ export function BranchManagementPage() {
   const branchIds = activeBranches.map((item) => item.id_branch)
   const requestedBranchId = Number(params.get('chi-nhanh')) || null
   const branchId = resolveManagedBranchId(requestedBranchId, branches, loaded)
-  const isManager = user?.memberships?.some(
-    (membership) =>
-      membership.is_active &&
-      ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role),
-  )
+  const isManager = canAccessArea(user, 'MANAGEMENT')
 
   useEffect(() => {
     let active = true

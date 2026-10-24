@@ -7,13 +7,15 @@ import {
   voidManagedInvoice, type ManagedInvoice, type ManagedInvoiceStatus,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
+import { canAccessArea } from '../auth/roles'
 import { InvoiceDetailPanel, InvoiceList } from '../components/branch-management/InvoiceManagement'
+import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import { invoiceStatusLabels } from '../components/branch-management/invoicePresentation'
 
 export function BranchInvoicesPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user } = useAuth()
   const [params] = useSearchParams()
   const branchId = Number(params.get('chi-nhanh')) || 0
   const [status, setStatus] = useState<ManagedInvoiceStatus | ''>('')
@@ -29,7 +31,6 @@ export function BranchInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const manager = user?.memberships?.some((membership) => membership.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role))
 
   const loadInvoices = useCallback(async () => {
     if (!branchId) return
@@ -92,8 +93,10 @@ export function BranchInvoicesPage() {
     finally { setBusy(false) }
   }
 
-  if (!isAuthenticated || !manager || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
-  return <main className="branch-management-page invoice-management-page"><div className="branch-management-main">
+  if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
+  return <div className="branch-management-page invoice-management-page">
+    <ManagementPageHeader title="Hóa đơn chi nhánh" path="/quan-ly-chi-nhanh/hoa-don" />
+    <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
     <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
     <ManagementSectionNav branchId={branchId} active="invoices" />
@@ -107,5 +110,6 @@ export function BranchInvoicesPage() {
     {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><p>Chọn lịch khám đã hoàn tất hoặc nhập mã lịch hẹn.</p><label>Mã lịch hẹn<input required list="completed-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="completed-appointments">{eligibleAppointments.map((appointment) => <option key={appointment.public_code} value={appointment.public_code}>{appointment.patient_name} — {appointment.service_name_snapshot}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
     {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} />}
     {showVoid && selected && <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={voidInvoice}><h2>Hủy hóa đơn</h2><p>Lý do hủy sẽ được lưu trong nhật ký đối soát.</p><label>Lý do<textarea required minLength={3} maxLength={1000} value={voidReason} onChange={(event) => setVoidReason(event.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setShowVoid(false)}>Quay lại</button><button type="submit" disabled={busy}>Xác nhận hủy</button></div></form></div>}
-  </main>
+    </main>
+  </div>
 }

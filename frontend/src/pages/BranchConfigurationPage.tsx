@@ -10,7 +10,9 @@ import {
   type ManagedService,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
+import { canAccessArea } from '../auth/roles'
 import { BranchChairList, BranchHolidayList, BranchServiceList, OpeningHoursEditor } from '../components/branch-management/BranchConfigurationSections'
+import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 
 const defaultHours = (): ManagedOpeningHour[] => Array.from({ length: 7 }, (_, index) => ({ weekday: index + 1, is_closed: index === 6, open_time: index === 6 ? null : '08:00', close_time: index === 6 ? null : '18:00' }))
@@ -19,7 +21,7 @@ const emptyService = () => ({ service_id: '', price: '', duration_minutes: '30',
 const emptyHoliday = () => ({ holiday_date: '', name: '', is_closed: true })
 
 export function BranchConfigurationPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user } = useAuth()
   const [params] = useSearchParams()
   const branchId = Number(params.get('chi-nhanh')) || 0
   const [organizationId, setOrganizationId] = useState(0)
@@ -38,7 +40,6 @@ export function BranchConfigurationPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const manager = user?.memberships?.some((membership) => membership.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role))
   const canEditOrganization = user?.memberships?.some((membership) => membership.is_active && membership.role === 'ORGANIZATION_ADMIN' && membership.organization_id === organizationId) ?? false
 
   const load = useCallback(async () => {
@@ -111,8 +112,10 @@ export function BranchConfigurationPage() {
   function editHoliday(item: ManagedHoliday) { setEditingHoliday(item.id_holiday); setHolidayForm({ holiday_date: item.holiday_date, name: item.name, is_closed: item.is_closed }) }
   async function confirmDeleteHoliday() { if (!deletingHoliday) return; try { await deleteManagedHoliday(deletingHoliday.id_holiday); setDeletingHoliday(null); await load(); showSuccess('Đã xóa ngày lễ/nghỉ.') } catch (caught) { showError(caught, 'Không thể xóa ngày lễ/nghỉ.') } }
 
-  if (!isAuthenticated || !manager || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
-  return <main className="branch-management-page branch-config-page"><div className="branch-management-main">
+  if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
+  return <div className="branch-management-page branch-config-page">
+    <ManagementPageHeader title="Cấu hình chi nhánh" path="/quan-ly-chi-nhanh/cau-hinh" />
+    <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
     <header className="branch-config-heading"><div><span>Thiết lập vận hành</span><h1>Cấu hình chi nhánh</h1><p>Quản lý khung giờ, nguồn lực và dịch vụ được sử dụng khi xếp lịch.</p></div><strong>4 nhóm cấu hình</strong></header>
     <ManagementSectionNav branchId={branchId} active="configuration" />
@@ -125,4 +128,5 @@ export function BranchConfigurationPage() {
       <section className="branch-management-schedule branch-config-section is-wide"><header><div><span>04</span><h2>Ngày lễ & nghỉ</h2></div><small>{canEditOrganization ? 'Có thể chỉnh sửa' : 'Chỉ xem'}</small></header>{canEditOrganization && <form className="config-inline-form holiday-form" onSubmit={saveHoliday}><label>Ngày<input required type="date" value={holidayForm.holiday_date} onChange={(event) => setHolidayForm({ ...holidayForm, holiday_date: event.target.value })} /></label><label>Tên ngày nghỉ<input required value={holidayForm.name} onChange={(event) => setHolidayForm({ ...holidayForm, name: event.target.value })} /></label><label className="config-checkbox"><input type="checkbox" checked={holidayForm.is_closed} onChange={(event) => setHolidayForm({ ...holidayForm, is_closed: event.target.checked })} /> Đóng cửa</label><button disabled={busy}>{editingHoliday ? 'Lưu' : 'Thêm'}</button>{editingHoliday && <button type="button" className="button-secondary" onClick={() => { setEditingHoliday(null); setHolidayForm(emptyHoliday()) }}>Hủy</button>}</form>}<BranchHolidayList items={holidays} canEdit={canEditOrganization} onEdit={editHoliday} onDelete={setDeletingHoliday} /></section>
     </div>
   </div>{deletingHoliday && <div className="branch-management-modal-backdrop"><section className="branch-management-modal" role="dialog" aria-modal="true"><h2>Xóa ngày nghỉ?</h2><p>{deletingHoliday.name} — {deletingHoliday.holiday_date}</p><div><button type="button" className="button-secondary" onClick={() => setDeletingHoliday(null)}>Quay lại</button><button type="button" onClick={() => void confirmDeleteHoliday()}>Xác nhận xóa</button></div></section></div>}</main>
+  </div>
 }
