@@ -1,36 +1,376 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { cancelManagedAppointment, checkInManagedAppointment, confirmManagedAppointment, listBranchAppointments, listManagedOrganizationBranches, listManagedRescheduleSlots, markManagedAppointmentNoShow, rescheduleManagedAppointment, type ManagedBranch, type ManagementAppointment, type ManagementAppointmentStatus } from '../api/management'
+import {
+  cancelManagedAppointment,
+  checkInManagedAppointment,
+  confirmManagedAppointment,
+  listBranchAppointments,
+  listManagedOrganizationBranches,
+  listManagedRescheduleSlots,
+  markManagedAppointmentNoShow,
+  rescheduleManagedAppointment,
+  type ManagedBranch,
+  type ManagementAppointment,
+  type ManagementAppointmentStatus,
+} from '../api/management'
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { AppointmentList } from '../components/branch-management/AppointmentList'
+import { CancelAppointmentModal } from '../components/branch-management/CancelAppointmentModal'
+import { RescheduleAppointmentModal } from '../components/branch-management/RescheduleAppointmentModal'
+import {
+  appointmentStatusLabels,
+  hcmDate,
+} from '../components/branch-management/appointmentPresentation'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail, Slot } from '../types/api'
 
-const labels: Record<ManagementAppointmentStatus, string> = { PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', CHECKED_IN: 'Đã check-in', IN_PROGRESS: 'Đang khám', COMPLETED: 'Hoàn tất', CANCELLED: 'Đã hủy', NO_SHOW: 'Không đến' }
-const hcmDate = (value: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(value)
-const hcmTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
 
 export function BranchManagementPage() {
-  const { isAuthenticated, user } = useAuth(); const [params, setParams] = useSearchParams()
-  const direct = useMemo<ManagedBranch[]>(() => (user?.memberships || []).filter((m) => m.is_active && m.role === 'BRANCH_ADMIN' && m.branch_id).map((m) => ({ id_branch: m.branch_id as number, name: m.branch_name || `Chi nhánh #${m.branch_id}`, is_active: true })), [user])
-  const orgIds = useMemo(() => [...new Set((user?.memberships || []).filter((m) => m.is_active && m.role === 'ORGANIZATION_ADMIN').map((m) => m.organization_id))], [user])
-  const [branches, setBranches] = useState<ManagedBranch[]>(direct); const [loaded, setLoaded] = useState(orgIds.length === 0)
-  const ids = branches.filter((b) => b.is_active).map((b) => b.id_branch); const requested = Number(params.get('chi-nhanh')) || null; const branchId = requested && ids.includes(requested) ? requested : ids[0] || null
-  const [branch, setBranch] = useState<BranchDetail | null>(null); const [date, setDate] = useState(() => hcmDate(new Date())); const [days, setDays] = useState<1 | 7>(1); const [dentistId, setDentistId] = useState<number>(); const [status, setStatus] = useState<ManagementAppointmentStatus | ''>(''); const [items, setItems] = useState<ManagementAppointment[] | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState('')
-  const [cancelling, setCancelling] = useState<ManagementAppointment | null>(null); const [reason, setReason] = useState(''); const [moving, setMoving] = useState<ManagementAppointment | null>(null); const [moveDate, setMoveDate] = useState(''); const [moveDentist, setMoveDentist] = useState<number>(); const [moveReason, setMoveReason] = useState(''); const [moveKey, setMoveKey] = useState(''); const [slots, setSlots] = useState<Slot[] | null>(null)
-  const manager = user?.memberships?.some((m) => m.is_active && ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(m.role))
-  useEffect(() => { let active = true; setLoaded(orgIds.length === 0); Promise.all(orgIds.map(listManagedOrganizationBranches)).then((results) => { if (active) setBranches([...new Map([...direct, ...results.flatMap((r) => r.data)].map((b) => [b.id_branch, b])).values()]) }).catch((e) => active && setError(e instanceof Error ? e.message : 'Không thể tải chi nhánh.')).finally(() => active && setLoaded(true)); return () => { active = false } }, [direct, orgIds])
-  useEffect(() => { if (branchId && requested !== branchId) setParams({ 'chi-nhanh': String(branchId) }, { replace: true }) }, [branchId, requested, setParams])
-  useEffect(() => { if (!branchId) return; getBranchDetail(branchId).then((r) => setBranch(r.data)).catch((e) => setError(e instanceof Error ? e.message : 'Không thể tải chi nhánh.')) }, [branchId])
-  useEffect(() => { if (!branchId) return; setItems(null); setError(''); listBranchAppointments(branchId, date, status || undefined, dentistId, days).then((r) => setItems(r.data)).catch((e) => setError(e instanceof Error ? e.message : 'Không thể tải lịch hẹn.')) }, [branchId, date, days, dentistId, status])
-  const replace = (next: ManagementAppointment) => setItems((current) => current?.map((item) => item.public_code === next.public_code ? next : item) || null)
-  async function action(item: ManagementAppointment, type: 'confirm' | 'check-in' | 'no-show') { setBusy(item.public_code); setError(''); try { const r = type === 'confirm' ? await confirmManagedAppointment(item.public_code) : type === 'check-in' ? await checkInManagedAppointment(item.public_code) : await markManagedAppointmentNoShow(item.public_code); replace(r.data) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể cập nhật lịch.') } finally { setBusy('') } }
-  async function cancel(event: FormEvent) { event.preventDefault(); if (!cancelling || !reason.trim()) return; setBusy(cancelling.public_code); try { const r = await cancelManagedAppointment(cancelling.public_code, reason.trim()); replace(r.data); setCancelling(null) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể hủy lịch.') } finally { setBusy('') } }
-  function openMove(item: ManagementAppointment) { setMoving(item); setMoveDate(hcmDate(new Date(item.starts_at))); setMoveDentist(item.dentist_id); setMoveReason(''); setSlots(null); setMoveKey(`management-${crypto.randomUUID()}`) }
-  async function findSlots() { if (!moving) return; try { const r = await listManagedRescheduleSlots(moving.public_code, moveDate, moveDentist); setSlots(r.data) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể tải giờ trống.') } }
-  async function move(slot: Slot) { if (!moving || !moveReason.trim()) return; setBusy(moving.public_code); try { const r = await rescheduleManagedAppointment(moving.public_code, { starts_at: slot.starts_at, reason: moveReason.trim(), dentist_id: moveDentist, idempotency_key: moveKey }); setItems((current) => current ? [...current.map((x) => x.public_code === moving.public_code ? { ...x, status: 'CANCELLED' as const } : x), r.data] : current); setMoving(null) } catch (e) { setError(e instanceof Error ? e.message : 'Không thể đổi lịch.') } finally { setBusy('') } }
-  if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fquan-ly-chi-nhanh" replace />
-  if (!manager || (loaded && !branchId)) return <Navigate to="/" replace />
-  return <div className="branch-management-page"><Seo title="Quản lý chi nhánh | DentaVie" description="Khu vực vận hành chi nhánh DentaVie." path="/quan-ly-chi-nhanh" noIndex /><header className="dentist-header"><Link className="brand" to="/"><img src="/branding/dentavie-logo-horizontal-color.png" alt="DentaVie" /></Link><div className="dentist-header-context"><span>Khu vực vận hành</span><strong>Quản lý chi nhánh</strong></div><AuthBar /></header><main className="branch-management-main"><section className="branch-management-hero"><div><p className="eyebrow">Vận hành hằng ngày</p><h1>{branch?.name || 'Quản lý chi nhánh'}</h1><p>{branch?.full_address || 'Đang tải...'}</p></div>{ids.length > 1 && <label>Chi nhánh<select value={branchId || ''} onChange={(e) => setParams({ 'chi-nhanh': e.target.value })}>{branches.filter((b) => b.is_active).map((b) => <option key={b.id_branch} value={b.id_branch}>{b.name}</option>)}</select></label>}</section>{error && <div className="dentist-error">{error}</div>}<section className="branch-management-schedule"><header><div><p className="eyebrow">Lịch hẹn chi nhánh</p><h2>Điều phối lịch khám</h2></div></header><div className="branch-management-filters"><label>Ngày<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label><label>Xem<select value={days} onChange={(e) => setDays(Number(e.target.value) as 1 | 7)}><option value={1}>Theo ngày</option><option value={7}>Theo tuần</option></select></label><label>Nha sĩ<select value={dentistId || ''} onChange={(e) => setDentistId(e.target.value ? Number(e.target.value) : undefined)}><option value="">Tất cả nha sĩ</option>{branch?.dentists.map((d) => <option key={d.id_dentist} value={d.id_dentist}>{d.full_name}</option>)}</select></label><label>Trạng thái<select value={status} onChange={(e) => setStatus(e.target.value as ManagementAppointmentStatus | '')}><option value="">Tất cả</option>{Object.entries(labels).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{!items ? <div className="dentist-empty">Đang tải lịch hẹn...</div> : items.length === 0 ? <div className="dentist-empty">Không có lịch hẹn.</div> : <div className="branch-management-list">{items.map((item) => <article key={item.public_code} className="branch-management-appointment"><time><strong>{hcmTime(item.starts_at)}</strong><span>{hcmDate(new Date(item.starts_at))}</span></time><div><span className={`dentist-status is-${item.status.toLowerCase()}`}>{labels[item.status]}</span><h3>{item.patient_name}</h3><p>{item.service_name_snapshot} · {item.dentist_name}</p><small>{item.patient_phone || 'Chưa có số điện thoại'}{item.cancel_reason ? ` · ${item.cancel_reason}` : ''}</small></div><div className="branch-management-actions">{item.status === 'PENDING' && <button onClick={() => action(item, 'confirm')} disabled={busy === item.public_code}>Xác nhận</button>}{item.status === 'CONFIRMED' && <button onClick={() => action(item, 'check-in')} disabled={busy === item.public_code}>Check-in</button>}{['PENDING', 'CONFIRMED'].includes(item.status) && <button className="button-quiet" onClick={() => openMove(item)}>Đổi lịch</button>}{['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(item.status) && <button className="button-secondary" onClick={() => { setCancelling(item); setReason('') }}>Hủy lịch</button>}{item.status === 'CONFIRMED' && <button className="button-quiet" onClick={() => action(item, 'no-show')}>Không đến</button>}</div></article>)}</div>}</section></main>{cancelling && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" onSubmit={cancel}><h2>Hủy lịch hẹn</h2><label>Lý do hủy<textarea autoFocus required value={reason} onChange={(e) => setReason(e.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setCancelling(null)}>Quay lại</button><button disabled={!reason.trim() || busy === cancelling.public_code}>Xác nhận hủy</button></div></form></div>}{moving && <div className="branch-management-modal-backdrop"><div className="branch-management-modal"><h2>Đổi lịch hẹn</h2><label>Ngày<input type="date" value={moveDate} onChange={(e) => { setMoveDate(e.target.value); setSlots(null) }} /></label><label>Nha sĩ<select value={moveDentist || ''} onChange={(e) => { setMoveDentist(e.target.value ? Number(e.target.value) : undefined); setSlots(null) }}><option value="">Tự chọn nha sĩ trống</option>{branch?.dentists.map((d) => <option key={d.id_dentist} value={d.id_dentist}>{d.full_name}</option>)}</select></label><label>Lý do<textarea required value={moveReason} onChange={(e) => setMoveReason(e.target.value)} /></label><button onClick={findSlots}>Tìm giờ trống</button>{slots && <div className="reschedule-slots">{slots.map((slot) => <button key={slot.starts_at} disabled={!moveReason.trim() || busy === moving.public_code} onClick={() => move(slot)}>{hcmTime(slot.starts_at)}</button>)}</div>}<button className="button-secondary" onClick={() => setMoving(null)}>Đóng</button></div></div>}</div>
+  const { isAuthenticated, user } = useAuth()
+  const [params, setParams] = useSearchParams()
+
+  const directBranches = useMemo<ManagedBranch[]>(
+    () =>
+      (user?.memberships || [])
+        .filter(
+          (membership) =>
+            membership.is_active &&
+            membership.role === 'BRANCH_ADMIN' &&
+            membership.branch_id,
+        )
+        .map((membership) => ({
+          id_branch: membership.branch_id as number,
+          name: membership.branch_name || `Chi nhánh #${membership.branch_id}`,
+          is_active: true,
+        })),
+    [user],
+  )
+  const organizationIds = useMemo(
+    () => [
+      ...new Set(
+        (user?.memberships || [])
+          .filter(
+            (membership) =>
+              membership.is_active && membership.role === 'ORGANIZATION_ADMIN',
+          )
+          .map((membership) => membership.organization_id),
+      ),
+    ],
+    [user],
+  )
+
+  const [branches, setBranches] = useState<ManagedBranch[]>(directBranches)
+  const [loaded, setLoaded] = useState(organizationIds.length === 0)
+  const [branch, setBranch] = useState<BranchDetail | null>(null)
+  const [date, setDate] = useState(() => hcmDate(new Date()))
+  const [days, setDays] = useState<1 | 7>(1)
+  const [dentistId, setDentistId] = useState<number>()
+  const [status, setStatus] = useState<ManagementAppointmentStatus | ''>('')
+  const [items, setItems] = useState<ManagementAppointment[] | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
+  const [cancelling, setCancelling] = useState<ManagementAppointment | null>(null)
+  const [moving, setMoving] = useState<ManagementAppointment | null>(null)
+
+  const activeBranches = branches.filter((item) => item.is_active)
+  const branchIds = activeBranches.map((item) => item.id_branch)
+  const requestedBranchId = Number(params.get('chi-nhanh')) || null
+  const branchId =
+    requestedBranchId && branchIds.includes(requestedBranchId)
+      ? requestedBranchId
+      : branchIds[0] || null
+  const isManager = user?.memberships?.some(
+    (membership) =>
+      membership.is_active &&
+      ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'].includes(membership.role),
+  )
+
+  useEffect(() => {
+    let active = true
+    setLoaded(organizationIds.length === 0)
+
+    Promise.all(organizationIds.map(listManagedOrganizationBranches))
+      .then((results) => {
+        if (!active) return
+        const allBranches = [
+          ...directBranches,
+          ...results.flatMap((result) => result.data),
+        ]
+        setBranches([
+          ...new Map(allBranches.map((item) => [item.id_branch, item])).values(),
+        ])
+      })
+      .catch((caughtError) => {
+        if (active) {
+          setError(
+            caughtError instanceof Error ? caughtError.message : 'Không thể tải chi nhánh.',
+          )
+        }
+      })
+      .finally(() => {
+        if (active) setLoaded(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [directBranches, organizationIds])
+
+  useEffect(() => {
+    if (branchId && requestedBranchId !== branchId) {
+      setParams({ 'chi-nhanh': String(branchId) }, { replace: true })
+    }
+  }, [branchId, requestedBranchId, setParams])
+
+  useEffect(() => {
+    if (!branchId) return
+    getBranchDetail(branchId)
+      .then((response) => setBranch(response.data))
+      .catch((caughtError) =>
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải chi nhánh.'),
+      )
+  }, [branchId])
+
+  useEffect(() => {
+    if (!branchId) return
+    setItems(null)
+    setError('')
+    listBranchAppointments(branchId, date, status || undefined, dentistId, days)
+      .then((response) => setItems(response.data))
+      .catch((caughtError) =>
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải lịch hẹn.'),
+      )
+  }, [branchId, date, days, dentistId, status])
+
+  function replaceAppointment(next: ManagementAppointment) {
+    setItems(
+      (current) =>
+        current?.map((item) =>
+          item.public_code === next.public_code ? next : item,
+        ) || null,
+    )
+  }
+
+  async function updateAppointment(item: ManagementAppointment, action: AppointmentAction) {
+    setBusy(item.public_code)
+    setError('')
+    try {
+      const response =
+        action === 'confirm'
+          ? await confirmManagedAppointment(item.public_code)
+          : action === 'check-in'
+            ? await checkInManagedAppointment(item.public_code)
+            : await markManagedAppointmentNoShow(item.public_code)
+      replaceAppointment(response.data)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể cập nhật lịch.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function cancelAppointment(reason: string) {
+    if (!cancelling) return
+    setBusy(cancelling.public_code)
+    try {
+      const response = await cancelManagedAppointment(cancelling.public_code, reason)
+      replaceAppointment(response.data)
+      setCancelling(null)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể hủy lịch.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function findRescheduleSlots(moveDate: string, moveDentistId?: number) {
+    if (!moving) return []
+    try {
+      const response = await listManagedRescheduleSlots(
+        moving.public_code,
+        moveDate,
+        moveDentistId,
+      )
+      return response.data
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải giờ trống.')
+      return []
+    }
+  }
+
+  async function moveAppointment(
+    slot: Slot,
+    reason: string,
+    moveDentistId: number | undefined,
+    idempotencyKey: string,
+  ) {
+    if (!moving) return
+    setBusy(moving.public_code)
+    try {
+      const response = await rescheduleManagedAppointment(moving.public_code, {
+        starts_at: slot.starts_at,
+        reason,
+        dentist_id: moveDentistId,
+        idempotency_key: idempotencyKey,
+      })
+      setItems((current) =>
+        current
+          ? [
+              ...current.map((item) =>
+                item.public_code === moving.public_code
+                  ? { ...item, status: 'CANCELLED' as const }
+                  : item,
+              ),
+              response.data,
+            ]
+          : current,
+      )
+      setMoving(null)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể đổi lịch.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/dang-nhap?returnTo=%2Fquan-ly-chi-nhanh" replace />
+  }
+  if (!isManager || (loaded && !branchId)) return <Navigate to="/" replace />
+
+  return (
+    <div className="branch-management-page">
+      <Seo
+        title="Quản lý chi nhánh | DentaVie"
+        description="Khu vực vận hành chi nhánh DentaVie."
+        path="/quan-ly-chi-nhanh"
+        noIndex
+      />
+      <header className="dentist-header">
+        <Link className="brand" to="/">
+          <img src="/branding/dentavie-logo-horizontal-color.png" alt="DentaVie" />
+        </Link>
+        <div className="dentist-header-context">
+          <span>Khu vực vận hành</span>
+          <strong>Quản lý chi nhánh</strong>
+        </div>
+        <AuthBar />
+      </header>
+
+      <main className="branch-management-main">
+        <section className="branch-management-hero">
+          <div>
+            <p className="eyebrow">Vận hành hằng ngày</p>
+            <h1>{branch?.name || 'Quản lý chi nhánh'}</h1>
+            <p>{branch?.full_address || 'Đang tải...'}</p>
+          </div>
+          {branchIds.length > 1 && (
+            <label>
+              Chi nhánh
+              <select
+                value={branchId || ''}
+                onChange={(event) => setParams({ 'chi-nhanh': event.target.value })}
+              >
+                {activeBranches.map((item) => (
+                  <option key={item.id_branch} value={item.id_branch}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </section>
+
+        {error && <div className="dentist-error">{error}</div>}
+
+        <section className="branch-management-schedule">
+          <header>
+            <div>
+              <p className="eyebrow">Lịch hẹn chi nhánh</p>
+              <h2>Điều phối lịch khám</h2>
+            </div>
+          </header>
+
+          <div className="branch-management-filters">
+            <label>
+              Ngày
+              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            </label>
+            <label>
+              Xem
+              <select
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value) as 1 | 7)}
+              >
+                <option value={1}>Theo ngày</option>
+                <option value={7}>Theo tuần</option>
+              </select>
+            </label>
+            <label>
+              Nha sĩ
+              <select
+                value={dentistId || ''}
+                onChange={(event) =>
+                  setDentistId(event.target.value ? Number(event.target.value) : undefined)
+                }
+              >
+                <option value="">Tất cả nha sĩ</option>
+                {branch?.dentists.map((dentist) => (
+                  <option key={dentist.id_dentist} value={dentist.id_dentist}>
+                    {dentist.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Trạng thái
+              <select
+                value={status}
+                onChange={(event) =>
+                  setStatus(event.target.value as ManagementAppointmentStatus | '')
+                }
+              >
+                <option value="">Tất cả</option>
+                {Object.entries(appointmentStatusLabels).map(([value, text]) => (
+                  <option key={value} value={value}>
+                    {text}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <AppointmentList
+            items={items}
+            busyCode={busy}
+            onAction={updateAppointment}
+            onCancel={setCancelling}
+            onReschedule={setMoving}
+          />
+        </section>
+      </main>
+
+      {cancelling && (
+        <CancelAppointmentModal
+          appointment={cancelling}
+          busy={busy === cancelling.public_code}
+          onClose={() => setCancelling(null)}
+          onConfirm={cancelAppointment}
+        />
+      )}
+      {moving && (
+        <RescheduleAppointmentModal
+          appointment={moving}
+          dentists={branch?.dentists || []}
+          busy={busy === moving.public_code}
+          onClose={() => setMoving(null)}
+          onFindSlots={findRescheduleSlots}
+          onConfirm={moveAppointment}
+        />
+      )}
+    </div>
+  )
 }
