@@ -72,7 +72,7 @@ class BookingService:
             )
 
         organization = branch_service.branch.organization
-        membership, _ = Membership.objects.update_or_create(
+        membership, _ = Membership.objects.get_or_create(
             user=patient_user,
             organization=organization,
             role=Membership.Role.PATIENT,
