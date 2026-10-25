@@ -5,12 +5,14 @@ import { listBranchAppointments } from '../api/management'
 import {
   createManagedInvoice, getManagedInvoice, issueManagedInvoice, listManagedInvoices,
   postManagedPayment, voidManagedInvoice, voidManagedPayment,
-  type ManagedInvoice, type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPaymentInput,
+  updateManagedInvoiceDraft, type ManagedInvoice, type ManagedInvoiceDraftInput,
+  type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPaymentInput,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import {
   InvoiceAppointmentHint,
+  InvoiceDraftEditor,
   InvoiceDetailPanel,
   InvoiceList,
   InvoicePagination,
@@ -41,9 +43,11 @@ export function BranchInvoicesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
+  const [showDraftEditor, setShowDraftEditor] = useState(false)
   const [paymentAttemptKey, setPaymentAttemptKey] = useState('')
   const [paymentToVoid, setPaymentToVoid] = useState<ManagedInvoicePayment | null>(null)
   const [paymentError, setPaymentError] = useState('')
+  const [draftEditorError, setDraftEditorError] = useState('')
   const [voidReason, setVoidReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -158,6 +162,21 @@ export function BranchInvoicesPage() {
     finally { setBusy(false) }
   }
 
+  function openDraftEditor() {
+    setDraftEditorError('')
+    setShowDraftEditor(true)
+  }
+
+  async function updateDraft(data: ManagedInvoiceDraftInput) {
+    if (!selected) return
+    setBusy(true); setDraftEditorError(''); setNotice('')
+    try {
+      const response = await updateManagedInvoiceDraft(selected.id_invoice, data)
+      setSelected(response.data); setShowDraftEditor(false); setNotice('Đã cập nhật hóa đơn nháp.'); await loadInvoices()
+    } catch (caught) { setDraftEditorError(caught instanceof Error ? caught.message : 'Không thể cập nhật hóa đơn nháp.') }
+    finally { setBusy(false) }
+  }
+
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
   return <div className="branch-management-page invoice-management-page">
     <ManagementPageHeader title="Hóa đơn chi nhánh" path="/quan-ly-chi-nhanh/hoa-don" />
@@ -174,10 +193,11 @@ export function BranchInvoicesPage() {
   </div>
 
     {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><InvoiceAppointmentHint /><label>Mã lịch hẹn<input required list="completed-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="completed-appointments">{completedAppointments.map((appointment) => <option key={appointment.public_code} value={appointment.public_code}>{appointment.patient_name} — {appointment.service_name_snapshot}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
-    {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} onRecordPayment={openPayment} onVoidPayment={openVoidPayment} />}
+    {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} onEdit={openDraftEditor} onRecordPayment={openPayment} onVoidPayment={openVoidPayment} />}
     {showVoid && selected && <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={voidInvoice}><h2>Hủy hóa đơn</h2><p>Lý do hủy sẽ được lưu trong nhật ký đối soát.</p><label>Lý do<textarea required minLength={3} maxLength={1000} value={voidReason} onChange={(event) => setVoidReason(event.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setShowVoid(false)}>Quay lại</button><button type="submit" disabled={busy}>Xác nhận hủy</button></div></form></div>}
     {showPayment && selected && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}
     {paymentToVoid && <VoidPaymentModal payment={paymentToVoid} busy={busy} serverError={paymentError} onCancel={() => { setPaymentToVoid(null); setPaymentError('') }} onSubmit={(reason) => void voidPayment(reason)} />}
+    {showDraftEditor && selected && <InvoiceDraftEditor invoice={selected} busy={busy} serverError={draftEditorError} onCancel={() => { setShowDraftEditor(false); setDraftEditorError('') }} onSubmit={(data) => void updateDraft(data)} />}
     </main>
   </div>
 }
