@@ -62,6 +62,9 @@ export function bookingSelectionReducer(
 ): BookingSelection {
   switch (action.type) {
     case 'select_branch':
+      if (state.branch?.id_branch === action.branch.id_branch) {
+        return { ...state, branch: action.branch }
+      }
       return { ...state, branch: action.branch, service: null, slot: null, dentist: null }
     case 'select_service':
       return { ...state, service: action.service, slot: null, dentist: null }
