@@ -11,6 +11,7 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, Service
+from apps.clinical.models import ClinicalEncounter
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment, AppointmentStatusHistory
@@ -122,9 +123,13 @@ class DentistAppointmentAPITests(APITestCase):
         chair=None,
         starts_at=None,
         appointment_status=Appointment.Status.CONFIRMED,
+        branch=None,
+        branch_service=None,
     ):
         dentist = dentist or self.dentist
         chair = chair or self.chair
+        branch = branch or self.branch
+        branch_service = branch_service or self.branch_service
         starts_at = starts_at or self.at(9)
         return Appointment.objects.create(
             public_code=code,
@@ -133,8 +138,8 @@ class DentistAppointmentAPITests(APITestCase):
             contact_phone_snapshot="0987654321",
             contact_email_snapshot="nguoi-dat@example.com",
             patient_note="Đau răng số 7 khi ăn.",
-            branch=self.branch,
-            branch_service=self.branch_service,
+            branch=branch,
+            branch_service=branch_service,
             dentist=dentist,
             chair=chair,
             service_name_snapshot=self.service.name,
@@ -148,7 +153,24 @@ class DentistAppointmentAPITests(APITestCase):
             confirmed_at=timezone.now(),
             checked_in_at=(
                 timezone.now()
-                if appointment_status == Appointment.Status.CHECKED_IN
+                if appointment_status in {
+                    Appointment.Status.CHECKED_IN,
+                    Appointment.Status.IN_PROGRESS,
+                    Appointment.Status.COMPLETED,
+                }
+                else None
+            ),
+            started_at=(
+                timezone.now()
+                if appointment_status in {
+                    Appointment.Status.IN_PROGRESS,
+                    Appointment.Status.COMPLETED,
+                }
+                else None
+            ),
+            completed_at=(
+                timezone.now()
+                if appointment_status == Appointment.Status.COMPLETED
                 else None
             ),
         )
@@ -266,8 +288,13 @@ class DentistAppointmentAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_patient_summary_requires_assigned_active_appointment_and_is_audited(self):
-        appointment = self.appointment("APT-DENTIST-SUMMARY")
+    def test_patient_summary_requires_started_assigned_appointment_and_is_audited(self):
+        confirmed = self.appointment("APT-DENTIST-SUMMARY-CONFIRMED")
+        appointment = self.appointment(
+            "APT-DENTIST-SUMMARY",
+            appointment_status=Appointment.Status.IN_PROGRESS,
+            starts_at=self.at(10),
+        )
         self.client.force_authenticate(self.dentist_user)
         url = reverse(
             "dentist_api:patient-summary",
@@ -275,9 +302,14 @@ class DentistAppointmentAPITests(APITestCase):
         )
 
         missing_context = self.client.get(url)
+        too_early = self.client.get(
+            url,
+            {"appointment_code": confirmed.public_code},
+        )
         response = self.client.get(url, {"appointment_code": appointment.public_code})
 
         self.assertEqual(missing_context.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(too_early.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"]["full_name"], "Patient A")
         self.assertTrue(
@@ -287,6 +319,81 @@ class DentistAppointmentAPITests(APITestCase):
                 resource_id=str(self.patient.pk),
             ).exists()
         )
+
+    def test_patient_summary_history_is_limited_to_current_branch(self):
+        current = self.appointment(
+            "APT-SUMMARY-CURRENT",
+            appointment_status=Appointment.Status.IN_PROGRESS,
+        )
+        same_branch_visit = self.appointment(
+            "APT-SUMMARY-SAME-BRANCH",
+            appointment_status=Appointment.Status.COMPLETED,
+            starts_at=self.at(7),
+        )
+        ClinicalEncounter.objects.create(
+            appointment=same_branch_visit,
+            status=ClinicalEncounter.Status.FINALIZED,
+            diagnosis_summary="Visible history",
+            created_by=self.dentist_user,
+            finalized_by=self.dentist_user,
+            finalized_at=timezone.now(),
+        )
+
+        other_branch = Branch.objects.create(
+            organization=self.organization,
+            code="D2",
+            name="Other Dental Branch",
+            province=self.branch.province,
+            ward=self.branch.ward,
+            address_line="Other address",
+            location="POINT(106.8 10.8)",
+        )
+        Membership.objects.create(
+            user=self.dentist_user,
+            organization=self.organization,
+            branch=other_branch,
+            role=Membership.Role.DENTIST,
+        )
+        other_branch_service = BranchService.objects.create(
+            branch=other_branch,
+            service=self.service,
+            price=Decimal("200000"),
+        )
+        other_branch_chair = Chair.objects.create(
+            branch=other_branch,
+            code="D2-C1",
+            name="Other chair",
+            resource_type=Chair.ResourceType.CHAIR,
+        )
+        other_branch_visit = self.appointment(
+            "APT-SUMMARY-OTHER-BRANCH",
+            appointment_status=Appointment.Status.COMPLETED,
+            branch=other_branch,
+            branch_service=other_branch_service,
+            chair=other_branch_chair,
+            starts_at=self.at(6),
+        )
+        ClinicalEncounter.objects.create(
+            appointment=other_branch_visit,
+            status=ClinicalEncounter.Status.FINALIZED,
+            diagnosis_summary="Hidden history",
+            created_by=self.dentist_user,
+            finalized_by=self.dentist_user,
+            finalized_at=timezone.now(),
+        )
+
+        self.client.force_authenticate(self.dentist_user)
+        response = self.client.get(
+            reverse(
+                "dentist_api:patient-summary",
+                kwargs={"patient_profile_id": self.patient.pk},
+            ),
+            {"appointment_code": current.public_code},
+        )
+
+        diagnoses = [item["diagnosis_summary"] for item in response.data["data"]["clinical_history"]]
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(diagnoses, ["Visible history"])
 
     def test_inactive_dentist_profile_is_forbidden(self):
         self.dentist.is_active = False

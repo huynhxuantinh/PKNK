@@ -224,7 +224,8 @@ class ClinicalEncounterSerializer(serializers.ModelSerializer):
         model = ClinicalEncounter
         fields = (
             "id_clinical_encounter", "appointment_id", "status", "chief_complaint",
-            "medical_history", "diagnosis_summary", "notes", "finalized_at",
+            "medical_history", "diagnosis_summary", "notes", "aftercare_instructions",
+            "finalized_at",
             "odontogram_entries", "amendments", "prescription", "created_at", "updated_at",
             "attachments",
         )
@@ -262,7 +263,8 @@ class PatientClinicalEncounterSerializer(serializers.ModelSerializer):
             "id_clinical_encounter", "appointment_code", "appointment_status",
             "service_name", "dentist_name", "branch_id", "branch_name",
             "examined_at", "completed_at",
-            "chief_complaint", "medical_history", "diagnosis_summary", "notes",
+            "chief_complaint", "medical_history", "diagnosis_summary",
+            "aftercare_instructions",
             "finalized_at", "odontogram_entries", "amendments", "prescription",
             "treatment_plans", "attachments",
         )

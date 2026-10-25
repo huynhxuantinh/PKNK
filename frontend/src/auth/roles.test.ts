@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { User } from '../types/api'
-import { canAccessArea, isStaffUser } from './roles'
+import { activeBranchIdsForRole, canAccessArea, isStaffUser } from './roles'
 
 function userWithRole(role: NonNullable<User['memberships']>[number]['role'], isActive = true): User {
   return {
@@ -40,5 +40,16 @@ describe('role access', () => {
     expect(canAccessArea(userWithRole('DENTIST'), 'MANAGEMENT')).toBe(false)
     expect(canAccessArea(userWithRole('BRANCH_ADMIN'), 'MANAGEMENT')).toBe(true)
     expect(canAccessArea(userWithRole('BRANCH_ADMIN'), 'DENTIST')).toBe(false)
+  })
+
+  it('returns branch ids from active memberships only', () => {
+    const user = userWithRole('DENTIST')
+    user.memberships = [
+      { ...user.memberships![0], branch_id: 1, branch_name: 'Branch 1' },
+      { ...user.memberships![0], branch_id: 2, branch_name: 'Branch 2', is_active: false },
+      { ...user.memberships![0], branch_id: 1, branch_name: 'Branch 1 duplicate' },
+    ]
+
+    expect(activeBranchIdsForRole(user, 'DENTIST')).toEqual([1])
   })
 })

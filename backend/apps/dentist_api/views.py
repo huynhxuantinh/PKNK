@@ -150,8 +150,6 @@ class DentistPatientSummaryAPIView(DentistAPIView):
             public_code=query.validated_data["appointment_code"],
             patient_profile_id=patient_profile_id,
             status__in=[
-                Appointment.Status.CONFIRMED,
-                Appointment.Status.CHECKED_IN,
                 Appointment.Status.IN_PROGRESS,
                 Appointment.Status.COMPLETED,
             ],
@@ -162,16 +160,9 @@ class DentistPatientSummaryAPIView(DentistAPIView):
 
         clinical_history = ClinicalEncounter.objects.filter(
             appointment__patient_profile=patient,
+            appointment__branch_id=appointment.branch_id,
             status=ClinicalEncounter.Status.FINALIZED,
         )
-        if appointment.status == Appointment.Status.COMPLETED:
-            clinical_history = clinical_history.filter(
-                appointment__dentist_id=appointment.dentist_id
-            )
-        else:
-            clinical_history = clinical_history.filter(
-                appointment__branch__organization=appointment.branch.organization
-            )
         clinical_history = clinical_history.select_related(
             "appointment__branch__organization",
             "appointment__branch_service__service",

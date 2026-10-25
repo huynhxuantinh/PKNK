@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { activeBranchIdsForRole, hasActiveRole } from '../auth/roles'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail } from '../types/api'
 
@@ -13,11 +14,10 @@ export function DentistBranchSelectionPage() {
   const [branches, setBranches] = useState<BranchDetail[] | null>(null)
   const [error, setError] = useState('')
 
-  const branchIds = useMemo(() => Array.from(new Set(
-    user?.memberships
-      ?.filter((membership) => membership.role === 'DENTIST' && membership.branch_id)
-      .map((membership) => membership.branch_id as number) || [],
-  )), [user])
+  const branchIds = useMemo(
+    () => activeBranchIdsForRole(user, 'DENTIST'),
+    [user],
+  )
 
   useEffect(() => {
     if (!isAuthenticated || branchIds.length === 0) return
@@ -32,7 +32,7 @@ export function DentistBranchSelectionPage() {
   }, [branchIds, isAuthenticated])
 
   if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fbac-si%2Fchon-chi-nhanh" replace />
-  if (!user?.memberships?.some((membership) => membership.role === 'DENTIST')) return <Navigate to="/" replace />
+  if (!hasActiveRole(user, ['DENTIST'])) return <Navigate to="/" replace />
 
   return (
     <div className="dentist-page dentist-branch-selection-page">

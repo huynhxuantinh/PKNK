@@ -118,13 +118,21 @@ class ClinicalAPITests(APITestCase):
         encounter = self.create_encounter(appointment)
         updated = self.client.patch(
             reverse("dentist_api:clinical-encounter-detail", kwargs={"encounter_id": encounter.pk}),
-            {"notes": "Follow up"}, format="json",
+            {
+                "notes": "Internal follow up",
+                "aftercare_instructions": "Brush gently and avoid hot food.",
+            },
+            format="json",
         )
         encounter = self.finalize(encounter)
         viewed = self.client.get(
             reverse("dentist_api:clinical-encounter-detail", kwargs={"encounter_id": encounter.pk})
         )
         self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            updated.data["data"]["aftercare_instructions"],
+            "Brush gently and avoid hot food.",
+        )
         self.assertEqual(encounter.status, ClinicalEncounter.Status.FINALIZED)
         self.assertEqual(viewed.status_code, status.HTTP_200_OK)
         self.assertTrue(AuditEvent.objects.filter(action="CLINICAL_ENCOUNTER_VIEWED").exists())
@@ -169,6 +177,24 @@ class ClinicalAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_draft_encounter_is_hidden_from_patient_detail_and_history(self):
+        appointment = self.appointment(code="APT-DRAFT-HIDDEN")
+        encounter = self.create_encounter(appointment)
+
+        self.client.force_authenticate(self.patient_user)
+        detail = self.client.get(
+            reverse(
+                "patients:clinical-encounter-detail",
+                kwargs={"encounter_id": encounter.pk},
+            )
+        )
+        history = self.client.get(reverse("patients:clinical-encounters"))
+
+        self.assertEqual(encounter.status, ClinicalEncounter.Status.DRAFT)
+        self.assertEqual(detail.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(history.status_code, status.HTTP_200_OK)
+        self.assertEqual(history.data["data"], [])
 
     def test_finalized_encounter_and_odontogram_are_immutable_in_database(self):
         encounter = self.create_encounter(self.appointment())
@@ -389,7 +415,19 @@ class ClinicalAPITests(APITestCase):
 
     def test_patient_only_reads_own_completed_record_and_access_is_audited(self):
         appointment = self.appointment()
-        encounter = self.finalize(self.create_encounter(appointment))
+        encounter = self.create_encounter(appointment)
+        self.client.patch(
+            reverse(
+                "dentist_api:clinical-encounter-detail",
+                kwargs={"encounter_id": encounter.pk},
+            ),
+            {
+                "notes": "Internal clinician note",
+                "aftercare_instructions": "Rinse gently twice a day.",
+            },
+            format="json",
+        )
+        encounter = self.finalize(encounter)
         plan_response = self.client.post(
             reverse("dentist_api:treatment-plans", kwargs={"encounter_id": encounter.pk}),
             {"title": "Root canal plan", "description": "Two visits"}, format="json",
@@ -441,6 +479,11 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(len(history.data["data"]), 1)
         self.assertEqual(hidden_from_other_patient.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data["data"]["diagnosis_summary"], "Pulpitis")
+        self.assertEqual(
+            response.data["data"]["aftercare_instructions"],
+            "Rinse gently twice a day.",
+        )
+        self.assertNotIn("notes", response.data["data"])
         self.assertEqual(response.data["data"]["appointment_status"], "COMPLETED")
         self.assertEqual(response.data["data"]["service_name"], self.service.name)
         self.assertEqual(response.data["data"]["dentist_name"], self.dentist_user.full_name)

@@ -242,7 +242,7 @@ export interface PatientClinicalEncounter {
   completed_at: string | null
   chief_complaint: string
   diagnosis_summary: string
-  notes: string
+  aftercare_instructions: string
   finalized_at: string
   attachments: ClinicalAttachment[]
 }
@@ -304,6 +304,7 @@ export type DentistAppointmentStatus =
 
 export interface DentistAppointment {
   public_code: string
+  patient_profile_id: number
   branch_id: number
   branch_name: string
   branch_service_id: number
@@ -329,6 +330,21 @@ export interface DentistScheduleResponse {
   meta: { count: number }
 }
 
+export interface DentistPatientSummary {
+  id_patient_profile: number
+  full_name: string
+  date_of_birth: string | null
+  gender: string
+  phone: string
+  appointment_context: {
+    public_code: string
+    branch_id: number
+    service_name: string
+    status: DentistAppointmentStatus
+  }
+  clinical_history: PatientClinicalEncounter[]
+}
+
 export interface ClinicalEncounter {
   id_clinical_encounter: number
   appointment_id: number
@@ -337,5 +353,7 @@ export interface ClinicalEncounter {
   medical_history: string
   diagnosis_summary: string
   notes: string
+  aftercare_instructions: string
   finalized_at: string | null
+  attachments: ClinicalAttachment[]
 }

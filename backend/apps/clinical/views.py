@@ -742,7 +742,7 @@ class DentistAppointmentFinalizeAndCompleteAPIView(ClinicalAPIView):
             except DjangoValidationError as error:
                 raise conflict(error)
         elif encounter.status != ClinicalEncounter.Status.FINALIZED:
-            raise DentistConflict("Bá»‡nh Ă¡n khĂ´ng á»Ÿ tráº¡ng thĂ¡i cĂ³ thá»ƒ hoĂ n táº¥t.")
+            raise DentistConflict("Bệnh án không ở trạng thái có thể hoàn tất.")
 
         try:
             appointment = AppointmentService.transition_status(

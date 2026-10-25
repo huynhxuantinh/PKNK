@@ -114,7 +114,10 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { auth = false, retry = true, retryInit } = options
   const headers = new Headers(init.headers)
-  if (init.body) headers.set('Content-Type', 'application/json')
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
+  if (init.body && !isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
   if (auth) {
     const access = getStoredTokens()?.access
     if (!access) throw new ApiError('Bạn cần đăng nhập để đặt lịch.', 401)
@@ -152,7 +155,7 @@ export function downloadRequestPath(path: string): string {
   return path.startsWith(API_BASE_URL) ? path : `${API_BASE_URL}${path}`
 }
 
-export async function downloadAuthenticatedFile(path: string, filename: string) {
+async function fetchAuthenticatedFile(path: string) {
   const downloadUrl = downloadRequestPath(path)
   const request = async () => fetch(downloadUrl, {
     headers: { Authorization: `Bearer ${getStoredTokens()?.access || ''}` },
@@ -160,7 +163,15 @@ export async function downloadAuthenticatedFile(path: string, filename: string) 
   let response = await request()
   if (response.status === 401 && await refreshAccessToken()) response = await request()
   if (!response.ok) throw new ApiError(`Không thể tải tệp (${response.status}).`, response.status)
-  const blobUrl = URL.createObjectURL(await response.blob())
+  return response
+}
+
+export async function authenticatedFileBlobUrl(path: string) {
+  return URL.createObjectURL(await (await fetchAuthenticatedFile(path)).blob())
+}
+
+export async function downloadAuthenticatedFile(path: string, filename: string) {
+  const blobUrl = await authenticatedFileBlobUrl(path)
   const link = document.createElement('a')
   link.href = blobUrl
   link.download = filename

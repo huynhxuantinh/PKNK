@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { apiRequest, getStoredTokens, storeTokens } from './client'
+import { apiRequest, authenticatedFileBlobUrl, getStoredTokens, storeTokens } from './client'
 
 const storage = new Map<string, string>()
 
@@ -18,6 +18,47 @@ afterEach(() => {
 })
 
 describe('apiRequest refresh retry', () => {
+  it('lets the browser set the multipart boundary for FormData', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: {} }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const body = new FormData()
+    body.append('file', new Blob(['image']), 'photo.png')
+
+    await apiRequest('/clinical/attachments/', { method: 'POST', body })
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+    expect(headers.has('Content-Type')).toBe(false)
+  })
+
+  it('keeps JSON content type for serialized request bodies', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: {} }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiRequest('/example/', { method: 'POST', body: JSON.stringify({ value: 1 }) })
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('loads protected thumbnails with the access token', async () => {
+    storeTokens({ access: 'image-access', refresh: 'image-refresh' })
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(new Blob(['image']), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const blobUrl = await authenticatedFileBlobUrl('/api/v1/clinical/attachments/8/download/')
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+    expect(headers.get('Authorization')).toBe('Bearer image-access')
+    expect(blobUrl).toMatch(/^blob:/)
+    URL.revokeObjectURL(blobUrl)
+  })
+
   it('shows a clear message for a forbidden request without an API message', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 403 })))
 

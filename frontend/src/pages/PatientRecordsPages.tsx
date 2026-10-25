@@ -5,6 +5,7 @@ import { apiRequest, downloadAuthenticatedFile } from '../api/client'
 import { listSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
 import { Seo } from '../seo/Seo'
 import type {
   PatientAppointment,
@@ -319,14 +320,27 @@ export function PatientHistoryPage() {
                 <div><dt>Lý do khám</dt><dd>{encounter.chief_complaint || 'Không có ghi chú'}</dd></div>
                 <div><dt>Chẩn đoán</dt><dd>{encounter.diagnosis_summary || 'Chưa cập nhật'}</dd></div>
               </dl>
-              {encounter.notes && (
-                <details className="record-notes">
-                  <summary>Xem ghi chú khám</summary>
-                  <p>{encounter.notes}</p>
-                </details>
+              {encounter.aftercare_instructions && (
+                <section className="record-aftercare" aria-label="Dặn dò sau khám">
+                  <strong>Dặn dò sau khám</strong>
+                  <p>{encounter.aftercare_instructions}</p>
+                </section>
               )}
               {encounter.attachments.length > 0 && (
-                <div className="record-attachments"><strong>Tệp đính kèm</strong>{encounter.attachments.map((attachment) => <button type="button" key={attachment.id_clinical_attachment} onClick={() => downloadAuthenticatedFile(attachment.download_url, `${attachment.kind}-${attachment.id_clinical_attachment}`)}>{attachment.description || attachment.kind} · Tải xuống</button>)}</div>
+                <div className="record-attachments">
+                  <strong>Hình ảnh và tệp bệnh án</strong>
+                  <div className="record-thumbnail-grid">
+                    {encounter.attachments.filter((attachment) => attachment.content_type.startsWith('image/')).map((attachment) => (
+                      <article key={attachment.id_clinical_attachment}>
+                        <button className="record-thumbnail" type="button" aria-label={`Tải ${attachment.description || 'ảnh bệnh án'}`} onClick={() => downloadAuthenticatedFile(attachment.download_url, `${attachment.kind}-${attachment.id_clinical_attachment}`)}>
+                          <AuthenticatedThumbnail attachment={attachment} />
+                        </button>
+                        <div><span>{attachment.kind === 'XRAY' ? 'X-quang' : 'Ảnh lâm sàng'}</span><p>{attachment.description || 'Không có mô tả'}</p></div>
+                      </article>
+                    ))}
+                  </div>
+                  {encounter.attachments.filter((attachment) => !attachment.content_type.startsWith('image/')).map((attachment) => <button type="button" key={attachment.id_clinical_attachment} onClick={() => downloadAuthenticatedFile(attachment.download_url, `${attachment.kind}-${attachment.id_clinical_attachment}`)}>{attachment.description || attachment.kind} · Tải xuống</button>)}
+                </div>
               )}
             </article>
           ))}

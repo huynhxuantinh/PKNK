@@ -41,6 +41,7 @@ class DentistAppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = (
             "public_code",
+            "patient_profile_id",
             "branch_id",
             "branch_name",
             "branch_service_id",

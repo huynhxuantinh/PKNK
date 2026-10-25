@@ -25,6 +25,7 @@ class ClinicalEncounter(models.Model):
     medical_history = models.TextField(blank=True)
     diagnosis_summary = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    aftercare_instructions = models.TextField(blank=True, default="")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, db_column="id_created_by",
         on_delete=models.PROTECT, related_name="clinical_encounters_created",

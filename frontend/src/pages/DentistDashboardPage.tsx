@@ -5,8 +5,21 @@ import { listDentistSchedule, startDentistAppointment } from '../api/dentist'
 import { getBranchDetail } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { activeBranchIdsForRole, hasActiveRole } from '../auth/roles'
+import {
+  filterDentistSchedule,
+  scheduleRange,
+  type DentistScheduleView,
+} from '../features/dentist/dentistSchedule'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail, DentistAppointment, DentistAppointmentStatus } from '../types/api'
+import {
+  formatHcmDay,
+  formatHcmTime,
+  hcmDate,
+  HCM_TIME_ZONE,
+  isOnHcmDay,
+} from '../utils/hcmDateTime'
 
 const statusLabel: Record<DentistAppointmentStatus, string> = {
   PENDING: 'Chờ xác nhận',
@@ -16,34 +29,6 @@ const statusLabel: Record<DentistAppointmentStatus, string> = {
   COMPLETED: 'Đã hoàn tất',
   CANCELLED: 'Đã hủy',
   NO_SHOW: 'Không đến',
-}
-
-function upcomingRange() {
-  const start = new Date()
-  const end = new Date(start)
-  end.setDate(end.getDate() + 7)
-  return { start, end }
-}
-
-function timeOf(value: string) {
-  return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
-}
-
-function dayOf(value: string) {
-  const date = new Date(value)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  if (date.toDateString() === today.toDateString()) return 'Hôm nay'
-  if (date.toDateString() === tomorrow.toDateString()) return 'Ngày mai'
-  return new Intl.DateTimeFormat('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(date)
-}
-
-function isOnDay(value: string, offset: number) {
-  const appointmentDay = new Date(value)
-  const targetDay = new Date()
-  targetDay.setDate(targetDay.getDate() + offset)
-  return appointmentDay.toDateString() === targetDay.toDateString()
 }
 
 function appointmentInitials(name: string) {
@@ -67,23 +52,32 @@ export function DentistDashboardPage() {
   const [error, setError] = useState('')
   const [branchesError, setBranchesError] = useState('')
   const [startingCode, setStartingCode] = useState('')
+  const [scheduleView, setScheduleView] = useState<DentistScheduleView>('UPCOMING')
+  const [selectedDate, setSelectedDate] = useState(() => hcmDate(new Date()))
   const [dayFilter, setDayFilter] = useState<'ALL' | 'TODAY' | 'TOMORROW'>('ALL')
   const [statusFilter, setStatusFilter] = useState<'ALL' | DentistAppointmentStatus>('ALL')
   const selectedBranchId = Number(searchParams.get('chi-nhanh')) || null
 
-  const assignedBranchIds = useMemo(() => Array.from(new Set(
-    user?.memberships
-      ?.filter((membership) => membership.role === 'DENTIST' && membership.branch_id)
-      .map((membership) => membership.branch_id as number) || [],
-  )), [user])
+  const assignedBranchIds = useMemo(
+    () => activeBranchIdsForRole(user, 'DENTIST'),
+    [user],
+  )
 
   useEffect(() => {
     if (!isAuthenticated) return
-    const { start, end } = upcomingRange()
+    let active = true
+    const { start, end } = scheduleRange(scheduleView, selectedDate)
+    setAppointments(null)
+    setError('')
     listDentistSchedule(start, end)
-      .then((response) => setAppointments(response.data))
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Không thể tải lịch khám sắp tới.'))
-  }, [isAuthenticated])
+      .then((response) => {
+        if (active) setAppointments(response.data)
+      })
+      .catch((reason) => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Không thể tải lịch khám.')
+      })
+    return () => { active = false }
+  }, [isAuthenticated, scheduleView, selectedDate])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -108,24 +102,39 @@ export function DentistDashboardPage() {
     return () => { active = false }
   }, [assignedBranchIds, isAuthenticated])
 
-  const visibleAppointments = useMemo(() => (
-    selectedBranchId === null
-      ? []
-      : (appointments || []).filter((item) => item.branch_id === selectedBranchId)
-  ), [appointments, selectedBranchId])
+  const visibleAppointments = useMemo(
+    () => filterDentistSchedule(
+      appointments || [], selectedBranchId, scheduleView, 'ALL',
+    ),
+    [appointments, scheduleView, selectedBranchId],
+  )
 
   const summary = useMemo(() => ({
     total: visibleAppointments.length,
     checkedIn: visibleAppointments.filter((item) => item.status === 'CHECKED_IN').length,
     inProgress: visibleAppointments.filter((item) => item.status === 'IN_PROGRESS').length,
+    completed: visibleAppointments.filter((item) => item.status === 'COMPLETED').length,
+    noShow: visibleAppointments.filter((item) => item.status === 'NO_SHOW').length,
   }), [visibleAppointments])
 
-  const filteredAppointments = useMemo(() => visibleAppointments.filter((appointment) => {
-    const matchesDay = dayFilter === 'ALL'
-      || (dayFilter === 'TODAY' && isOnDay(appointment.starts_at, 0))
-      || (dayFilter === 'TOMORROW' && isOnDay(appointment.starts_at, 1))
-    return matchesDay && (statusFilter === 'ALL' || appointment.status === statusFilter)
-  }), [dayFilter, statusFilter, visibleAppointments])
+  const filteredAppointments = useMemo(() => {
+    const anchorDate = new Date(`${selectedDate}T00:00:00+07:00`)
+    return filterDentistSchedule(
+      appointments || [], selectedBranchId, scheduleView, statusFilter,
+    ).filter((appointment) => (
+      scheduleView === 'HISTORY'
+        || dayFilter === 'ALL'
+        || (dayFilter === 'TODAY' && isOnHcmDay(appointment.starts_at, 0, anchorDate))
+        || (dayFilter === 'TOMORROW' && isOnHcmDay(appointment.starts_at, 1, anchorDate))
+    ))
+  }, [appointments, dayFilter, scheduleView, selectedBranchId, selectedDate, statusFilter])
+
+  function changeScheduleView(view: DentistScheduleView) {
+    setScheduleView(view)
+    setSelectedDate(hcmDate(new Date()))
+    setDayFilter('ALL')
+    setStatusFilter('ALL')
+  }
 
   async function startAppointment(appointment: DentistAppointment) {
     setStartingCode(appointment.public_code)
@@ -144,7 +153,7 @@ export function DentistDashboardPage() {
   }
 
   if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fbac-si" replace />
-  if (!user?.memberships?.some((membership) => membership.role === 'DENTIST')) {
+  if (!hasActiveRole(user, ['DENTIST'])) {
     return <Navigate to="/" replace />
   }
   if (!selectedBranchId || !assignedBranchIds.includes(selectedBranchId)) {
@@ -165,9 +174,9 @@ export function DentistDashboardPage() {
       <main className="dentist-main">
         <section className="dentist-welcome">
           <div>
-            <p className="eyebrow">Lịch khám sắp tới</p>
+            <p className="eyebrow">Khu vực chuyên môn</p>
             <h1>Chào {user?.full_name || 'bác sĩ'}.</h1>
-            <p>{new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date())}</p>
+            <p>{new Intl.DateTimeFormat('vi-VN', { timeZone: HCM_TIME_ZONE, weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date())}</p>
           </div>
         </section>
 
@@ -206,50 +215,72 @@ export function DentistDashboardPage() {
         </section>
 
         <section className="dentist-stat-grid" aria-label="Tổng quan lịch khám">
-          <article><span>Tổng lịch hẹn</span><strong>{summary.total}</strong><small>trong 7 ngày tới</small></article>
-          <article><span>Đã check-in</span><strong>{summary.checkedIn}</strong><small>sẵn sàng khám</small></article>
-          <article><span>Đang khám</span><strong>{summary.inProgress}</strong><small>lượt hiện tại</small></article>
+          <article><span>{scheduleView === 'UPCOMING' ? 'Tổng lịch hẹn' : 'Tổng lịch sử'}</span><strong>{summary.total}</strong><small>{scheduleView === 'UPCOMING' ? 'trong 7 ngày đang xem' : 'trong ngày đã chọn'}</small></article>
+          <article><span>{scheduleView === 'UPCOMING' ? 'Đã check-in' : 'Đã hoàn tất'}</span><strong>{scheduleView === 'UPCOMING' ? summary.checkedIn : summary.completed}</strong><small>{scheduleView === 'UPCOMING' ? 'sẵn sàng khám' : 'ca đã khám xong'}</small></article>
+          <article><span>{scheduleView === 'UPCOMING' ? 'Đang khám' : 'Không đến'}</span><strong>{scheduleView === 'UPCOMING' ? summary.inProgress : summary.noShow}</strong><small>{scheduleView === 'UPCOMING' ? 'lượt hiện tại' : 'lịch vắng mặt'}</small></article>
         </section>
 
         <section className="dentist-schedule-panel">
           <header>
             <div>
               <p className="eyebrow">Lịch làm việc</p>
-              <h2>Lịch khám sắp tới</h2>
+              <h2>{scheduleView === 'UPCOMING' ? 'Lịch khám sắp tới' : 'Lịch đã khám'}</h2>
             </div>
             {appointments && <span>{filteredAppointments.length} lịch hẹn</span>}
           </header>
 
+          <div className="dentist-schedule-tabs" role="tablist" aria-label="Loại lịch khám">
+            <button type="button" role="tab" aria-selected={scheduleView === 'UPCOMING'} className={scheduleView === 'UPCOMING' ? 'is-active' : ''} onClick={() => changeScheduleView('UPCOMING')}>Sắp tới</button>
+            <button type="button" role="tab" aria-selected={scheduleView === 'HISTORY'} className={scheduleView === 'HISTORY' ? 'is-active' : ''} onClick={() => changeScheduleView('HISTORY')}>Đã khám</button>
+          </div>
+
           <div className="dentist-schedule-filters" aria-label="Bộ lọc lịch khám">
-            <label>Ngày
-              <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value as typeof dayFilter)}>
-                <option value="ALL">7 ngày tới</option>
-                <option value="TODAY">Hôm nay</option>
-                <option value="TOMORROW">Ngày mai</option>
-              </select>
+            <label>{scheduleView === 'UPCOMING' ? 'Bắt đầu từ ngày' : 'Ngày đã khám'}
+              <input
+                type="date"
+                value={selectedDate}
+                required
+                min={scheduleView === 'UPCOMING' ? hcmDate(new Date()) : undefined}
+                max={scheduleView === 'HISTORY' ? hcmDate(new Date()) : undefined}
+                onChange={(event) => {
+                  if (event.target.value) setSelectedDate(event.target.value)
+                }}
+              />
             </label>
+            {scheduleView === 'UPCOMING' && <label>Khoảng xem
+              <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value as typeof dayFilter)}>
+                <option value="ALL">7 ngày từ ngày chọn</option>
+                <option value="TODAY">Ngày đã chọn</option>
+                <option value="TOMORROW">Ngày kế tiếp</option>
+              </select>
+            </label>}
             <label>Trạng thái
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
                 <option value="ALL">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ xác nhận</option>
-                <option value="CONFIRMED">Đã xác nhận</option>
-                <option value="CHECKED_IN">Đã check-in</option>
-                <option value="IN_PROGRESS">Đang khám</option>
+                {scheduleView === 'UPCOMING' ? <>
+                  <option value="PENDING">Chờ xác nhận</option>
+                  <option value="CONFIRMED">Đã xác nhận</option>
+                  <option value="CHECKED_IN">Đã check-in</option>
+                  <option value="IN_PROGRESS">Đang khám</option>
+                </> : <>
+                  <option value="COMPLETED">Đã hoàn tất</option>
+                  <option value="NO_SHOW">Không đến</option>
+                </>}
               </select>
             </label>
           </div>
 
           {!appointments && !error ? <div className="dentist-empty">Đang tải lịch khám...</div> : appointments?.length === 0 ? (
-            <div className="dentist-empty"><strong>Chưa có lịch khám trong 7 ngày tới.</strong><span>Bạn sẽ thấy bệnh nhân tại đây khi có lịch được phân công.</span></div>
+            <div className="dentist-empty"><strong>{scheduleView === 'UPCOMING' ? 'Chưa có lịch khám trong khoảng đã chọn.' : 'Chưa có lịch đã khám trong ngày này.'}</strong><span>Chọn ngày khác để tiếp tục tra cứu.</span></div>
           ) : visibleAppointments.length === 0 ? (
-            <div className="dentist-empty"><strong>Chi nhánh này chưa có lịch khám sắp tới.</strong></div>
+            <div className="dentist-empty"><strong>{scheduleView === 'UPCOMING' ? 'Chi nhánh này chưa có lịch khám sắp tới.' : 'Chi nhánh này chưa có ca đã khám trong ngày.'}</strong></div>
           ) : filteredAppointments.length === 0 ? (
             <div className="dentist-empty"><strong>Không có lịch phù hợp với bộ lọc.</strong></div>
           ) : (
             <div className="dentist-appointment-list">
               {filteredAppointments.map((appointment) => (
                 <article className="dentist-appointment" key={appointment.public_code}>
-                  <time dateTime={appointment.starts_at}><strong>{timeOf(appointment.starts_at)}</strong><span>{dayOf(appointment.starts_at)}</span></time>
+                  <time dateTime={appointment.starts_at}><strong>{formatHcmTime(appointment.starts_at)}</strong><span>{formatHcmDay(appointment.starts_at)}</span></time>
                   <div className="dentist-patient-initials" aria-hidden="true">{appointmentInitials(bookingContactName(appointment))}</div>
                   <div className="dentist-appointment-main">
                     <span className="dentist-appointment-branch">{appointment.branch_name}</span>
@@ -266,7 +297,7 @@ export function DentistDashboardPage() {
                       <button type="button" className="button dentist-start-button" disabled={startingCode === appointment.public_code} onClick={() => startAppointment(appointment)}>
                         {startingCode === appointment.public_code ? 'Đang mở...' : 'Bắt đầu khám'}
                       </button>
-                    ) : appointment.status === 'IN_PROGRESS' ? <Link to={`/bac-si/kham/${appointment.public_code}?chi-nhanh=${selectedBranchId}`}>Tiếp tục khám</Link> : <span>Chờ đến lượt</span>}
+                    ) : appointment.status === 'IN_PROGRESS' ? <Link to={`/bac-si/kham/${appointment.public_code}?chi-nhanh=${selectedBranchId}`}>Tiếp tục khám</Link> : appointment.status === 'COMPLETED' ? <Link to={`/bac-si/kham/${appointment.public_code}?chi-nhanh=${selectedBranchId}`}>Xem bệnh án</Link> : appointment.status === 'NO_SHOW' ? <span>Không đến</span> : <span>Chờ đến lượt</span>}
                   </div>
                 </article>
               ))}
