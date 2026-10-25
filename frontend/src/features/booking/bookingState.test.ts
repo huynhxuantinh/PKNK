@@ -37,6 +37,21 @@ describe('bookingSelectionReducer', () => {
     expect(result.dentist).toBeNull()
   })
 
+  it('giữ nguyên bản nháp khi URL chọn lại đúng chi nhánh hiện tại', () => {
+    const refreshedBranch = { ...branch, name: 'Chi nhánh đã tải lại' }
+
+    const result = bookingSelectionReducer(selected, {
+      type: 'select_branch',
+      branch: refreshedBranch,
+    })
+
+    expect(result.branch).toBe(refreshedBranch)
+    expect(result.service).toBe(service)
+    expect(result.date).toBe(selected.date)
+    expect(result.slot).toBe(slot)
+    expect(result.dentist).toBe(dentist)
+  })
+
   it('xóa slot khi đổi dịch vụ hoặc ngày', () => {
     const afterService = bookingSelectionReducer(selected, {
       type: 'select_service',
