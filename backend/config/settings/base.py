@@ -210,6 +210,7 @@ REST_FRAMEWORK = {
         "management_reports": "60/min",
         "staff_invitation_accept": "10/min",
         "patient_read": "120/min",
+        "patient_payment": "10/min",
     },
 }
 
@@ -258,6 +259,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "publish-appointment-reminders-every-five-minutes": {
         "task": "apps.notifications.tasks.publish_due_appointment_reminders",
+        "schedule": 300.0,
+    },
+    "reconcile-pending-payos-every-five-minutes": {
+        "task": "apps.billing.tasks.reconcile_pending_payos_transactions",
         "schedule": 300.0,
     },
 }

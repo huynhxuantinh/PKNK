@@ -3,6 +3,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from .views import health_check
+from apps.billing.payment_views import PayosWebhookAPIView
 
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
     path("api/v1/management/", include("apps.management_api.urls")),
     path("api/v1/dentist/", include("apps.dentist_api.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),
+    path("api/v1/payments/payos/webhook/", PayosWebhookAPIView.as_view(), name="payos-webhook"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",

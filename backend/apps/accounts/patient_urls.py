@@ -6,7 +6,7 @@ from apps.clinical.patient_views import (
     PatientClinicalEncounterDetailAPIView,
     PatientClinicalEncounterListAPIView,
 )
-from apps.billing.patient_views import PatientInvoiceDetailAPIView, PatientInvoiceListAPIView
+from apps.billing.patient_views import PatientInvoiceDetailAPIView, PatientInvoiceListAPIView, PatientInvoicePayosAPIView
 from apps.scheduling.patient_views import (
     PatientAppointmentCancelAPIView,
     PatientAppointmentDetailAPIView,
@@ -24,6 +24,7 @@ urlpatterns = [
     path("me/clinical-attachments/<int:attachment_id>/download/", PatientClinicalAttachmentDownloadAPIView.as_view(), name="clinical-attachment-download"),
     path("me/invoices/", PatientInvoiceListAPIView.as_view(), name="invoices"),
     path("me/invoices/<int:invoice_id>/", PatientInvoiceDetailAPIView.as_view(), name="invoice-detail"),
+    path("me/invoices/<int:invoice_id>/payos/", PatientInvoicePayosAPIView.as_view(), name="invoice-payos"),
     path("me/appointments/", PatientAppointmentListAPIView.as_view(), name="appointments"),
     path("me/appointments/<str:public_code>/", PatientAppointmentDetailAPIView.as_view(), name="appointment-detail"),
     path("me/appointments/<str:public_code>/cancel/", PatientAppointmentCancelAPIView.as_view(), name="appointment-cancel"),

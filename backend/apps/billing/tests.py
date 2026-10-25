@@ -7,6 +7,7 @@ from payos import WebhookError
 from django.db import DatabaseError, transaction
 from django.urls import reverse
 from django.utils import timezone
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -21,6 +22,11 @@ from .models import Invoice, InvoiceLine, Payment, PayosTransaction
 from .services import BillingService
 
 
+@override_settings(
+    PAYOS_CLIENT_ID="test-client",
+    PAYOS_API_KEY="test-api-key",
+    PAYOS_CHECKSUM_KEY="test-checksum-key",
+)
 class CounterBillingTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
