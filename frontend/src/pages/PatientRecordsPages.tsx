@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
+import { createPayosPayment } from '../api/billing'
 import { apiRequest, downloadAuthenticatedFile } from '../api/client'
 import { listSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
+import { PatientInvoiceActions } from '../components/billing/PatientInvoiceActions'
 import { Seo } from '../seo/Seo'
 import type {
   PatientAppointment,
@@ -352,14 +354,31 @@ export function PatientHistoryPage() {
 
 export function PatientInvoicesPage() {
   const { isAuthenticated } = useAuth()
+  const [searchParams] = useSearchParams()
   const [invoices, setInvoices] = useState<PatientInvoice[] | null>(null)
   const [error, setError] = useState('')
+  const [busyInvoiceId, setBusyInvoiceId] = useState<number | null>(null)
   useEffect(() => {
     if (!isAuthenticated) return
     apiRequest<PatientInvoicesResponse>('/patients/me/invoices/?page=1&page_size=20', {}, { auth: true }).then((response) => setInvoices(response.data)).catch(() => setError('Không thể tải hóa đơn.'))
   }, [isAuthenticated])
+  async function payInvoice(invoiceId: number) {
+    setError('')
+    setBusyInvoiceId(invoiceId)
+    try {
+      const response = await createPayosPayment(invoiceId)
+      window.location.assign(response.data.checkout_url)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Không thể tạo liên kết thanh toán.')
+      setBusyInvoiceId(null)
+    }
+  }
   if (!isAuthenticated) return <Navigate to="/dang-nhap?returnTo=%2Fhoa-don" replace />
-  return <RecordsLayout title="Hóa đơn" description="Theo dõi các hóa đơn đã phát hành." path="/hoa-don">{error ? <RecordState>{error}</RecordState> : invoices === null ? <RecordState>Đang tải hóa đơn...</RecordState> : invoices.length === 0 ? <RecordState><strong>Chưa có hóa đơn.</strong></RecordState> : <div className="patient-record-list">{invoices.map((invoice) => <article className="patient-record-card invoice-record" key={invoice.id_invoice}><div><h2>{invoice.invoice_number}</h2><p>{invoice.branch_name} · {formatDateTime(invoice.issued_at)}</p></div><strong>{new Intl.NumberFormat('vi-VN').format(Number(invoice.total))} {invoice.currency}</strong><span className={`record-status status-${invoice.status.toLowerCase()}`}>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}</span></article>)}</div>}</RecordsLayout>
+  return <RecordsLayout title="Hóa đơn" description="Theo dõi các hóa đơn đã phát hành." path="/hoa-don">
+    {searchParams.get('huy') === '1' && <p className="patient-record-notice">Bạn đã hủy thanh toán. Hóa đơn vẫn đang chờ thanh toán.</p>}
+    {error && <p className="patient-record-error" role="alert">{error}</p>}
+    {invoices === null ? <RecordState>Đang tải hóa đơn...</RecordState> : invoices.length === 0 ? <RecordState><strong>Chưa có hóa đơn.</strong></RecordState> : <div className="patient-record-list">{invoices.map((invoice) => <article className="patient-record-card invoice-record" key={invoice.id_invoice}><div><h2>{invoice.invoice_number}</h2><p>{invoice.branch_name} · {formatDateTime(invoice.issued_at)}</p></div><strong>{new Intl.NumberFormat('vi-VN').format(Number(invoice.total))} {invoice.currency}</strong><span className={`record-status status-${invoice.status.toLowerCase()}`}>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}</span><PatientInvoiceActions status={invoice.status} busy={busyInvoiceId === invoice.id_invoice} onPay={() => void payInvoice(invoice.id_invoice)} /></article>)}</div>}
+  </RecordsLayout>
 }
 
 export function NotificationsPage() {

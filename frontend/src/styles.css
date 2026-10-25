@@ -1921,6 +1921,15 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .record-thumbnail-grid article > div { padding: 9px 10px 11px; }.record-thumbnail-grid span { color: #08738b; font-size: 8px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }.record-thumbnail-grid p { margin: 4px 0 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
 .invoice-record { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 20px 24px; }
 .invoice-record h2 { margin: 0 0 5px; font-size: 16px; }.invoice-record p { margin: 0; color: var(--muted); font-size: 12px; }
+.invoice-payos-button { grid-column: 1 / -1; justify-self: end; }
+.payos-result-page { min-height: 100vh; background: #f4fafb; }
+.payos-result-card { width: min(580px, calc(100% - 32px)); margin: 72px auto; padding: 48px; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: var(--shadow); text-align: center; }
+.payos-result-card h1 { margin: 18px 0 8px; color: var(--ink); font-size: 30px; }
+.payos-result-card p { margin: 0 0 24px; color: var(--muted); }
+.payos-result-card .button { margin: 6px; }
+.payos-result-icon { width: 58px; height: 58px; display: inline-grid; place-items: center; border-radius: 50%; background: #eef8fa; color: var(--primary); font-size: 28px; font-weight: 800; }
+.payos-result-icon.is-success { background: #e8f8f2; color: #08745c; }
+.payos-result-icon.is-error { background: #fff0ee; color: #b3423b; }
 .notification-record { display: grid; gap: 6px; width: 100%; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }.notification-record.is-unread { border-color: #8ed9e8; background: #f3fcfe; }.notification-record span, .notification-record small { color: var(--muted); font-size: 12px; }
 .record-date { margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 650; }
 .history-meta { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }

@@ -15,6 +15,7 @@ import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
 import { BranchReportsPage } from './pages/BranchReportsPage'
 import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
 import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
+import { PayosResultPage } from './pages/PayosResultPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
 
@@ -29,6 +30,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/lich-hen" element={<PatientAppointmentsPage />} />
       <Route path="/lich-su-kham" element={<PatientHistoryPage />} />
       <Route path="/hoa-don" element={<PatientInvoicesPage />} />
+      <Route path="/hoa-don/ket-qua" element={<PayosResultPage />} />
       <Route path="/thong-bao" element={<NotificationsPage />} />
     </Route>
     <Route element={<RequireRole area="DENTIST" />}>
