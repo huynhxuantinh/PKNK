@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { act, create, type ReactTestRenderer } from 'react-test-renderer'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { ManagedInvoice } from '../../api/management'
 import {
@@ -7,6 +8,8 @@ import {
   InvoiceDetailPanel,
   InvoiceList,
   InvoicePagination,
+  PaymentModal,
+  VoidPaymentModal,
 } from './InvoiceManagement'
 import { latestVoidedInvoiceId } from './invoicePresentation'
 
@@ -42,15 +45,58 @@ describe('invoice management UI', () => {
     expect(markup).toContain('Xem chi tiết')
   })
 
-  it('allows issuing a draft but keeps payment disabled', () => {
-    const markup = renderToStaticMarkup(
-      <InvoiceDetailPanel invoice={draftInvoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} />,
+  it('only offers payment for an issued invoice', () => {
+    const detail = (invoice: ManagedInvoice) => renderToStaticMarkup(
+      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
     )
+    const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
+    const paid = { ...issued, status: 'PAID' as const, paid_at: '2026-10-24T09:05:00+07:00' }
+    const voided = { ...issued, status: 'VOID' as const, voided_at: '2026-10-24T09:10:00+07:00' }
 
-    expect(markup).toContain('Phát hành hóa đơn')
-    expect(markup).toContain('Ghi nhận thanh toán')
-    expect(markup).toContain('disabled=""')
-    expect(markup).toContain('Khám tổng quát')
+    expect(detail(issued)).toContain('Ghi nhận thanh toán')
+    expect(detail(draftInvoice)).not.toContain('Ghi nhận thanh toán')
+    expect(detail(paid)).not.toContain('Ghi nhận thanh toán')
+    expect(detail(voided)).not.toContain('Ghi nhận thanh toán')
+  })
+
+  it('keeps the payment amount and idempotency key unchanged across retries', () => {
+    const onSubmit = vi.fn()
+    const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
+    let renderer: ReactTestRenderer
+
+    act(() => { renderer = create(<PaymentModal invoice={issued} idempotencyKey="payment-attempt-001" busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
+    const form = renderer!.root.findByProps({ 'aria-label': 'Ghi nhận thanh toán' })
+    act(() => { form.props.onSubmit({ preventDefault() {} }) })
+    act(() => { form.props.onSubmit({ preventDefault() {} }) })
+
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+    expect(onSubmit.mock.calls[0][0]).toEqual({ method: 'CASH', amount: '500000.00', external_reference: '', idempotency_key: 'payment-attempt-001' })
+    expect(onSubmit.mock.calls[1][0].idempotency_key).toBe('payment-attempt-001')
+  })
+
+  it('rejects a bank transfer without a transaction reference', () => {
+    const onSubmit = vi.fn()
+    const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
+    let renderer: ReactTestRenderer
+
+    act(() => { renderer = create(<PaymentModal invoice={issued} idempotencyKey="payment-attempt-002" busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
+    act(() => { renderer!.root.findByProps({ name: 'payment-method' }).props.onChange({ target: { value: 'BANK_TRANSFER' } }) })
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Ghi nhận thanh toán' }).props.onSubmit({ preventDefault() {} }) })
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(renderer!.root.findByProps({ role: 'alert' }).children.join('')).toContain('mã giao dịch')
+  })
+
+  it('requires a reason before voiding a posted payment', () => {
+    const onSubmit = vi.fn()
+    const payment = { id_payment: 7, payment_number: 'PAY-0007', method: 'CASH', amount: '500000.00', status: 'POSTED' as const, external_reference: '', posted_at: '2026-10-24T09:05:00+07:00', voided_at: null, void_reason: '' }
+    let renderer: ReactTestRenderer
+
+    act(() => { renderer = create(<VoidPaymentModal payment={payment} busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Hủy thanh toán' }).props.onSubmit({ preventDefault() {} }) })
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(renderer!.root.findByProps({ role: 'alert' }).children.join('')).toContain('lý do')
   })
 
   it('renders bounded invoice pagination controls', () => {
