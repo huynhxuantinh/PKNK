@@ -14,7 +14,7 @@ from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
 
-from .models import Invoice, InvoiceLine, Payment
+from .models import Invoice, InvoiceLine, Payment, PayosTransaction
 
 
 class CounterBillingTests(APITestCase):
@@ -203,3 +203,9 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(voided.status_code, status.HTTP_200_OK)
         self.assertEqual(replacement.status_code, status.HTTP_201_CREATED)
         self.assertEqual(replacement.data["data"]["replacement_for_id"], invoice_id)
+
+    def test_payos_transaction_statuses_are_explicit(self):
+        self.assertEqual(
+            set(PayosTransaction.Status.values),
+            {"PENDING", "SUCCEEDED", "CANCELLED", "NEEDS_REVIEW"},
+        )
