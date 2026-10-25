@@ -67,4 +67,13 @@ describe('clinical draft storage', () => {
     expect(clinicalFormsEqual(form, { ...form })).toBe(true)
     expect(clinicalFormsEqual(form, { ...form, notes: 'Đã đổi' })).toBe(false)
   })
+
+  it('discards a local draft when the server encounter was updated elsewhere', () => {
+    const storage = memoryStorage()
+    const originalServerVersion = '2026-10-25T08:00:00+07:00'
+    writeClinicalDraft(storage, 7, 'APT-001', form, originalServerVersion)
+
+    expect(readClinicalDraft(storage, 7, 'APT-001', Date.now(), originalServerVersion)).toEqual(form)
+    expect(readClinicalDraft(storage, 7, 'APT-001', Date.now(), '2026-10-25T09:00:00+07:00')).toBeNull()
+  })
 })
