@@ -351,3 +351,24 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payos_transaction.refresh_from_db()
         self.assertEqual(payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW)
+
+    def test_payos_payment_cannot_be_voided_as_if_it_were_a_refund(self):
+        invoice = self.issued_invoice("APT-PAYOS-NO-VOID")
+        payment, _ = BillingService.post_payment(
+            invoice_id=invoice.pk,
+            method=Payment.Method.BANK_TRANSFER,
+            amount=invoice.total,
+            idempotency_key="payos:12345678",
+            actor_user=self.patient_user,
+            external_reference="PAYOS-REFUND-SEPARATELY",
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse("management:payment-void", kwargs={"payment_id": payment.pk}),
+            {"reason": "Thử hủy payment payOS"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("hoàn tiền", response.data["message"].lower())
