@@ -1,6 +1,9 @@
 from datetime import timedelta
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from payos import WebhookError
 from django.db import DatabaseError, transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -15,6 +18,7 @@ from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment, PayosTransaction
+from .services import BillingService
 
 
 class CounterBillingTests(APITestCase):
@@ -70,6 +74,15 @@ class CounterBillingTests(APITestCase):
             reverse("management:branch-invoices", kwargs={"branch_id": self.branch.pk}),
             {"appointment_code": appointment.public_code}, format="json",
         )
+
+    def issued_invoice(self, code="APT-PAYOS"):
+        created = self.create_invoice(self.appointment(code))
+        invoice_id = created.data["data"]["id_invoice"]
+        issued = self.client.post(
+            reverse("management:invoice-issue", kwargs={"invoice_id": invoice_id})
+        )
+        self.assertEqual(issued.status_code, status.HTTP_200_OK)
+        return Invoice.objects.get(pk=invoice_id)
 
     def test_full_counter_flow_and_payment_void_reconciliation(self):
         created = self.create_invoice(self.appointment())
@@ -209,3 +222,126 @@ class CounterBillingTests(APITestCase):
             set(PayosTransaction.Status.values),
             {"PENDING", "SUCCEEDED", "CANCELLED", "NEEDS_REVIEW"},
         )
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_patient_can_create_and_reuse_fresh_payos_checkout(self, payos_class):
+        invoice = self.issued_invoice()
+        payos_class.return_value.payment_requests.create.return_value = SimpleNamespace(
+            checkout_url="https://pay.payos.vn/web/test",
+            payment_link_id="link-1",
+        )
+        self.client.force_authenticate(self.patient_user)
+        url = reverse("patients:invoice-payos", kwargs={"invoice_id": invoice.pk})
+
+        first = self.client.post(url)
+        second = self.client.post(url)
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(first.data["data"]["checkout_url"], "https://pay.payos.vn/web/test")
+        self.assertEqual(PayosTransaction.objects.filter(invoice=invoice).count(), 1)
+        payos_class.return_value.payment_requests.create.assert_called_once()
+
+    def test_payos_checkout_hides_other_patient_invoice_and_rejects_staff(self):
+        invoice = self.issued_invoice("APT-PAYOS-SCOPE")
+        stranger = self.user("payos-stranger@example.com", "Stranger")
+        PatientProfile.objects.create(user=stranger)
+        Membership.objects.create(
+            user=stranger, organization=self.organization, role=Membership.Role.PATIENT
+        )
+        url = reverse("patients:invoice-payos", kwargs={"invoice_id": invoice.pk})
+
+        self.client.force_authenticate(stranger)
+        hidden = self.client.post(url)
+        self.client.force_authenticate(self.admin)
+        forbidden = self.client.post(url)
+
+        self.assertEqual(hidden.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_invalid_payos_webhook_has_no_side_effect(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-BAD-SIGNATURE")
+        PayosTransaction.objects.create(
+            invoice=invoice, initiated_by=self.patient_user, amount=500000
+        )
+        payos_class.return_value.webhooks.verify.side_effect = WebhookError("bad signature")
+        self.client.force_authenticate(None)
+
+        response = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Payment.objects.exists())
+        self.assertEqual(invoice.payos_transactions.get().status, PayosTransaction.Status.PENDING)
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_duplicate_payos_webhook_posts_exactly_one_payment(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-DUPLICATE")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice, initiated_by=self.patient_user, amount=500000
+        )
+        payos_class.return_value.webhooks.verify.return_value = SimpleNamespace(
+            order_code=payos_transaction.order_code,
+            amount=500000,
+            code="00",
+            reference="PAYOS-REFERENCE",
+        )
+        self.client.force_authenticate(None)
+
+        first = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+        second = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(Payment.objects.filter(invoice=invoice).count(), 1)
+        payos_transaction.refresh_from_db()
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.SUCCEEDED)
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_payos_amount_mismatch_requires_review(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-MISMATCH")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice, initiated_by=self.patient_user, amount=500000
+        )
+        payos_class.return_value.webhooks.verify.return_value = SimpleNamespace(
+            order_code=payos_transaction.order_code,
+            amount=499000,
+            code="00",
+            reference="WRONG-AMOUNT",
+        )
+        self.client.force_authenticate(None)
+
+        response = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payos_transaction.refresh_from_db()
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW)
+        self.assertFalse(Payment.objects.filter(invoice=invoice).exists())
+        self.assertTrue(AuditEvent.objects.filter(action="PAYOS_PAYMENT_NEEDS_REVIEW").exists())
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_webhook_for_non_issued_invoice_requires_review(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-PAID")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice, initiated_by=self.patient_user, amount=500000
+        )
+        BillingService.post_payment(
+            invoice_id=invoice.pk,
+            method=Payment.Method.CASH,
+            amount=invoice.total,
+            idempotency_key="counter-before-payos",
+            actor_user=self.admin,
+        )
+        payos_class.return_value.webhooks.verify.return_value = SimpleNamespace(
+            order_code=payos_transaction.order_code,
+            amount=500000,
+            code="00",
+            reference="LATE-PAYOS",
+        )
+        self.client.force_authenticate(None)
+
+        response = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payos_transaction.refresh_from_db()
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW)
