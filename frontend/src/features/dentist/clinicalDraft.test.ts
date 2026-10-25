@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CLINICAL_DRAFT_TTL_MS,
+  clearAllClinicalDrafts,
   clearClinicalDraft,
   clinicalFormsEqual,
   readClinicalDraft,
@@ -30,22 +31,36 @@ function memoryStorage(): Storage {
 }
 
 describe('clinical draft storage', () => {
-  it('stores drafts separately by appointment code', () => {
+  it('stores drafts separately by user and appointment code', () => {
     const storage = memoryStorage()
-    writeClinicalDraft(storage, 'APT-001', form)
+    writeClinicalDraft(storage, 7, 'APT-001', form)
 
-    expect(readClinicalDraft(storage, 'APT-001')).toEqual(form)
-    expect(readClinicalDraft(storage, 'APT-002')).toBeNull()
+    expect(readClinicalDraft(storage, 7, 'APT-001')).toEqual(form)
+    expect(readClinicalDraft(storage, 8, 'APT-001')).toBeNull()
+    expect(readClinicalDraft(storage, 7, 'APT-002')).toBeNull()
   })
 
   it('removes expired and explicitly cleared drafts', () => {
     const storage = memoryStorage()
-    writeClinicalDraft(storage, 'APT-001', form)
-    expect(readClinicalDraft(storage, 'APT-001', Date.now() + CLINICAL_DRAFT_TTL_MS + 1)).toBeNull()
+    writeClinicalDraft(storage, 7, 'APT-001', form)
+    expect(readClinicalDraft(storage, 7, 'APT-001', Date.now() + CLINICAL_DRAFT_TTL_MS + 1)).toBeNull()
 
-    writeClinicalDraft(storage, 'APT-001', form)
-    clearClinicalDraft(storage, 'APT-001')
-    expect(readClinicalDraft(storage, 'APT-001')).toBeNull()
+    writeClinicalDraft(storage, 7, 'APT-001', form)
+    clearClinicalDraft(storage, 7, 'APT-001')
+    expect(readClinicalDraft(storage, 7, 'APT-001')).toBeNull()
+  })
+
+  it('clears every clinical draft without deleting unrelated session data', () => {
+    const storage = memoryStorage()
+    writeClinicalDraft(storage, 7, 'APT-001', form)
+    writeClinicalDraft(storage, 8, 'APT-002', form)
+    storage.setItem('unrelated', 'keep')
+
+    clearAllClinicalDrafts(storage)
+
+    expect(readClinicalDraft(storage, 7, 'APT-001')).toBeNull()
+    expect(readClinicalDraft(storage, 8, 'APT-002')).toBeNull()
+    expect(storage.getItem('unrelated')).toBe('keep')
   })
 
   it('detects changes compared with the server copy', () => {
