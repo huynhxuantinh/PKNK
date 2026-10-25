@@ -71,6 +71,7 @@ export function DentistExaminationPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const [showCompleteConfirmation, setShowCompleteConfirmation] = useState(false)
   const redirectTimerRef = useRef<number | null>(null)
   const encounterCreationRef = useRef<{
@@ -195,6 +196,10 @@ export function DentistExaminationPage() {
 
   function requestFinalizeAndComplete() {
     if (!encounter) return
+    if (pendingAttachmentCount > 0) {
+      setError(`Còn ${pendingAttachmentCount} ảnh chưa tải lên. Hãy tải ảnh lên hoặc bỏ ảnh trước khi chốt bệnh án.`)
+      return
+    }
     if (encounter.status !== 'FINALIZED' && !form.diagnosis_summary.trim()) {
       setError('Cần nhập chẩn đoán trước khi hoàn tất lượt khám.')
       return
@@ -204,6 +209,11 @@ export function DentistExaminationPage() {
 
   async function finalizeAndComplete() {
     if (!encounter) return
+    if (pendingAttachmentCount > 0) {
+      setShowCompleteConfirmation(false)
+      setError(`Còn ${pendingAttachmentCount} ảnh chưa tải lên. Hãy tải ảnh lên hoặc bỏ ảnh trước khi chốt bệnh án.`)
+      return
+    }
     setShowCompleteConfirmation(false)
     setIsSaving(true)
     setError('')
@@ -268,6 +278,7 @@ export function DentistExaminationPage() {
                   <label>Ghi chú nội bộ<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Ghi chú chuyên môn chỉ dành cho nhân viên y tế" /></label>
                   <label>Dặn dò sau khám<textarea value={form.aftercare_instructions} onChange={(event) => setForm({ ...form, aftercare_instructions: event.target.value })} placeholder="Hướng dẫn chăm sóc để người bệnh xem trong hồ sơ" /></label>
                 </>}
+                {pendingAttachmentCount > 0 && <div className="examination-pending-attachments" role="status">Còn {pendingAttachmentCount} ảnh chưa tải lên.</div>}
                 {appointment.status !== 'COMPLETED' && (
                   <footer>
                     {isDirty && <span className="examination-local-draft">Đã lưu nháp trên thiết bị</span>}
@@ -320,6 +331,7 @@ export function DentistExaminationPage() {
               onChange={(attachments) => setEncounter((current) => (
                 current ? { ...current, attachments } : current
               ))}
+              onPendingChange={setPendingAttachmentCount}
             />
             {showCompleteConfirmation && (
               <ConfirmationModal

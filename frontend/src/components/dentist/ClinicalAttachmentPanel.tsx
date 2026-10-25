@@ -29,13 +29,20 @@ type Props = {
   attachments: ClinicalAttachment[]
   disabled: boolean
   onChange: (attachments: ClinicalAttachment[]) => void
+  onPendingChange: (count: number) => void
 }
 
-export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, onChange }: Props) {
+export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, onChange, onPendingChange }: Props) {
   const [drafts, setDrafts] = useState<AttachmentDraft[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [attachmentToRemove, setAttachmentToRemove] = useState<ClinicalAttachment | null>(null)
+
+  useEffect(() => {
+    onPendingChange(drafts.length)
+  }, [drafts.length, onPendingChange])
+
+  useEffect(() => () => onPendingChange(0), [onPendingChange])
 
   function selectFiles(files: FileList | null) {
     if (!files) return
