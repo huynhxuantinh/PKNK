@@ -56,3 +56,16 @@ export function completeDentistAppointment(publicCode: string) {
     { auth: true },
   )
 }
+
+export function finalizeAndCompleteDentistAppointment(
+  publicCode: string,
+  input: Pick<ClinicalEncounter, 'chief_complaint' | 'medical_history' | 'diagnosis_summary' | 'notes'>,
+) {
+  return apiRequest<{
+    data: { appointment: DentistAppointment; encounter: ClinicalEncounter }
+  }>(
+    `/dentist/me/appointments/${publicCode}/finalize-and-complete/`,
+    { method: 'POST', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}

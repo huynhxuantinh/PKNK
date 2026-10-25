@@ -129,6 +129,25 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(viewed.status_code, status.HTTP_200_OK)
         self.assertTrue(AuditEvent.objects.filter(action="CLINICAL_ENCOUNTER_VIEWED").exists())
 
+    def test_create_encounter_rejects_confirmed_appointment(self):
+        appointment = self.appointment(code="APT-CONFIRMED")
+        appointment.status = Appointment.Status.CONFIRMED
+        appointment.checked_in_at = None
+        appointment.started_at = None
+        appointment.save(update_fields=["status", "checked_in_at", "started_at"])
+
+        response = self.client.post(
+            reverse(
+                "dentist_api:appointment-clinical-encounter",
+                kwargs={"public_code": appointment.public_code},
+            ),
+            {"diagnosis_summary": "Must not be created"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(ClinicalEncounter.objects.filter(appointment=appointment).exists())
+
     def test_other_dentist_cannot_access_encounter(self):
         appointment = self.appointment(dentist=self.other_dentist)
         encounter = ClinicalEncounter.objects.create(
@@ -467,4 +486,71 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(draft.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(completed.status_code, status.HTTP_200_OK)
         appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.COMPLETED)
+
+    def test_finalize_and_complete_is_atomic_when_completion_fails(self):
+        appointment = self.appointment(code="APT-ATOMIC-FAIL")
+        encounter = self.create_encounter(appointment, diagnosis="Initial diagnosis")
+        self.client.post(
+            reverse("dentist_api:prescription", kwargs={"encounter_id": encounter.pk}),
+            {"instructions": "Draft prescription"},
+            format="json",
+        )
+
+        response = self.client.post(
+            reverse(
+                "dentist_api:appointment-finalize-and-complete",
+                kwargs={"public_code": appointment.public_code},
+            ),
+            {"diagnosis_summary": "Updated diagnosis", "notes": "Atomic update"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        encounter.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(encounter.status, ClinicalEncounter.Status.DRAFT)
+        self.assertEqual(encounter.diagnosis_summary, "Initial diagnosis")
+        self.assertEqual(encounter.notes, "")
+        self.assertEqual(appointment.status, Appointment.Status.IN_PROGRESS)
+
+    def test_finalize_and_complete_updates_and_completes_draft(self):
+        appointment = self.appointment(code="APT-ATOMIC-SUCCESS")
+        encounter = self.create_encounter(appointment, diagnosis="Initial diagnosis")
+
+        response = self.client.post(
+            reverse(
+                "dentist_api:appointment-finalize-and-complete",
+                kwargs={"public_code": appointment.public_code},
+            ),
+            {"diagnosis_summary": "Final diagnosis", "notes": "Completed safely"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        encounter.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(encounter.status, ClinicalEncounter.Status.FINALIZED)
+        self.assertEqual(encounter.diagnosis_summary, "Final diagnosis")
+        self.assertEqual(encounter.notes, "Completed safely")
+        self.assertEqual(appointment.status, Appointment.Status.COMPLETED)
+
+    def test_finalize_and_complete_recovers_finalized_encounter(self):
+        appointment = self.appointment(code="APT-FINALIZED-RETRY")
+        encounter = self.finalize(self.create_encounter(appointment))
+
+        response = self.client.post(
+            reverse(
+                "dentist_api:appointment-finalize-and-complete",
+                kwargs={"public_code": appointment.public_code},
+            ),
+            {"diagnosis_summary": "Must not overwrite finalized record"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        encounter.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(encounter.status, ClinicalEncounter.Status.FINALIZED)
+        self.assertEqual(encounter.diagnosis_summary, "Pulpitis")
         self.assertEqual(appointment.status, Appointment.Status.COMPLETED)

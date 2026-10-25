@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '../api/client'
 import {
-  completeDentistAppointment,
   createClinicalEncounter,
-  finalizeClinicalEncounter,
+  finalizeAndCompleteDentistAppointment,
   getClinicalEncounter,
   getDentistAppointment,
   updateClinicalEncounter,
@@ -30,6 +29,10 @@ export function DentistExaminationPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const encounterCreationRef = useRef<{
+    publicCode: string
+    request: ReturnType<typeof createClinicalEncounter>
+  } | null>(null)
 
   const branchId = Number(searchParams.get('chi-nhanh')) || null
   const isDentist = user?.memberships?.some((membership) => membership.role === 'DENTIST')
@@ -37,12 +40,30 @@ export function DentistExaminationPage() {
   useEffect(() => {
     if (!isAuthenticated || !publicCode) return
     let active = true
+
+    const loadEncounter = async () => {
+      try {
+        return await getClinicalEncounter(publicCode)
+      } catch (reason) {
+        if (!(reason instanceof ApiError) || reason.status !== 404) throw reason
+
+        if (encounterCreationRef.current?.publicCode !== publicCode) {
+          const request = createClinicalEncounter(publicCode).catch((createReason) => {
+            if (createReason instanceof ApiError && createReason.status === 409) {
+              return getClinicalEncounter(publicCode)
+            }
+            throw createReason
+          })
+          encounterCreationRef.current = { publicCode, request }
+        }
+
+        return encounterCreationRef.current.request
+      }
+    }
+
     Promise.all([
       getDentistAppointment(publicCode),
-      getClinicalEncounter(publicCode).catch(async (reason) => {
-        if (reason instanceof ApiError && reason.status === 404) return createClinicalEncounter(publicCode)
-        throw reason
-      }),
+      loadEncounter(),
     ])
       .then(([appointmentResponse, encounterResponse]) => {
         if (!active) return
@@ -78,18 +99,21 @@ export function DentistExaminationPage() {
 
   async function finalizeAndComplete() {
     if (!encounter) return
-    if (!form.diagnosis_summary.trim()) {
+    const alreadyFinalized = encounter.status === 'FINALIZED'
+    if (!alreadyFinalized && !form.diagnosis_summary.trim()) {
       setError('Cần nhập chẩn đoán trước khi hoàn tất lượt khám.')
       return
     }
-    if (!window.confirm('Chốt bệnh án và hoàn tất lượt khám này? Sau khi chốt sẽ không thể sửa trực tiếp.')) return
+    const confirmation = alreadyFinalized
+      ? 'Hoàn tất lượt khám này?'
+      : 'Chốt bệnh án và hoàn tất lượt khám này? Sau khi chốt sẽ không thể sửa trực tiếp.'
+    if (!window.confirm(confirmation)) return
     setIsSaving(true)
     setError('')
     try {
-      const saved = await updateClinicalEncounter(encounter.id_clinical_encounter, form)
-      const finalized = await finalizeClinicalEncounter(saved.data.id_clinical_encounter)
-      await completeDentistAppointment(publicCode)
-      setEncounter(finalized.data)
+      const response = await finalizeAndCompleteDentistAppointment(publicCode, form)
+      setEncounter(response.data.encounter)
+      setAppointment(response.data.appointment)
       setNotice('Đã hoàn tất lượt khám.')
       window.setTimeout(() => navigate(branchId ? `/bac-si?chi-nhanh=${branchId}` : '/bac-si'), 900)
     } catch (reason) {
@@ -131,7 +155,14 @@ export function DentistExaminationPage() {
                 <label>Tiền sử sức khỏe<textarea value={form.medical_history} disabled={isFinalized} onChange={(event) => setForm({ ...form, medical_history: event.target.value })} placeholder="Dị ứng thuốc, bệnh nền hoặc thông tin cần lưu ý" /></label>
                 <label>Chẩn đoán <b>*</b><textarea value={form.diagnosis_summary} disabled={isFinalized} onChange={(event) => setForm({ ...form, diagnosis_summary: event.target.value })} placeholder="Tóm tắt chẩn đoán sau khi khám" required /></label>
                 <label>Ghi chú điều trị<textarea value={form.notes} disabled={isFinalized} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Hướng dẫn, kế hoạch theo dõi hoặc chỉ định tiếp theo" /></label>
-                {!isFinalized && <footer><button type="button" className="examination-save" disabled={isSaving} onClick={saveDraft}>Lưu nháp</button><button type="button" className="examination-complete" disabled={isSaving} onClick={finalizeAndComplete}>{isSaving ? 'Đang xử lý...' : 'Chốt & hoàn tất khám'}</button></footer>}
+                {appointment.status !== 'COMPLETED' && (
+                  <footer>
+                    {!isFinalized && <button type="button" className="examination-save" disabled={isSaving} onClick={saveDraft}>Lưu nháp</button>}
+                    <button type="button" className="examination-complete" disabled={isSaving} onClick={finalizeAndComplete}>
+                      {isSaving ? 'Đang xử lý...' : isFinalized ? 'Hoàn tất lượt khám' : 'Chốt & hoàn tất khám'}
+                    </button>
+                  </footer>
+                )}
               </div>
               <aside className="examination-summary"><p className="eyebrow">Thông tin đặt khám</p><h2>Ghi chú người bệnh</h2><p>{appointment.patient_note || 'Không có ghi chú thêm từ người đặt.'}</p><hr /><span>Mã lịch hẹn</span><strong>{appointment.public_code}</strong><span>Ghế khám</span><strong>{appointment.chair_name}</strong></aside>
             </section>

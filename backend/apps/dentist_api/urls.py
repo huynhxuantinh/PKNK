@@ -15,6 +15,7 @@ from apps.clinical.views import (
     ClinicalEncounterDetailAPIView,
     ClinicalEncounterFinalizeAPIView,
     DentistAppointmentCompleteAPIView,
+    DentistAppointmentFinalizeAndCompleteAPIView,
     OdontogramDetailAPIView,
     OdontogramListCreateAPIView,
     PrescriptionAPIView,
@@ -48,6 +49,11 @@ urlpatterns = [
         "me/appointments/<str:public_code>/complete/",
         DentistAppointmentCompleteAPIView.as_view(),
         name="appointment-complete",
+    ),
+    path(
+        "me/appointments/<str:public_code>/finalize-and-complete/",
+        DentistAppointmentFinalizeAndCompleteAPIView.as_view(),
+        name="appointment-finalize-and-complete",
     ),
     path(
         "me/appointments/<str:public_code>/clinical-encounter/",

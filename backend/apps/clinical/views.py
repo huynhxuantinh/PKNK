@@ -696,3 +696,75 @@ class DentistAppointmentCompleteAPIView(ClinicalAPIView):
         except DjangoValidationError as error:
             raise conflict(error)
         return Response({"data": DentistAppointmentSerializer(appointment).data})
+
+
+class DentistAppointmentFinalizeAndCompleteAPIView(ClinicalAPIView):
+    serializer_class = ClinicalEncounterSerializer
+
+    @transaction.atomic
+    def post(self, request, public_code):
+        _, appointments = self.appointment_queryset()
+        appointment = get_object_or_404(
+            appointments.select_for_update(), public_code=public_code
+        )
+        encounter = get_object_or_404(
+            ClinicalEncounter.objects.select_for_update().select_related(
+                "appointment__branch__organization"
+            ),
+            appointment=appointment,
+        )
+
+        if appointment.status == Appointment.Status.COMPLETED:
+            return self._response(appointment, encounter)
+
+        if encounter.status == ClinicalEncounter.Status.DRAFT:
+            serializer = ClinicalEncounterSerializer(
+                encounter, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            AuditService.record_write(
+                actor_user=request.user,
+                organization=appointment.branch.organization,
+                branch=appointment.branch,
+                action="CLINICAL_ENCOUNTER_UPDATED",
+                resource_type="ClinicalEncounter",
+                resource_id=encounter.pk,
+                after_data={"changed_fields": sorted(serializer.validated_data)},
+                request=request,
+            )
+            try:
+                encounter = ClinicalWorkflowService.finalize_encounter(
+                    encounter_id=encounter.pk,
+                    actor_user=request.user,
+                    request=request,
+                )
+            except DjangoValidationError as error:
+                raise conflict(error)
+        elif encounter.status != ClinicalEncounter.Status.FINALIZED:
+            raise DentistConflict("Bá»‡nh Ă¡n khĂ´ng á»Ÿ tráº¡ng thĂ¡i cĂ³ thá»ƒ hoĂ n táº¥t.")
+
+        try:
+            appointment = AppointmentService.transition_status(
+                appointment_id=appointment.pk,
+                to_status=Appointment.Status.COMPLETED,
+                actor_type=AppointmentStatusHistory.ActorType.DENTIST,
+                actor_user=request.user,
+                request=request,
+            )
+        except DjangoValidationError as error:
+            raise conflict(error)
+
+        encounter.refresh_from_db()
+        return self._response(appointment, encounter)
+
+    @staticmethod
+    def _response(appointment, encounter):
+        return Response(
+            {
+                "data": {
+                    "appointment": DentistAppointmentSerializer(appointment).data,
+                    "encounter": ClinicalEncounterSerializer(encounter).data,
+                }
+            }
+        )
