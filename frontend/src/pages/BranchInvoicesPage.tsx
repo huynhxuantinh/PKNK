@@ -4,7 +4,8 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { listBranchAppointments } from '../api/management'
 import {
   createManagedInvoice, getManagedInvoice, issueManagedInvoice, listManagedInvoices,
-  voidManagedInvoice, type ManagedInvoice, type ManagedInvoiceStatus,
+  postManagedPayment, voidManagedInvoice, voidManagedPayment,
+  type ManagedInvoice, type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPaymentInput,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
@@ -13,6 +14,8 @@ import {
   InvoiceDetailPanel,
   InvoiceList,
   InvoicePagination,
+  PaymentModal,
+  VoidPaymentModal,
 } from '../components/branch-management/InvoiceManagement'
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
@@ -37,6 +40,10 @@ export function BranchInvoicesPage() {
   const [appointmentCode, setAppointmentCode] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
+  const [showPayment, setShowPayment] = useState(false)
+  const [paymentAttemptKey, setPaymentAttemptKey] = useState('')
+  const [paymentToVoid, setPaymentToVoid] = useState<ManagedInvoicePayment | null>(null)
+  const [paymentError, setPaymentError] = useState('')
   const [voidReason, setVoidReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -118,6 +125,39 @@ export function BranchInvoicesPage() {
     finally { setBusy(false) }
   }
 
+  function openPayment() {
+    setPaymentError('')
+    setPaymentAttemptKey(crypto.randomUUID())
+    setShowPayment(true)
+  }
+
+  async function recordPayment(data: ManagedPaymentInput) {
+    if (!selected) return
+    setBusy(true); setPaymentError(''); setNotice('')
+    try {
+      await postManagedPayment(selected.id_invoice, data)
+      const refreshed = await getManagedInvoice(selected.id_invoice)
+      setSelected(refreshed.data); setShowPayment(false); setPaymentAttemptKey(''); setNotice('Đã ghi nhận thanh toán.'); await loadInvoices()
+    } catch (caught) { setPaymentError(caught instanceof Error ? caught.message : 'Không thể ghi nhận thanh toán.') }
+    finally { setBusy(false) }
+  }
+
+  function openVoidPayment(payment: ManagedInvoicePayment) {
+    setPaymentError('')
+    setPaymentToVoid(payment)
+  }
+
+  async function voidPayment(reason: string) {
+    if (!selected || !paymentToVoid) return
+    setBusy(true); setPaymentError(''); setNotice('')
+    try {
+      await voidManagedPayment(paymentToVoid.id_payment, reason)
+      const refreshed = await getManagedInvoice(selected.id_invoice)
+      setSelected(refreshed.data); setPaymentToVoid(null); setNotice('Đã hủy thanh toán.'); await loadInvoices()
+    } catch (caught) { setPaymentError(caught instanceof Error ? caught.message : 'Không thể hủy thanh toán.') }
+    finally { setBusy(false) }
+  }
+
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
   return <div className="branch-management-page invoice-management-page">
     <ManagementPageHeader title="Hóa đơn chi nhánh" path="/quan-ly-chi-nhanh/hoa-don" />
@@ -134,8 +174,10 @@ export function BranchInvoicesPage() {
   </div>
 
     {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><InvoiceAppointmentHint /><label>Mã lịch hẹn<input required list="completed-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="completed-appointments">{completedAppointments.map((appointment) => <option key={appointment.public_code} value={appointment.public_code}>{appointment.patient_name} — {appointment.service_name_snapshot}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
-    {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} />}
+    {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} onRecordPayment={openPayment} onVoidPayment={openVoidPayment} />}
     {showVoid && selected && <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={voidInvoice}><h2>Hủy hóa đơn</h2><p>Lý do hủy sẽ được lưu trong nhật ký đối soát.</p><label>Lý do<textarea required minLength={3} maxLength={1000} value={voidReason} onChange={(event) => setVoidReason(event.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setShowVoid(false)}>Quay lại</button><button type="submit" disabled={busy}>Xác nhận hủy</button></div></form></div>}
+    {showPayment && selected && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}
+    {paymentToVoid && <VoidPaymentModal payment={paymentToVoid} busy={busy} serverError={paymentError} onCancel={() => { setPaymentToVoid(null); setPaymentError('') }} onSubmit={(reason) => void voidPayment(reason)} />}
     </main>
   </div>
 }

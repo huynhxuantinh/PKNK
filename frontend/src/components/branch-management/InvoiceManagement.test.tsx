@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { ManagedInvoice } from '../../api/management'
+import type { ManagedInvoice, ManagedInvoicePayment } from '../../api/management'
 import {
   InvoiceAppointmentHint,
   InvoiceDetailPanel,
@@ -89,7 +89,7 @@ describe('invoice management UI', () => {
 
   it('requires a reason before voiding a posted payment', () => {
     const onSubmit = vi.fn()
-    const payment = { id_payment: 7, payment_number: 'PAY-0007', method: 'CASH', amount: '500000.00', status: 'POSTED' as const, external_reference: '', posted_at: '2026-10-24T09:05:00+07:00', voided_at: null, void_reason: '' }
+    const payment = { id_payment: 7, payment_number: 'PAY-0007', method: 'CASH', amount: '500000.00', status: 'POSTED', external_reference: '', posted_at: '2026-10-24T09:05:00+07:00', voided_at: null, void_reason: '' } satisfies ManagedInvoicePayment
     let renderer: ReactTestRenderer
 
     act(() => { renderer = create(<VoidPaymentModal payment={payment} busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })

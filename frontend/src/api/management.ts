@@ -33,7 +33,9 @@ export interface ManagedWorkShift { id_work_shift: number; branch_id: number; de
 export interface ManagedTimeOff { id_time_off: number; branch_id: number | null; dentist_id: number; starts_at: string; ends_at: string; reason: string; is_active: boolean }
 export type ManagedInvoiceStatus = 'DRAFT' | 'ISSUED' | 'PAID' | 'VOID'
 export interface ManagedInvoiceLine { id_invoice_line: number; service_id: number | null; service_code_snapshot: string; description: string; quantity: number; unit_price: string; line_total: string }
-export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: string; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; posted_at: string; voided_at: string | null; void_reason: string }
+export type ManagedPaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CARD'
+export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: ManagedPaymentMethod; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; posted_at: string; voided_at: string | null; void_reason: string }
+export interface ManagedPaymentInput { method: ManagedPaymentMethod; amount: string; external_reference: string; idempotency_key: string }
 export interface ManagedInvoice {
   id_invoice: number; invoice_number: string; appointment_code: string; branch_id: number
   patient_profile_id: number; patient_name: string; replacement_for_id: number | null
@@ -123,6 +125,8 @@ export const getManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoi
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
+export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const voidManagedPayment = (paymentId: number, reason: string) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/payments/${paymentId}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 
 export const getManagedBranch = (branchId: number) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, {}, { auth: true })
 export const listManagedOpeningHours = (branchId: number) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, {}, { auth: true })
