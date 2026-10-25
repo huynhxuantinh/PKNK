@@ -7,6 +7,7 @@ import {
   InvoiceAppointmentHint,
   InvoiceDraftEditor,
   InvoiceDetailPanel,
+  InvoiceFilters,
   InvoiceList,
   InvoicePagination,
   PaymentModal,
@@ -165,6 +166,21 @@ describe('invoice management UI', () => {
     expect(markup).toContain('Trang 2 / 3')
     expect(markup).toContain('Trang trước')
     expect(markup).toContain('Trang sau')
+  })
+
+  it('renders invoice count and searches by appointment code', () => {
+    const onSearch = vi.fn()
+    const onStatusChange = vi.fn()
+    let renderer: ReactTestRenderer
+    act(() => { renderer = create(<InvoiceFilters status="" appointmentCode="APT-2026" count={37} onStatusChange={onStatusChange} onAppointmentCodeChange={() => {}} onSearch={onSearch} onClear={() => {}} />) })
+
+    expect(JSON.stringify(renderer!.toJSON())).toContain('Tổng 37 hóa đơn')
+    expect(renderer!.root.findByProps({ name: 'appointment-code-filter' }).props.value).toBe('APT-2026')
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Lọc hóa đơn' }).props.onSubmit({ preventDefault() {} }) })
+    act(() => { renderer!.root.findByProps({ name: 'invoice-status-filter' }).props.onChange({ target: { value: 'PAID' } }) })
+
+    expect(onSearch).toHaveBeenCalledOnce()
+    expect(onStatusChange).toHaveBeenCalledWith('PAID')
   })
 
   it('selects the most recently voided invoice for replacement', () => {
