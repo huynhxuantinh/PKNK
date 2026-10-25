@@ -3,12 +3,14 @@ from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Dentist, PatientProfile, User
+from apps.billing.models import Invoice
 from apps.billing.services import BillingService
 from apps.catalog.models import BranchService, Service
 from apps.locations.models import (
@@ -211,6 +213,51 @@ class RevenueReportingTests(APITestCase):
 
         self.assertEqual(response.data["data"]["total_revenue"], "0.00")
         self.assertEqual(response.data["data"]["paid_invoice_count"], 0)
+
+    def test_branch_revenue_matches_paid_invoices_before_and_after_payment_void(self):
+        first_invoice, first_payment = self.paid_invoice(
+            branch=self.branch_a, branch_service=self.branch_service_a,
+            dentist=self.dentist, chair=self.chair_a,
+            code="APT-BRANCH-REVENUE-A", actor=self.org_admin,
+        )
+        self.paid_invoice(
+            branch=self.branch_a, branch_service=self.branch_service_a,
+            dentist=self.dentist, chair=self.chair_a,
+            code="APT-BRANCH-REVENUE-B", actor=self.org_admin,
+        )
+        self.client.force_authenticate(self.org_admin)
+        url = reverse(
+            "management:branch-revenue-report",
+            kwargs={"branch_id": self.branch_a.pk},
+        )
+
+        def assert_report_matches_paid_invoices():
+            response = self.client.get(url, self.period())
+            paid = Invoice.objects.filter(
+                branch=self.branch_a,
+                status=Invoice.Status.PAID,
+            )
+            expected_total = paid.aggregate(total=Sum("total"))["total"] or Decimal("0")
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                Decimal(response.data["data"]["total_revenue"]),
+                expected_total,
+            )
+            self.assertEqual(
+                response.data["data"]["paid_invoice_count"],
+                paid.count(),
+            )
+
+        assert_report_matches_paid_invoices()
+        BillingService.void_payment(
+            payment_id=first_payment.pk,
+            reason="Ghi nhận sai",
+            actor_user=self.org_admin,
+        )
+        first_invoice.refresh_from_db()
+        self.assertEqual(first_invoice.status, Invoice.Status.ISSUED)
+        assert_report_matches_paid_invoices()
 
     def test_revenue_groups_by_service_and_allocates_discount(self):
         secondary_service = Service.objects.create(
