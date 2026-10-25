@@ -70,8 +70,8 @@ describe('ClinicalAttachmentPanel pending uploads', () => {
 
     const fileRows = renderer!.root.findAll((node) => node.props.className === 'clinical-attachment-file')
     expect(fileRows).toHaveLength(2)
-    expect(fileRows.map((row) => row.children.join(' ')).join(' ')).toContain('PDF')
-    expect(fileRows.map((row) => row.children.join(' ')).join(' ')).toContain('DICOM')
+    const fileTypes = renderer!.root.findAll((node) => node.props.className === 'clinical-attachment-file-type')
+    expect(fileTypes.map((node) => node.children.join(' '))).toEqual(['PDF', 'DICOM'])
     expect(renderer!.root.findAllByType('button').filter((button) => button.children.join('') === 'Xóa')).toHaveLength(2)
   })
 })

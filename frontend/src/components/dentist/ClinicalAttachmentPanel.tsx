@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { downloadAuthenticatedFile } from '../../api/client'
 import { deleteClinicalAttachment, uploadClinicalAttachment } from '../../api/dentist'
 import type { ClinicalAttachment } from '../../types/api'
 import { ConfirmationModal } from '../ConfirmationModal'
@@ -22,6 +23,25 @@ function ImagePreview({ file, alt }: { file: File; alt: string }) {
   }, [file])
 
   return url ? <img src={url} alt={alt} /> : <span>Đang tạo xem trước...</span>
+}
+
+function attachmentFileType(contentType: string) {
+  if (contentType === 'application/pdf') return 'PDF'
+  if (contentType === 'application/dicom') return 'DICOM'
+  return 'Tệp đính kèm'
+}
+
+function attachmentFilename(attachment: ClinicalAttachment) {
+  const extension = attachment.content_type === 'application/pdf'
+    ? 'pdf'
+    : attachment.content_type === 'application/dicom' ? 'dcm' : 'bin'
+  return `clinical-attachment-${attachment.id_clinical_attachment}.${extension}`
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
 type Props = {
@@ -108,11 +128,23 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
     }
   }
 
+  async function downloadAttachment(attachment: ClinicalAttachment) {
+    setBusy(true)
+    setError('')
+    try {
+      await downloadAuthenticatedFile(attachment.download_url, attachmentFilename(attachment))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể tải tệp xuống.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="clinical-attachments" aria-labelledby="clinical-attachments-title">
       <header>
         <div><p className="eyebrow">Hình ảnh bệnh án</p><h2 id="clinical-attachments-title">Ảnh và phim chụp</h2></div>
-        <span>{attachments.length} ảnh đã lưu</span>
+        <span>{attachments.length} tệp đã lưu</span>
       </header>
 
       {error && <div className="dentist-error" role="alert">{error}</div>}
@@ -126,6 +158,26 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
           </article>
         ))}
       </div>}
+
+      {attachments.some((item) => !item.content_type.startsWith('image/')) && (
+        <div className="clinical-attachment-files" aria-label="Tệp bệnh án">
+          {attachments.filter((item) => !item.content_type.startsWith('image/')).map((attachment) => (
+            <article className="clinical-attachment-file" key={attachment.id_clinical_attachment}>
+              <span className="clinical-attachment-file-type" aria-hidden="true">
+                {attachmentFileType(attachment.content_type)}
+              </span>
+              <div>
+                <strong>{attachment.description || attachmentFileType(attachment.content_type)}</strong>
+                <p>{attachmentFileType(attachment.content_type)} · {formatFileSize(attachment.size_bytes)}</p>
+              </div>
+              <div className="clinical-attachment-file-actions">
+                <button type="button" disabled={busy} onClick={() => void downloadAttachment(attachment)}>Tải xuống</button>
+                {!disabled && <button type="button" disabled={busy} onClick={() => setAttachmentToRemove(attachment)}>Xóa</button>}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
 
       {!disabled && <>
         <label className="clinical-upload-picker">
@@ -150,9 +202,9 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
       </>}
       {attachmentToRemove && (
         <ConfirmationModal
-          title="Xóa ảnh khỏi bệnh án?"
-          description="Ảnh đã xóa sẽ không còn hiển thị trong hồ sơ khám."
-          confirmLabel="Xóa ảnh"
+          title="Xóa tệp khỏi bệnh án?"
+          description="Tệp đã xóa sẽ không còn hiển thị trong hồ sơ khám."
+          confirmLabel="Xóa tệp"
           danger
           busy={busy}
           onCancel={() => setAttachmentToRemove(null)}
