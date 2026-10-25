@@ -79,6 +79,7 @@ export function DentistExaminationPage() {
   } | null>(null)
 
   const branchId = Number(searchParams.get('chi-nhanh')) || null
+  const currentUserId = user?.id_user
   const isDentist = hasActiveRole(user, ['DENTIST'])
   const isDirty = Boolean(
     encounter?.status !== 'FINALIZED'
@@ -103,10 +104,10 @@ export function DentistExaminationPage() {
   }, [isDirty])
 
   useEffect(() => {
-    if (!publicCode || draftReadyFor !== publicCode || !serverForm) return
-    if (isDirty) writeClinicalDraft(localStorage, publicCode, form)
-    else clearClinicalDraft(localStorage, publicCode)
-  }, [draftReadyFor, form, isDirty, publicCode, serverForm])
+    if (!currentUserId || !publicCode || draftReadyFor !== publicCode || !serverForm) return
+    if (isDirty) writeClinicalDraft(sessionStorage, currentUserId, publicCode, form)
+    else clearClinicalDraft(sessionStorage, currentUserId, publicCode)
+  }, [currentUserId, draftReadyFor, form, isDirty, publicCode, serverForm])
 
   useEffect(() => {
     if (!isAuthenticated || !publicCode) return
@@ -142,8 +143,8 @@ export function DentistExaminationPage() {
         setAppointment(appointmentResponse.data)
         setEncounter(encounterResponse.data)
         const latestServerForm = formFromEncounter(encounterResponse.data)
-        const localDraft = encounterResponse.data.status === 'DRAFT' && appointmentResponse.data.status !== 'COMPLETED'
-          ? readClinicalDraft(localStorage, publicCode)
+        const localDraft = currentUserId && encounterResponse.data.status === 'DRAFT' && appointmentResponse.data.status !== 'COMPLETED'
+          ? readClinicalDraft(sessionStorage, currentUserId, publicCode)
           : null
         setServerForm(latestServerForm)
         setForm(localDraft ?? latestServerForm)
@@ -156,7 +157,7 @@ export function DentistExaminationPage() {
         if (active) setError(reason instanceof Error ? reason.message : 'Không thể mở lượt khám.')
       })
     return () => { active = false }
-  }, [isAuthenticated, publicCode])
+  }, [currentUserId, isAuthenticated, publicCode])
 
   useEffect(() => {
     if (!appointment || !['IN_PROGRESS', 'COMPLETED'].includes(appointment.status)) return
@@ -183,7 +184,7 @@ export function DentistExaminationPage() {
       const savedForm = formFromEncounter(response.data)
       setForm(savedForm)
       setServerForm(savedForm)
-      clearClinicalDraft(localStorage, publicCode)
+      if (currentUserId) clearClinicalDraft(sessionStorage, currentUserId, publicCode)
       setNotice('Đã lưu bệnh án nháp.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể lưu bệnh án.')
@@ -211,7 +212,7 @@ export function DentistExaminationPage() {
       setEncounter(response.data.encounter)
       setAppointment(response.data.appointment)
       setServerForm(formFromEncounter(response.data.encounter))
-      clearClinicalDraft(localStorage, publicCode)
+      if (currentUserId) clearClinicalDraft(sessionStorage, currentUserId, publicCode)
       setNotice('Đã hoàn tất lượt khám.')
       redirectTimerRef.current = window.setTimeout(() => {
         navigate(branchId ? `/bac-si?chi-nhanh=${branchId}` : '/bac-si')

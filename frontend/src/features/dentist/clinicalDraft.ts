@@ -11,11 +11,13 @@ export const CLINICAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000
 
 type StoredClinicalDraft = {
   savedAt: number
+  userId: number
+  publicCode: string
   form: ClinicalDraftFields
 }
 
-function keyFor(publicCode: string) {
-  return `${STORAGE_PREFIX}${publicCode}`
+function keyFor(userId: number, publicCode: string) {
+  return `${STORAGE_PREFIX}${userId}:${publicCode}`
 }
 
 function isClinicalDraftFields(value: unknown): value is ClinicalDraftFields {
@@ -25,8 +27,8 @@ function isClinicalDraftFields(value: unknown): value is ClinicalDraftFields {
     .every((field) => typeof draft[field] === 'string')
 }
 
-export function readClinicalDraft(storage: Storage, publicCode: string, now = Date.now()) {
-  const key = keyFor(publicCode)
+export function readClinicalDraft(storage: Storage, userId: number, publicCode: string, now = Date.now()) {
+  const key = keyFor(userId, publicCode)
   try {
     const raw = storage.getItem(key)
     if (!raw) return null
@@ -34,6 +36,8 @@ export function readClinicalDraft(storage: Storage, publicCode: string, now = Da
     if (
       typeof parsed.savedAt !== 'number'
       || now - parsed.savedAt > CLINICAL_DRAFT_TTL_MS
+      || parsed.userId !== userId
+      || parsed.publicCode !== publicCode
       || !isClinicalDraftFields(parsed.form)
     ) {
       storage.removeItem(key)
@@ -46,20 +50,38 @@ export function readClinicalDraft(storage: Storage, publicCode: string, now = Da
   }
 }
 
-export function writeClinicalDraft(storage: Storage, publicCode: string, form: ClinicalDraftFields) {
+export function writeClinicalDraft(storage: Storage, userId: number, publicCode: string, form: ClinicalDraftFields) {
   try {
-    storage.setItem(keyFor(publicCode), JSON.stringify({ savedAt: Date.now(), form }))
+    storage.setItem(keyFor(userId, publicCode), JSON.stringify({ savedAt: Date.now(), userId, publicCode, form }))
   } catch {
     // Storage can be unavailable in private mode or when the quota is full.
   }
 }
 
-export function clearClinicalDraft(storage: Storage, publicCode: string) {
+export function clearClinicalDraft(storage: Storage, userId: number, publicCode: string) {
   try {
-    storage.removeItem(keyFor(publicCode))
+    storage.removeItem(keyFor(userId, publicCode))
   } catch {
     // Nothing else is required when storage is unavailable.
   }
+}
+
+export function clearAllClinicalDrafts(storage: Storage) {
+  try {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index)
+      if (key?.startsWith(STORAGE_PREFIX)) storage.removeItem(key)
+    }
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
+
+export function clearClinicalDraftCaches() {
+  if (typeof window === 'undefined') return
+  try { clearAllClinicalDrafts(window.sessionStorage) } catch { /* unavailable */ }
+  // Remove drafts written by older app versions before storage was session-scoped.
+  try { clearAllClinicalDrafts(window.localStorage) } catch { /* unavailable */ }
 }
 
 export function clinicalFormsEqual(left: ClinicalDraftFields, right: ClinicalDraftFields) {
