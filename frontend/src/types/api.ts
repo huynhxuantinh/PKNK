@@ -355,5 +355,6 @@ export interface ClinicalEncounter {
   notes: string
   aftercare_instructions: string
   finalized_at: string | null
+  updated_at: string
   attachments: ClinicalAttachment[]
 }

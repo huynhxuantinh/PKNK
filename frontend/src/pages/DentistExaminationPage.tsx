@@ -106,9 +106,11 @@ export function DentistExaminationPage() {
 
   useEffect(() => {
     if (!currentUserId || !publicCode || draftReadyFor !== publicCode || !serverForm) return
-    if (isDirty) writeClinicalDraft(sessionStorage, currentUserId, publicCode, form)
+    if (isDirty && encounter) {
+      writeClinicalDraft(sessionStorage, currentUserId, publicCode, form, encounter.updated_at)
+    }
     else clearClinicalDraft(sessionStorage, currentUserId, publicCode)
-  }, [currentUserId, draftReadyFor, form, isDirty, publicCode, serverForm])
+  }, [currentUserId, draftReadyFor, encounter, form, isDirty, publicCode, serverForm])
 
   useEffect(() => {
     if (!isAuthenticated || !publicCode) return
@@ -145,7 +147,13 @@ export function DentistExaminationPage() {
         setEncounter(encounterResponse.data)
         const latestServerForm = formFromEncounter(encounterResponse.data)
         const localDraft = currentUserId && encounterResponse.data.status === 'DRAFT' && appointmentResponse.data.status !== 'COMPLETED'
-          ? readClinicalDraft(sessionStorage, currentUserId, publicCode)
+          ? readClinicalDraft(
+            sessionStorage,
+            currentUserId,
+            publicCode,
+            Date.now(),
+            encounterResponse.data.updated_at,
+          )
           : null
         setServerForm(latestServerForm)
         setForm(localDraft ?? latestServerForm)

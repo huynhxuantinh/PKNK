@@ -123,7 +123,7 @@ class RevenueReportingTests(APITestCase):
             extra.update({
                 "cancelled_at": starts - timedelta(hours=1),
                 "cancelled_by": self.org_admin,
-                "cancel_reason": "Bá»‡nh nhĂ¢n báº­n",
+                "cancel_reason": "Bệnh nhân bận",
             })
         elif status_value == Appointment.Status.NO_SHOW:
             extra["no_show_at"] = starts + timedelta(minutes=15)

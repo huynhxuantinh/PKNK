@@ -13,6 +13,7 @@ type StoredClinicalDraft = {
   savedAt: number
   userId: number
   publicCode: string
+  serverUpdatedAt: string
   form: ClinicalDraftFields
 }
 
@@ -27,7 +28,13 @@ function isClinicalDraftFields(value: unknown): value is ClinicalDraftFields {
     .every((field) => typeof draft[field] === 'string')
 }
 
-export function readClinicalDraft(storage: Storage, userId: number, publicCode: string, now = Date.now()) {
+export function readClinicalDraft(
+  storage: Storage,
+  userId: number,
+  publicCode: string,
+  now = Date.now(),
+  serverUpdatedAt?: string,
+) {
   const key = keyFor(userId, publicCode)
   try {
     const raw = storage.getItem(key)
@@ -38,6 +45,7 @@ export function readClinicalDraft(storage: Storage, userId: number, publicCode: 
       || now - parsed.savedAt > CLINICAL_DRAFT_TTL_MS
       || parsed.userId !== userId
       || parsed.publicCode !== publicCode
+      || (serverUpdatedAt !== undefined && parsed.serverUpdatedAt !== serverUpdatedAt)
       || !isClinicalDraftFields(parsed.form)
     ) {
       storage.removeItem(key)
@@ -50,9 +58,21 @@ export function readClinicalDraft(storage: Storage, userId: number, publicCode: 
   }
 }
 
-export function writeClinicalDraft(storage: Storage, userId: number, publicCode: string, form: ClinicalDraftFields) {
+export function writeClinicalDraft(
+  storage: Storage,
+  userId: number,
+  publicCode: string,
+  form: ClinicalDraftFields,
+  serverUpdatedAt = '',
+) {
   try {
-    storage.setItem(keyFor(userId, publicCode), JSON.stringify({ savedAt: Date.now(), userId, publicCode, form }))
+    storage.setItem(keyFor(userId, publicCode), JSON.stringify({
+      savedAt: Date.now(),
+      userId,
+      publicCode,
+      serverUpdatedAt,
+      form,
+    }))
   } catch {
     // Storage can be unavailable in private mode or when the quota is full.
   }
