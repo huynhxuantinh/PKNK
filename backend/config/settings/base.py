@@ -179,7 +179,8 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "NUM_PROXIES": int(os.getenv("DRF_NUM_PROXIES", "1")),
+    # Trust no forwarding proxy unless the deployment explicitly declares one.
+    "NUM_PROXIES": int(os.getenv("DRF_NUM_PROXIES", "0")),
     "PAGE_SIZE": 20,
     "DEFAULT_THROTTLE_RATES": {
         "slot_search": "60/min",

@@ -1,4 +1,22 @@
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F403
+
+
+if len(SECRET_KEY) < 50 or "replace" in SECRET_KEY.lower():  # noqa: F405
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be a strong deployment secret provided via .env."
+    )
+if not REDIS_CACHE_URL:  # noqa: F405
+    raise ImproperlyConfigured(
+        "REDIS_CACHE_URL is required in production so throttles share one cache."
+    )
+if "DRF_NUM_PROXIES" not in os.environ:
+    raise ImproperlyConfigured(
+        "DRF_NUM_PROXIES must match the number of trusted reverse proxies."
+    )
 
 
 DEBUG = False

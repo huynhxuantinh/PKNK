@@ -20,11 +20,16 @@ Yêu cầu: Docker Desktop đang chạy.
 ```powershell
 cd C:\Users\ASUS\OneDrive\Documents\PKNK
 Copy-Item .env.example .env   # bỏ qua nếu đã có .env
-# Sửa DJANGO_SECRET_KEY và DB_PASSWORD trong .env
+# Sửa DJANGO_SECRET_KEY, DB_PASSWORD và các secret dịch vụ trong .env
 docker compose up --build -d
 docker compose ps
 docker compose exec web python manage.py createsuperuser
 ```
+
+Khi triển khai production, đặt `DJANGO_SETTINGS_MODULE=config.settings.production`,
+`REDIS_CACHE_URL` trỏ tới Redis dùng chung và `DRF_NUM_PROXIES` đúng bằng số reverse
+proxy tin cậy phía trước Django. Không commit `.env`; file này chứa khóa Django, mật khẩu
+database, SMTP và object storage.
 
 Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
 
