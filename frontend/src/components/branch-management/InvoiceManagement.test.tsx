@@ -174,7 +174,7 @@ describe('invoice management UI', () => {
     let renderer: ReactTestRenderer
     act(() => { renderer = create(<InvoiceFilters status="" appointmentCode="APT-2026" count={37} onStatusChange={onStatusChange} onAppointmentCodeChange={() => {}} onSearch={onSearch} onClear={() => {}} />) })
 
-    expect(JSON.stringify(renderer!.toJSON())).toContain('Tổng 37 hóa đơn')
+    expect(renderer!.root.findByType('span').children.join('')).toBe('Tổng 37 hóa đơn')
     expect(renderer!.root.findByProps({ name: 'appointment-code-filter' }).props.value).toBe('APT-2026')
     act(() => { renderer!.root.findByProps({ 'aria-label': 'Lọc hóa đơn' }).props.onSubmit({ preventDefault() {} }) })
     act(() => { renderer!.root.findByProps({ name: 'invoice-status-filter' }).props.onChange({ target: { value: 'PAID' } }) })

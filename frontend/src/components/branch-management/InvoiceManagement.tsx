@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 
-import type { ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
+import type { ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
 import { invoiceStatusLabels } from './invoicePresentation'
 
 const money = (value: string) => `${new Intl.NumberFormat('vi-VN').format(Number(value))} ₫`
@@ -21,6 +21,28 @@ export function InvoiceList({ items, onSelect }: { items: ManagedInvoice[]; onSe
     <strong>{money(invoice.total)}</strong>
     <button type="button" onClick={() => onSelect(invoice)}>Xem chi tiết</button>
   </article>)}</div>
+}
+
+interface InvoiceFiltersProps {
+  status: ManagedInvoiceStatus | ''
+  appointmentCode: string
+  count: number
+  onStatusChange: (status: ManagedInvoiceStatus | '') => void
+  onAppointmentCodeChange: (value: string) => void
+  onSearch: () => void
+  onClear: () => void
+}
+
+export function InvoiceFilters({ status, appointmentCode, count, onStatusChange, onAppointmentCodeChange, onSearch, onClear }: InvoiceFiltersProps) {
+  return <header className="invoice-list-header">
+    <div><p className="eyebrow">Danh sách hóa đơn</p><h2>Theo dõi phát hành</h2><span>Tổng {count} hóa đơn</span></div>
+    <form aria-label="Lọc hóa đơn" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
+      <label>Mã lịch hẹn<input name="appointment-code-filter" value={appointmentCode} onChange={(event) => onAppointmentCodeChange(event.target.value)} placeholder="VD: APT-..." /></label>
+      <label>Trạng thái<select name="invoice-status-filter" value={status} onChange={(event) => onStatusChange(event.target.value as ManagedInvoiceStatus | '')}><option value="">Tất cả</option>{Object.entries(invoiceStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <button type="submit">Tìm</button>
+      {appointmentCode && <button type="button" className="button-secondary" onClick={onClear}>Xóa lọc</button>}
+    </form>
+  </header>
 }
 
 interface InvoicePaginationProps {

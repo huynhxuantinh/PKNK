@@ -14,6 +14,7 @@ import {
   InvoiceAppointmentHint,
   InvoiceDraftEditor,
   InvoiceDetailPanel,
+  InvoiceFilters,
   InvoiceList,
   InvoicePagination,
   PaymentModal,
@@ -23,7 +24,6 @@ import { ManagementPageHeader } from '../components/branch-management/Management
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import {
-  invoiceStatusLabels,
   latestVoidedInvoiceId,
 } from '../components/branch-management/invoicePresentation'
 
@@ -34,6 +34,8 @@ export function BranchInvoicesPage() {
   const [params] = useSearchParams()
   const branchId = Number(params.get('chi-nhanh')) || 0
   const [status, setStatus] = useState<ManagedInvoiceStatus | ''>('')
+  const [appointmentFilterInput, setAppointmentFilterInput] = useState('')
+  const [appliedAppointmentFilter, setAppliedAppointmentFilter] = useState('')
   const [items, setItems] = useState<ManagedInvoice[]>([])
   const [invoiceCount, setInvoiceCount] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -61,6 +63,7 @@ export function BranchInvoicesPage() {
     try {
       const response = await listManagedInvoices(branchId, {
         status: status || undefined,
+        appointmentCode: appliedAppointmentFilter || undefined,
         limit: INVOICE_PAGE_SIZE,
         offset,
       })
@@ -76,7 +79,7 @@ export function BranchInvoicesPage() {
       setError(caught instanceof Error ? caught.message : 'Không thể tải hóa đơn.')
     }
     finally { setLoading(false) }
-  }, [branchId, offset, status])
+  }, [appliedAppointmentFilter, branchId, offset, status])
 
   useEffect(() => { void loadInvoices() }, [loadInvoices])
   useEffect(() => { setOffset(0) }, [branchId])
@@ -92,6 +95,17 @@ export function BranchInvoicesPage() {
     setError('')
     try { const response = await getManagedInvoice(invoice.id_invoice); setSelected(response.data) }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể tải chi tiết hóa đơn.') }
+  }
+
+  function searchInvoices() {
+    setOffset(0)
+    setAppliedAppointmentFilter(appointmentFilterInput.trim())
+  }
+
+  function clearAppointmentFilter() {
+    setOffset(0)
+    setAppointmentFilterInput('')
+    setAppliedAppointmentFilter('')
   }
 
   async function createInvoice(event: FormEvent) {
@@ -186,7 +200,7 @@ export function BranchInvoicesPage() {
     <ManagementSectionNav branchId={branchId} active="invoices" />
     {error && <div className="dentist-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
-    <section className="branch-management-schedule invoice-management-section"><header><div><p className="eyebrow">Danh sách hóa đơn</p><h2>Theo dõi phát hành</h2></div><label>Trạng thái<select value={status} onChange={(event) => { setStatus(event.target.value as ManagedInvoiceStatus | ''); setOffset(0) }}><option value="">Tất cả</option>{Object.entries(invoiceStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></header>
+    <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
       {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceList items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
       {!loading && <InvoicePagination count={invoiceCount} limit={INVOICE_PAGE_SIZE} offset={offset} onChange={setOffset} />}
     </section>
