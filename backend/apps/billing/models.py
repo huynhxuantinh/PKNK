@@ -121,3 +121,44 @@ class Payment(models.Model):
                 name="ck_payments_state_fields",
             ),
         ]
+
+
+class PayosTransaction(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Đang chờ"
+        SUCCEEDED = "SUCCEEDED", "Thành công"
+        CANCELLED = "CANCELLED", "Đã hủy"
+        NEEDS_REVIEW = "NEEDS_REVIEW", "Cần kiểm tra"
+
+    order_code = models.BigAutoField(primary_key=True)
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.PROTECT, related_name="payos_transactions"
+    )
+    initiated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="payos_transactions_initiated",
+    )
+    amount = models.PositiveBigIntegerField()
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    checkout_url = models.URLField(max_length=500, blank=True)
+    payos_reference = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "payos_transactions"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["invoice", "status", "created_at"],
+                name="idx_payos_invoice_status",
+            )
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0), name="ck_payos_amount_positive"
+            )
+        ]
