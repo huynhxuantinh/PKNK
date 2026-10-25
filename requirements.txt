@@ -11,4 +11,5 @@ redis==7.4.1
 Pillow==12.3.0
 django-storages[s3]==1.14.6
 boto3==1.43.97
+payos==1.1.0
 

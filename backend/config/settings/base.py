@@ -273,6 +273,13 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() in {"1", "true", "yes"}
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+PAYOS_CLIENT_ID = os.getenv("PAYOS_CLIENT_ID", "")
+PAYOS_API_KEY = os.getenv("PAYOS_API_KEY", "")
+PAYOS_CHECKSUM_KEY = os.getenv("PAYOS_CHECKSUM_KEY", "")
+PAYOS_RETURN_URL = os.getenv(
+    "PAYOS_RETURN_URL", f"{FRONTEND_URL}/hoa-don/ket-qua"
+)
+PAYOS_CANCEL_URL = os.getenv("PAYOS_CANCEL_URL", f"{FRONTEND_URL}/hoa-don?huy=1")
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES = int(
     os.getenv("EMAIL_VERIFICATION_TOKEN_TTL_MINUTES", "1440")
 )
