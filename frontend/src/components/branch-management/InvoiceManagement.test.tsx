@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ManagedInvoice, ManagedInvoicePayment } from '../../api/management'
 import {
   InvoiceAppointmentHint,
+  InvoiceDraftEditor,
   InvoiceDetailPanel,
   InvoiceList,
   InvoicePagination,
@@ -47,7 +48,7 @@ describe('invoice management UI', () => {
 
   it('only offers payment for an issued invoice', () => {
     const detail = (invoice: ManagedInvoice) => renderToStaticMarkup(
-      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
+      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
     )
     const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
     const paid = { ...issued, status: 'PAID' as const, paid_at: '2026-10-24T09:05:00+07:00' }
@@ -57,6 +58,58 @@ describe('invoice management UI', () => {
     expect(detail(draftInvoice)).not.toContain('Ghi nhận thanh toán')
     expect(detail(paid)).not.toContain('Ghi nhận thanh toán')
     expect(detail(voided)).not.toContain('Ghi nhận thanh toán')
+  })
+
+  it('only offers draft editing before the invoice is issued', () => {
+    const detail = (invoice: ManagedInvoice) => renderToStaticMarkup(
+      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
+    )
+    const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
+
+    expect(detail(draftInvoice)).toContain('Chỉnh sửa')
+    expect(detail(issued)).not.toContain('Chỉnh sửa')
+  })
+
+  it('updates line values and submits editable draft data', () => {
+    const onSubmit = vi.fn()
+    let renderer: ReactTestRenderer
+    act(() => { renderer = create(<InvoiceDraftEditor invoice={draftInvoice} busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
+
+    act(() => { renderer!.root.findByProps({ name: 'line-description' }).props.onChange({ target: { value: 'Điều trị tổng quát' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'line-quantity' }).props.onChange({ target: { value: '2' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'line-unit-price' }).props.onChange({ target: { value: '300000' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'invoice-discount' }).props.onChange({ target: { value: '10000' } }) })
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Chỉnh sửa hóa đơn nháp' }).props.onSubmit({ preventDefault() {} }) })
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      discount: '10000',
+      lines: [{ service: 3, description: 'Điều trị tổng quát', quantity: 2, unit_price: '300000' }],
+    })
+    expect(JSON.stringify(renderer!.toJSON())).toContain('600.000')
+  })
+
+  it('supports adding and removing draft lines', () => {
+    let renderer: ReactTestRenderer
+    act(() => { renderer = create(<InvoiceDraftEditor invoice={draftInvoice} busy={false} onCancel={() => {}} onSubmit={() => {}} />) })
+
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Thêm dòng hóa đơn' }).props.onClick() })
+    expect(renderer!.root.findAllByProps({ name: 'line-description' })).toHaveLength(2)
+    act(() => { renderer!.root.findAllByProps({ 'aria-label': 'Xóa dòng hóa đơn' })[1].props.onClick() })
+    expect(renderer!.root.findAllByProps({ name: 'line-description' })).toHaveLength(1)
+  })
+
+  it('rejects invalid quantities, prices and excessive discounts', () => {
+    const onSubmit = vi.fn()
+    let renderer: ReactTestRenderer
+    act(() => { renderer = create(<InvoiceDraftEditor invoice={draftInvoice} busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
+
+    act(() => { renderer!.root.findByProps({ name: 'line-quantity' }).props.onChange({ target: { value: '0' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'line-unit-price' }).props.onChange({ target: { value: '-1' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'invoice-discount' }).props.onChange({ target: { value: '600000' } }) })
+    act(() => { renderer!.root.findByProps({ 'aria-label': 'Chỉnh sửa hóa đơn nháp' }).props.onSubmit({ preventDefault() {} }) })
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(renderer!.root.findByProps({ role: 'alert' }).children.join('')).toContain('Số lượng')
   })
 
   it('keeps the payment amount and idempotency key unchanged across retries', () => {
