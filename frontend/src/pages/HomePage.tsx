@@ -337,7 +337,12 @@ export function HomePage() {
             <h2>Những dấu ấn trên hành trình chăm sóc nụ cười.</h2>
             <p>Các chứng nhận và ghi nhận thể hiện định hướng phát triển chất lượng, chuyên môn và đóng góp cộng đồng của DentaVie.</p>
           </div>
-          <div className="recognition-grid">
+          <div
+            className="recognition-grid"
+            role="region"
+            aria-label="Danh sách chứng nhận và thành tựu, vuốt ngang để xem thêm"
+            tabIndex={0}
+          >
             {recognitions.map((item) => (
               <figure className="recognition-card" key={item.image}>
                 <div className="recognition-image-wrap">

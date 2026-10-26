@@ -1060,6 +1060,7 @@ body { color: var(--aurelia-ink); background: #fff; }
   .services-grid { grid-template-columns: 1fr; }
   .service-card { min-height: 350px; }
   .recognition-section { padding-block: 68px; }
+  .recognition-grid { grid-template-columns: repeat(5, min(320px, calc(100vw - 84px))); scroll-snap-type: x mandatory; scroll-padding-inline: 4px; }
   .recognition-image-wrap { height: 270px; }
   .branches-section { padding: 52px 16px 72px; }
   .branch-filters { grid-template-columns: 1fr; padding: 14px; }
