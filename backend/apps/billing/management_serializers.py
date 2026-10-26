@@ -14,11 +14,16 @@ class InvoiceLineSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+    source = serializers.SerializerMethodField()
+
+    def get_source(self, obj):
+        return "PAYOS" if obj.idempotency_key.startswith("payos:") else "MANUAL"
+
     class Meta:
         model = Payment
         fields = (
             "id_payment", "payment_number", "method", "amount", "status",
-            "external_reference", "posted_at", "voided_at", "void_reason",
+            "external_reference", "source", "posted_at", "voided_at", "void_reason",
         )
 
 

@@ -143,7 +143,7 @@ describe('invoice management UI', () => {
 
   it('requires a reason before voiding a posted payment', () => {
     const onSubmit = vi.fn()
-    const payment = { id_payment: 7, payment_number: 'PAY-0007', method: 'CASH', amount: '500000.00', status: 'POSTED', external_reference: '', posted_at: '2026-10-24T09:05:00+07:00', voided_at: null, void_reason: '' } satisfies ManagedInvoicePayment
+    const payment = { id_payment: 7, payment_number: 'PAY-0007', method: 'CASH', amount: '500000.00', status: 'POSTED', external_reference: '', source: 'MANUAL', posted_at: '2026-10-24T09:05:00+07:00', voided_at: null, void_reason: '' } satisfies ManagedInvoicePayment
     let renderer: ReactTestRenderer
 
     act(() => { renderer = create(<VoidPaymentModal payment={payment} busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })

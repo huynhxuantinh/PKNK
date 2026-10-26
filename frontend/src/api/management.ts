@@ -36,7 +36,7 @@ export interface ManagedInvoiceLine { id_invoice_line: number; service_id: numbe
 export interface ManagedInvoiceDraftLineInput { service?: number | null; description: string; quantity: number; unit_price: string }
 export interface ManagedInvoiceDraftInput { discount: string; lines: ManagedInvoiceDraftLineInput[] }
 export type ManagedPaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CARD'
-export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: ManagedPaymentMethod; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; posted_at: string; voided_at: string | null; void_reason: string }
+export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: ManagedPaymentMethod; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; source: 'MANUAL' | 'PAYOS'; posted_at: string; voided_at: string | null; void_reason: string }
 export interface ManagedPaymentInput { method: ManagedPaymentMethod; amount: string; external_reference: string; idempotency_key: string }
 export interface ManagedInvoice {
   id_invoice: number; invoice_number: string; appointment_code: string; branch_id: number

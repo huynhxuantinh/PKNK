@@ -209,6 +209,10 @@ class BillingService:
     def void_payment(cls, *, payment_id, reason, actor_user, request=None):
         payment = Payment.objects.select_for_update().select_related("invoice__branch__organization").get(pk=payment_id)
         invoice = Invoice.objects.select_for_update().get(pk=payment.invoice_id)
+        if payment.idempotency_key.startswith("payos:"):
+            raise ValidationError(
+                "Thanh toán payOS phải hoàn tiền thực tế qua quy trình riêng trước khi điều chỉnh hóa đơn."
+            )
         if payment.status != Payment.Status.POSTED or invoice.status != Invoice.Status.PAID:
             raise ValidationError("Chỉ payment POSTED của hóa đơn PAID mới được VOID.")
         payment.status = Payment.Status.VOID

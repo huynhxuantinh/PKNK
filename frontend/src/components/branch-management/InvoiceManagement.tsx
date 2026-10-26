@@ -98,7 +98,8 @@ export function InvoiceDetailPanel({ invoice, busy, onClose, onIssue, onVoid, on
       {invoice.status === 'DRAFT' && <button type="button" disabled={busy} onClick={onIssue}>Phát hành hóa đơn</button>}
       {['DRAFT', 'ISSUED'].includes(invoice.status) && <button type="button" className="button-danger" disabled={busy} onClick={onVoid}>Hủy hóa đơn</button>}
       {invoice.status === 'ISSUED' && <button type="button" disabled={busy} onClick={onRecordPayment}>Ghi nhận thanh toán</button>}
-      {invoice.status === 'PAID' && postedPayment && <button type="button" className="button-danger" disabled={busy} onClick={() => onVoidPayment(postedPayment)}>Hủy thanh toán</button>}
+      {invoice.status === 'PAID' && postedPayment?.source === 'PAYOS' && <p className="payment-refund-warning">Thanh toán payOS không thể hủy tại đây. Cần hoàn tiền thực tế cho khách theo quy trình riêng.</p>}
+      {invoice.status === 'PAID' && postedPayment?.source !== 'PAYOS' && postedPayment && <button type="button" className="button-danger" disabled={busy} onClick={() => onVoidPayment(postedPayment)}>Hủy thanh toán</button>}
     </footer>
   </section></div>
 }
