@@ -1,6 +1,6 @@
 from zoneinfo import ZoneInfo
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -24,6 +24,7 @@ from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday
 from apps.organizations.models import Membership, Organization, StaffInvitation
 from apps.organizations.services import (
     ActivePatientAppointmentsExist,
+    BRANCH_ADMIN_RACE_MESSAGE,
     BranchAdminConflict,
     InvalidStaffInvitation,
     StaffInvitationService,
@@ -546,9 +547,14 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
             request=request,
             source="ORGANIZATION_MEMBERSHIP_CREATED",
         )
-        membership = Membership.objects.create(
-            user=user, organization=organization, branch=branch, role=role
-        )
+        try:
+            membership = Membership.objects.create(
+                user=user, organization=organization, branch=branch, role=role
+            )
+        except IntegrityError as error:
+            if role == Membership.Role.BRANCH_ADMIN:
+                raise ManagementConflict(BRANCH_ADMIN_RACE_MESSAGE) from error
+            raise
         audit_model_change(request=request, instance=membership, action="MEMBERSHIP_CREATED")
         return Response({"data": MembershipManagementSerializer(membership).data}, status=status.HTTP_201_CREATED)
 
@@ -699,7 +705,12 @@ class MembershipDetailAPIView(ManagementAPIView):
                 request=request,
                 source="MEMBERSHIP_ACTIVATED",
             )
-        serializer.save()
+        try:
+            serializer.save()
+        except IntegrityError as error:
+            if role == Membership.Role.BRANCH_ADMIN and active:
+                raise ManagementConflict(BRANCH_ADMIN_RACE_MESSAGE) from error
+            raise
         audit_model_change(request=request, instance=membership, action="MEMBERSHIP_UPDATED")
         return Response({"data": serializer.data})
 

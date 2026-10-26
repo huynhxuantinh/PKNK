@@ -3,7 +3,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .models import Membership, StaffInvitation
@@ -23,6 +23,11 @@ class BranchAdminConflict(Exception):
 
 class StaffRoleConflict(Exception):
     pass
+
+
+BRANCH_ADMIN_RACE_MESSAGE = (
+    "Không thể gán quản lý chi nhánh vì dữ liệu vừa thay đổi. Vui lòng tải lại."
+)
 
 
 ROLE_LABELS = {
@@ -230,13 +235,18 @@ class StaffInvitationService:
             request=request,
             source="STAFF_INVITATION_ACCEPTED",
         )
-        membership, _ = Membership.objects.update_or_create(
-            user=user,
-            organization=invitation.organization,
-            branch=invitation.branch,
-            role=invitation.role,
-            defaults={"is_active": True},
-        )
+        try:
+            membership, _ = Membership.objects.update_or_create(
+                user=user,
+                organization=invitation.organization,
+                branch=invitation.branch,
+                role=invitation.role,
+                defaults={"is_active": True},
+            )
+        except IntegrityError as error:
+            if invitation.role == Membership.Role.BRANCH_ADMIN:
+                raise BranchAdminConflict(BRANCH_ADMIN_RACE_MESSAGE) from error
+            raise
         invitation.accepted_at = now
         invitation.save(update_fields=["accepted_at"])
         return membership, invitation
