@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -35,7 +36,10 @@ class ProductionContainerConfigurationTests(unittest.TestCase):
 
         for path in ("/api/", "/admin/", "/static/"):
             with self.subTest(path=path):
-                self.assertIn(f"location {path}", nginx)
+                self.assertRegex(
+                    nginx,
+                    rf"location (?:\^~ )?{re.escape(path)}",
+                )
         self.assertGreaterEqual(nginx.count("proxy_pass http://web:8000;"), 3)
         self.assertGreaterEqual(
             nginx.count("proxy_set_header X-Forwarded-Proto $scheme;"), 3
