@@ -32,6 +32,8 @@ class ProductionContainerConfigurationTests(unittest.TestCase):
         self.assertIn('command: ["celery", "-A", "config", "beat"', compose)
         self.assertNotRegex(compose, r'"(?:5432|6379|9000|9001):')
         self.assertNotIn("./backend:/app/backend", compose)
+        self.assertIn("AWS_SECRET_ACCESS_KEY:", compose)
+        self.assertNotIn("AWS_SECRET_KEY:", compose)
 
         dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8")
         self.assertIn(".env.*", dockerignore)

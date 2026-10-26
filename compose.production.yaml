@@ -11,7 +11,7 @@ x-backend-environment: &backend_environment
   GEOS_LIBRARY_PATH: ""
   USE_S3_STORAGE: "true"
   AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env.production}
-  AWS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.production}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.production}
   AWS_STORAGE_BUCKET_NAME: ${MINIO_BUCKET:-pknk-clinical}
   AWS_S3_ENDPOINT_URL: http://minio:9000
   AWS_S3_REGION_NAME: us-east-1
