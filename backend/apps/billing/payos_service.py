@@ -47,7 +47,9 @@ def _whole_vnd(invoice):
     return int(amount)
 
 
+@transaction.atomic
 def create_checkout(*, invoice, user):
+    invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
     amount = _whole_vnd(invoice)
     fresh_after = timezone.now() - FRESH_CHECKOUT_WINDOW
     reusable = invoice.payos_transactions.filter(
