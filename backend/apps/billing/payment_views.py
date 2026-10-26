@@ -20,6 +20,13 @@ class PayosWebhookAPIView(APIView):
                 {"message": "Chữ ký webhook không hợp lệ."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if webhook_data.code != "00":
+            return Response(
+                {
+                    "message": "Webhook đã được tiếp nhận nhưng chưa ghi nhận thanh toán.",
+                    "result": "IGNORED_NOT_SUCCESSFUL",
+                }
+            )
         outcome = apply_verified_payment(
             order_code=webhook_data.order_code,
             amount=webhook_data.amount,
