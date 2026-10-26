@@ -30,6 +30,24 @@ class ProductionContainerConfigurationTests(unittest.TestCase):
         self.assertIn("whitenoise.middleware.WhiteNoiseMiddleware", settings)
         self.assertIn("CompressedManifestStaticFilesStorage", settings)
 
+    def test_frontend_nginx_proxies_django_routes_with_forwarded_headers(self):
+        nginx = (ROOT / "frontend" / "nginx.conf").read_text(encoding="utf-8")
+
+        for path in ("/api/", "/admin/", "/static/"):
+            with self.subTest(path=path):
+                self.assertIn(f"location {path}", nginx)
+        self.assertGreaterEqual(nginx.count("proxy_pass http://web:8000;"), 3)
+        self.assertGreaterEqual(
+            nginx.count("proxy_set_header X-Forwarded-Proto $scheme;"), 3
+        )
+        self.assertGreaterEqual(
+            nginx.count(
+                "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+            ),
+            3,
+        )
+        self.assertIn("client_max_body_size 20m;", nginx)
+
 
 if __name__ == "__main__":
     unittest.main()
