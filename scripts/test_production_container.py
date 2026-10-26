@@ -77,6 +77,14 @@ class ProductionContainerConfigurationTests(unittest.TestCase):
         self.assertIn("whitenoise.middleware.WhiteNoiseMiddleware", settings)
         self.assertIn("CompressedManifestStaticFilesStorage", settings)
 
+        production_settings = (
+            ROOT / "backend" / "config" / "settings" / "production.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            'SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]',
+            production_settings,
+        )
+
     def test_frontend_nginx_proxies_django_routes_with_forwarded_headers(self):
         nginx = (ROOT / "frontend" / "nginx.conf").read_text(encoding="utf-8")
         frontend_dockerfile = (ROOT / "frontend" / "Dockerfile").read_text(
