@@ -40,7 +40,7 @@ export function BookingPage() {
             <span>01</span>
             <div>
               <strong>{initialBranchId ? 'Chi nhánh đã được chọn sẵn' : 'Chọn chi nhánh phù hợp'}</strong>
-              <p>Bạn có thể hoàn tất lịch hẹn trực tuyến mọi lúc.</p>
+              <p>{initialBranchId ? 'Bạn chỉ cần chọn dịch vụ, bác sĩ và giờ khám.' : 'Giờ mở cửa và bác sĩ của từng chi nhánh hiển thị ngay bên dưới.'}</p>
             </div>
           </div>
         </div>
