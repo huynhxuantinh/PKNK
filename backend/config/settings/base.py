@@ -64,6 +64,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "apps.audit.middleware.AuditRequestIdMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -125,28 +126,32 @@ STATIC_ROOT = ROOT_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = ROOT_DIR / "media"
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 USE_S3_STORAGE = os.getenv("USE_S3_STORAGE", "false").lower() in {
     "1", "true", "yes"
 }
 if USE_S3_STORAGE:
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                "access_key": os.environ["AWS_ACCESS_KEY_ID"],
-                "secret_key": os.environ["AWS_SECRET_ACCESS_KEY"],
-                "bucket_name": os.environ["AWS_STORAGE_BUCKET_NAME"],
-                "endpoint_url": os.environ["AWS_S3_ENDPOINT_URL"],
-                "region_name": os.getenv("AWS_S3_REGION_NAME", "us-east-1"),
-                "addressing_style": "path",
-                "default_acl": None,
-                "file_overwrite": False,
-                "querystring_auth": True,
-                "object_parameters": {"CacheControl": "private, no-store"},
-            },
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": os.environ["AWS_ACCESS_KEY_ID"],
+            "secret_key": os.environ["AWS_SECRET_ACCESS_KEY"],
+            "bucket_name": os.environ["AWS_STORAGE_BUCKET_NAME"],
+            "endpoint_url": os.environ["AWS_S3_ENDPOINT_URL"],
+            "region_name": os.getenv("AWS_S3_REGION_NAME", "us-east-1"),
+            "addressing_style": "path",
+            "default_acl": None,
+            "file_overwrite": False,
+            "querystring_auth": True,
+            "object_parameters": {"CacheControl": "private, no-store"},
         },
     }
 

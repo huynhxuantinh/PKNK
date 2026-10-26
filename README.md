@@ -31,6 +31,10 @@ Khi triển khai production, đặt `DJANGO_SETTINGS_MODULE=config.settings.prod
 proxy tin cậy phía trước Django. Không commit `.env`; file này chứa khóa Django, mật khẩu
 database, SMTP và object storage.
 
+Image backend mặc định chạy Gunicorn và tự chạy `collectstatic` trước khi khởi động.
+WhiteNoise phục vụ `/static/`; reverse proxy phía trước chịu trách nhiệm TLS và chuyển
+tiếp request. `compose.yaml` chỉ dành cho local/dev nên ghi đè về Django `runserver`.
+
 Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
 
 ```powershell
