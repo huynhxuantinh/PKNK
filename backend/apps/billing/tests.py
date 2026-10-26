@@ -305,6 +305,33 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(payos_transaction.status, PayosTransaction.Status.SUCCEEDED)
 
     @patch("apps.billing.payos_service.PayOS")
+    def test_verified_unsuccessful_payos_webhook_does_not_post_payment(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-NOT-SUCCESS")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice, initiated_by=self.patient_user, amount=500000
+        )
+        payos_class.return_value.webhooks.verify.return_value = SimpleNamespace(
+            order_code=payos_transaction.order_code,
+            amount=500000,
+            code="01",
+            desc="Payment failed",
+            reference="FAILED-PAYOS",
+        )
+        self.client.force_authenticate(None)
+
+        response = self.client.post(
+            reverse("payos-webhook"), {"data": {}}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["result"], "IGNORED_NOT_SUCCESSFUL")
+        self.assertFalse(Payment.objects.filter(invoice=invoice).exists())
+        invoice.refresh_from_db()
+        payos_transaction.refresh_from_db()
+        self.assertEqual(invoice.status, Invoice.Status.ISSUED)
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.PENDING)
+
+    @patch("apps.billing.payos_service.PayOS")
     def test_payos_amount_mismatch_requires_review(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-MISMATCH")
         payos_transaction = PayosTransaction.objects.create(
