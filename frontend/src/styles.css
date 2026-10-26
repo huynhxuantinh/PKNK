@@ -2794,6 +2794,14 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .organization-report-table td small, .organization-report-table th small { display: block; margin-top: .2rem; color: #7c97a3; font-size: .72rem; font-weight: 600; }
 .organization-report-table td { vertical-align: top; }
 .organization-report-table td:last-child { color: #264f64; font-weight: 600; }
+.organization-staff-table-wrap { max-width: 100%; overscroll-behavior-inline: contain; scrollbar-width: thin; scrollbar-color: #8fcbd6 #edf6f8; -webkit-overflow-scrolling: touch; }
+.organization-staff-table-wrap:focus-visible { outline: 2px solid #078fad; outline-offset: 3px; border-radius: 8px; }
+.organization-admin-table { min-width: 780px; }
+.organization-admin-table th:first-child, .organization-admin-table td:first-child { min-width: 220px; }
+.organization-admin-table th:nth-child(2), .organization-admin-table td:nth-child(2) { min-width: 145px; }
+.organization-admin-table th:nth-child(3), .organization-admin-table td:nth-child(3) { min-width: 160px; }
+.organization-admin-table th:nth-child(4), .organization-admin-table td:nth-child(4) { min-width: 145px; }
+.organization-admin-table th:last-child, .organization-admin-table td:last-child { min-width: 90px; }
 .organization-status { display: inline-block; padding: .28rem .55rem; border-radius: 999px; font-size: .68rem; font-weight: 800; white-space: nowrap; }
 .organization-status.is-active { background: #e7f7f1; color: #08745c; }
 .organization-status.is-inactive { background: #eef2f4; color: #6b7f89; }

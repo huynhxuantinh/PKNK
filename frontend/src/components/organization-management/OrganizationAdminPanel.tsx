@@ -251,8 +251,13 @@ export function OrganizationAdminPanel({
       {loading ? (
         <p role="status">Đang tải quản trị viên...</p>
       ) : organizationAdmins.length > 0 || activeBranches.length > 0 ? (
-        <div className="branch-report-table-wrap">
-          <table className="branch-report-table organization-report-table">
+        <div
+          className="branch-report-table-wrap organization-staff-table-wrap"
+          role="region"
+          aria-label="Danh sách quản trị viên"
+          tabIndex={0}
+        >
+          <table className="branch-report-table organization-report-table organization-admin-table">
             <thead>
               <tr>
                 <th>Thành viên</th>
@@ -370,8 +375,13 @@ export function OrganizationAdminPanel({
           {invitations.length === 0 ? (
             <p className="branch-report-empty">Không có lời mời đang chờ.</p>
           ) : (
-            <div className="branch-report-table-wrap">
-              <table className="branch-report-table organization-report-table">
+            <div
+              className="branch-report-table-wrap organization-staff-table-wrap"
+              role="region"
+              aria-label="Danh sách lời mời quản trị viên"
+              tabIndex={0}
+            >
+              <table className="branch-report-table organization-report-table organization-admin-table">
                 <thead>
                   <tr>
                     <th>Người được mời</th>
