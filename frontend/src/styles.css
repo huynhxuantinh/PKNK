@@ -2201,7 +2201,7 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
   .booking-hero { grid-template-columns: 1fr; gap: 25px; padding-bottom: 54px; }
   .booking-hero-note { max-width: 470px; }
   .booking-layout--refined { grid-template-columns: 1fr; margin-top: -20px; }
-  .booking-summary--refined { position: static; }
+  .booking-summary--refined { position: relative; }
 }
 
 @media (max-width: 680px) {
