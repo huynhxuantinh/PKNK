@@ -2,8 +2,10 @@ import hashlib
 from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from django.core import mail
+from django.db import IntegrityError
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -296,6 +298,17 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("Chi nhánh này đã có quản lý", response.data["message"])
 
+    @patch("apps.management_api.views.Membership.objects.create")
+    def test_create_branch_admin_converts_database_race_to_conflict(self, create):
+        free_branch = self.make_branch(self.org_a, "RACE-CREATE")
+        create.side_effect = IntegrityError("duplicate branch manager")
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.assign_branch_admin(self.staff_user.email, free_branch)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("dữ liệu vừa thay đổi", response.data["message"])
+
     def test_patch_branch_and_reactivation_enforce_one_branch_rule(self):
         first_branch = self.make_branch(self.org_a, "PATCH1")
         second_branch = self.make_branch(self.org_a, "PATCH2")
@@ -338,6 +351,31 @@ class ManagementAPITests(APITestCase):
         self.assertIn("quản lý chi nhánh khác", reactivation.data["message"])
         inactive_membership.refresh_from_db()
         self.assertFalse(inactive_membership.is_active)
+
+    @patch("apps.management_api.views.MembershipManagementSerializer.save")
+    def test_patch_branch_admin_converts_database_race_to_conflict(self, save):
+        free_branch = self.make_branch(self.org_a, "RACE-PATCH")
+        inactive_membership = Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            branch=free_branch,
+            role=Membership.Role.BRANCH_ADMIN,
+            is_active=False,
+        )
+        save.side_effect = IntegrityError("duplicate branch manager")
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse(
+                "management:membership-detail",
+                kwargs={"membership_id": inactive_membership.pk},
+            ),
+            {"is_active": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("dữ liệu vừa thay đổi", response.data["message"])
 
     def test_patch_role_to_branch_admin_respects_branch_manager(self):
         membership = Membership.objects.create(
@@ -448,6 +486,30 @@ class ManagementAPITests(APITestCase):
         self.assertFalse(
             Membership.objects.filter(user=invited_user, is_active=True).exists()
         )
+
+    @patch("apps.organizations.services.Membership.objects.update_or_create")
+    def test_invitation_accept_converts_database_race_to_conflict(self, update_or_create):
+        free_branch = self.make_branch(self.org_a, "RACE-INVITE")
+        invite_email = "race-invitation@example.com"
+        _invitation, raw_token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=free_branch,
+            email=invite_email,
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.org_admin,
+        )
+        invited_user = self.make_user(invite_email)
+        update_or_create.side_effect = IntegrityError("duplicate branch manager")
+        self.client.force_authenticate(invited_user)
+
+        response = self.client.post(
+            reverse("management:invitation-accept"),
+            {"token": raw_token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("dữ liệu vừa thay đổi", response.data["message"])
 
     def test_invitation_accept_rejects_inactive_branch(self):
         free_branch = self.make_branch(self.org_a, "INVINACTIVE")
