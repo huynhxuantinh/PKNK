@@ -67,7 +67,12 @@ class PayosCheckoutConcurrencyTests(TransactionTestCase):
         branch_service = BranchService.objects.create(
             branch=branch, service=service, price=Decimal("500000")
         )
-        chair = Chair.objects.create(branch=branch, code="R1", name="Race Chair")
+        chair = Chair.objects.create(
+            branch=branch,
+            code="R1",
+            name="Race Chair",
+            resource_type=Chair.ResourceType.CHAIR,
+        )
         starts_at = timezone.now() - timedelta(hours=2)
         appointment = Appointment.objects.create(
             public_code="APT-PAYOS-RACE",
