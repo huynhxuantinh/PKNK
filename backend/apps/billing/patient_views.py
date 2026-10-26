@@ -14,7 +14,7 @@ from apps.accounts.permissions import IsPatientOnly
 from apps.audit.services import AuditService
 
 from .models import Invoice
-from .payos_service import create_checkout
+from .payos_service import PayosCheckoutUnavailable, create_checkout
 from .patient_serializers import PatientInvoiceListQuerySerializer, PatientInvoiceSerializer
 
 
@@ -104,6 +104,14 @@ class PatientInvoicePayosAPIView(APIView):
             )
         try:
             payos_transaction, created = create_checkout(invoice=invoice, user=request.user)
+        except PayosCheckoutUnavailable:
+            return Response(
+                {
+                    "code": "payos_provider_unavailable",
+                    "message": "Không thể kết nối payOS. Vui lòng thử lại sau.",
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         except (ImproperlyConfigured, ValidationError) as error:
             return Response(
                 {"code": "payos_unavailable", "message": str(error)},

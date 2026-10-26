@@ -2,11 +2,12 @@ from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import httpx
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
 from django.utils import timezone
-from payos import PayOS
+from payos import PayOS, PayOSError
 from payos.types import CreatePaymentLinkRequest
 
 from apps.audit.services import AuditService
@@ -16,6 +17,10 @@ from .services import BillingService
 
 
 FRESH_CHECKOUT_WINDOW = timedelta(minutes=15)
+
+
+class PayosCheckoutUnavailable(Exception):
+    pass
 
 
 def get_payos_client():
@@ -47,38 +52,49 @@ def _whole_vnd(invoice):
     return int(amount)
 
 
-@transaction.atomic
 def create_checkout(*, invoice, user):
-    invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
-    amount = _whole_vnd(invoice)
-    fresh_after = timezone.now() - FRESH_CHECKOUT_WINDOW
-    reusable = invoice.payos_transactions.filter(
-        status=PayosTransaction.Status.PENDING,
-        checkout_url__gt="",
-        created_at__gte=fresh_after,
-    ).first()
-    if reusable:
-        return reusable, False
+    provider_error = None
+    with transaction.atomic():
+        invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+        amount = _whole_vnd(invoice)
+        fresh_after = timezone.now() - FRESH_CHECKOUT_WINDOW
+        reusable = invoice.payos_transactions.filter(
+            status=PayosTransaction.Status.PENDING,
+            checkout_url__gt="",
+            created_at__gte=fresh_after,
+        ).first()
+        if reusable:
+            return reusable, False
 
-    payos_transaction = PayosTransaction.objects.create(
-        invoice=invoice,
-        initiated_by=user,
-        amount=amount,
-    )
-    payment_data = CreatePaymentLinkRequest(
-        order_code=payos_transaction.order_code,
-        amount=amount,
-        description=f"DV{payos_transaction.order_code}"[-9:],
-        return_url=_with_invoice_id(settings.PAYOS_RETURN_URL, invoice.pk),
-        cancel_url=_with_invoice_id(settings.PAYOS_CANCEL_URL, invoice.pk),
-    )
-    response = get_payos_client().payment_requests.create(payment_data=payment_data)
-    payos_transaction.checkout_url = response.checkout_url
-    payos_transaction.payos_reference = response.payment_link_id
-    payos_transaction.save(
-        update_fields=["checkout_url", "payos_reference", "updated_at"]
-    )
-    return payos_transaction, True
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=user,
+            amount=amount,
+        )
+        payment_data = CreatePaymentLinkRequest(
+            order_code=payos_transaction.order_code,
+            amount=amount,
+            description=f"DV{payos_transaction.order_code}"[-9:],
+            return_url=_with_invoice_id(settings.PAYOS_RETURN_URL, invoice.pk),
+            cancel_url=_with_invoice_id(settings.PAYOS_CANCEL_URL, invoice.pk),
+        )
+        try:
+            response = get_payos_client().payment_requests.create(
+                payment_data=payment_data
+            )
+        except (PayOSError, httpx.RequestError) as error:
+            payos_transaction.status = PayosTransaction.Status.CANCELLED
+            payos_transaction.save(update_fields=["status", "updated_at"])
+            provider_error = error
+        else:
+            payos_transaction.checkout_url = response.checkout_url
+            payos_transaction.payos_reference = response.payment_link_id
+            payos_transaction.save(
+                update_fields=["checkout_url", "payos_reference", "updated_at"]
+            )
+            return payos_transaction, True
+
+    raise PayosCheckoutUnavailable("Không thể kết nối payOS.") from provider_error
 
 
 def _mark_for_review(payos_transaction, *, reason):
