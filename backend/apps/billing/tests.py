@@ -226,6 +226,64 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(replacement.status_code, status.HTTP_201_CREATED)
         self.assertEqual(replacement.data["data"]["replacement_for_id"], invoice_id)
 
+    @patch("apps.billing.payos_service.PayOS")
+    def test_void_invoice_cancels_pending_payos_link_first(self, payos_class):
+        invoice = self.issued_invoice("APT-VOID-PAYOS-LINK")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/to-cancel",
+            payos_reference="to-cancel",
+        )
+        payos_class.return_value.payment_requests.cancel.return_value = SimpleNamespace(
+            status="CANCELLED"
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse("management:invoice-void", kwargs={"invoice_id": invoice.pk}),
+            {"reason": "Hóa đơn lập sai"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        invoice.refresh_from_db()
+        payos_transaction.refresh_from_db()
+        self.assertEqual(invoice.status, Invoice.Status.VOID)
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.CANCELLED)
+        payos_class.return_value.payment_requests.cancel.assert_called_once_with(
+            payos_transaction.order_code,
+            cancellation_reason="Invoice voided",
+        )
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_void_invoice_is_blocked_when_payos_link_cannot_be_cancelled(self, payos_class):
+        invoice = self.issued_invoice("APT-VOID-PAYOS-FAIL")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/cancel-fails",
+        )
+        payos_class.return_value.payment_requests.cancel.side_effect = PayOSError(
+            "provider unavailable"
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse("management:invoice-void", kwargs={"invoice_id": invoice.pk}),
+            {"reason": "Hóa đơn lập sai"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("link thanh toán payOS", response.data["message"])
+        invoice.refresh_from_db()
+        payos_transaction.refresh_from_db()
+        self.assertEqual(invoice.status, Invoice.Status.ISSUED)
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.PENDING)
+
     def test_payos_transaction_statuses_are_explicit(self):
         self.assertEqual(
             set(PayosTransaction.Status.values),
