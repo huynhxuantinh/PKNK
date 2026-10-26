@@ -130,6 +130,26 @@ class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField(write_only=True)
 
 
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password_confirm = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+    )
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Mật khẩu xác nhận không khớp."}
+            )
+        if attrs["current_password"] == attrs["new_password"]:
+            raise serializers.ValidationError(
+                {"new_password": "Mật khẩu mới phải khác mật khẩu hiện tại."}
+            )
+        return attrs
+
+
 class EmailVerificationConfirmSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=200, trim_whitespace=False)
     new_password = serializers.CharField(write_only=True, trim_whitespace=False)

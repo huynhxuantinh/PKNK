@@ -28,6 +28,25 @@ class InvalidPasswordResetToken(Exception):
     pass
 
 
+class InvalidCurrentPassword(Exception):
+    pass
+
+
+class PasswordChangeService:
+    @staticmethod
+    @transaction.atomic
+    def change_password(*, user_id, current_password, new_password):
+        user = User.objects.select_for_update().get(pk=user_id, is_active=True)
+        if not user.check_password(current_password):
+            raise InvalidCurrentPassword
+        validate_password(new_password, user=user)
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        for outstanding_token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding_token)
+        return user
+
+
 class EmailVerificationService:
     @staticmethod
     def digest(raw_token):

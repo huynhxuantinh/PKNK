@@ -22,6 +22,8 @@ import { OrganizationBranchesPage } from './pages/OrganizationBranchesPage'
 import { OrganizationStaffPage } from './pages/OrganizationStaffPage'
 import { OrganizationServicesPage } from './pages/OrganizationServicesPage'
 import { OrganizationAuditPage } from './pages/OrganizationAuditPage'
+import { AccountSecurityPage } from './pages/AccountSecurityPage'
+import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
 
@@ -30,6 +32,11 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/" element={<HomePage />} />
     <Route path="/chi-nhanh/:branchId" element={<BranchDetailPage />} />
     <Route path="/bang-gia" element={<PricingPage />} />
+    <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicyPage />} />
+    <Route path="/dieu-khoan-su-dung" element={<TermsPage />} />
+    <Route element={<RequireRole area="AUTHENTICATED" />}>
+      <Route path="/doi-mat-khau" element={<AccountSecurityPage />} />
+    </Route>
     <Route element={<RequireRole area="PATIENT" />}>
       <Route path="/dat-lich" element={<BookingPage />} />
       <Route path="/ho-so" element={<PatientProfilePage />} />

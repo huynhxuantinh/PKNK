@@ -59,6 +59,7 @@ export function AuthBar() {
             {!isStaff && <Link role="menuitem" to="/hoa-don" onClick={() => setIsOpen(false)}>Hóa đơn</Link>}
             {!isStaff && <Link role="menuitem" to="/thong-bao" onClick={() => setIsOpen(false)}>Thông báo</Link>}
             {!isStaff && <Link role="menuitem" to="/ho-so" onClick={() => setIsOpen(false)}>Hồ sơ</Link>}
+            <Link role="menuitem" to="/doi-mat-khau" onClick={() => setIsOpen(false)}>Đổi mật khẩu</Link>
             <span className="auth-user-menu-divider" aria-hidden="true" />
             <button role="menuitem" type="button" onClick={() => { setIsOpen(false); logout() }}>Đăng xuất</button>
           </div>

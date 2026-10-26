@@ -1,6 +1,6 @@
 import type { Membership, User } from '../types/api'
 
-export type ProtectedArea = 'PATIENT' | 'DENTIST' | 'MANAGEMENT' | 'ORGANIZATION'
+export type ProtectedArea = 'AUTHENTICATED' | 'PATIENT' | 'DENTIST' | 'MANAGEMENT' | 'ORGANIZATION'
 
 const STAFF_ROLES: Membership['role'][] = [
   'DENTIST',
@@ -44,6 +44,7 @@ export function isStaffUser(user: User | null) {
 
 export function canAccessArea(user: User | null, area: ProtectedArea) {
   if (!user) return false
+  if (area === 'AUTHENTICATED') return true
   if (area === 'PATIENT') return !isStaffUser(user)
   if (area === 'DENTIST') return hasActiveRole(user, ['DENTIST'])
   if (area === 'ORGANIZATION') return hasActiveRole(user, ['ORGANIZATION_ADMIN'])

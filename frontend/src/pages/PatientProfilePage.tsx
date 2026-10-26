@@ -174,6 +174,7 @@ export function PatientProfilePage() {
                   <div className="profile-detail-wide"><dt>Địa chỉ</dt><dd>{displayProfileValue(address)}</dd></div>
                 </dl>
                 <div className="profile-actions">
+                  <Link className="button button-quiet" to="/doi-mat-khau">Đổi mật khẩu</Link>
                   <Link className="button button-quiet profile-home-link" to="/">Về trang chủ</Link>
                 </div>
               </>

@@ -2,7 +2,7 @@ import logging
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
@@ -29,6 +29,7 @@ from .serializers import (
     MessageResponseSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    PasswordChangeSerializer,
     RegistrationSerializer,
     TokenRefreshResponseSerializer,
     UserResponseSerializer,
@@ -38,7 +39,9 @@ from .serializers import (
 from .services import (
     EmailVerificationService,
     InvalidEmailVerificationToken,
+    InvalidCurrentPassword,
     InvalidPasswordResetToken,
+    PasswordChangeService,
     PasswordResetService,
     RegistrationService,
 )
@@ -204,6 +207,45 @@ class MeAPIView(APIView):
     def get(self, request):
         user = user_with_access_context(request.user.pk)
         return Response({"data": UserSerializer(user).data})
+
+
+class PasswordChangeAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password_change"
+
+    @extend_schema(
+        request=PasswordChangeSerializer,
+        responses={200: MessageResponseSerializer},
+    )
+    @transaction.atomic
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            PasswordChangeService.change_password(
+                user_id=request.user.pk,
+                current_password=serializer.validated_data["current_password"],
+                new_password=serializer.validated_data["new_password"],
+            )
+        except InvalidCurrentPassword as error:
+            raise DRFValidationError(
+                {"current_password": "Mật khẩu hiện tại không đúng."}
+            ) from error
+        except DjangoValidationError as error:
+            raise DRFValidationError({"new_password": error.messages}) from error
+
+        AuditService.record_write(
+            actor_user=request.user,
+            action="PASSWORD_CHANGED",
+            resource_type="User",
+            resource_id=request.user.pk,
+            after_data={"refresh_tokens_revoked": True},
+            request=request,
+        )
+        return Response(
+            {"data": {"message": "Đã đổi mật khẩu. Vui lòng đăng nhập lại."}}
+        )
 
 
 class EmailVerificationConfirmAPIView(APIView):

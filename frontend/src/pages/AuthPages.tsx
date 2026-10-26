@@ -47,6 +47,7 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const returnTo = searchParams.get('returnTo')
   const isInvitationLogin = returnTo?.startsWith('/accept-invitation?token=')
+  const passwordChanged = searchParams.get('passwordChanged') === '1'
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -69,6 +70,7 @@ export function LoginPage() {
           Hãy đăng nhập bằng đúng email được mời. Nếu chưa có tài khoản, đăng ký và xác minh email đó trước khi quay lại lời mời.
         </p>
       )}
+      {passwordChanged && <p className="auth-page-message" role="status">Đã đổi mật khẩu. Vui lòng đăng nhập lại.</p>}
       <form className="auth-page-form" onSubmit={handleSubmit}>
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
         <label>
@@ -129,7 +131,7 @@ export function RegisterPage() {
         <label>Họ và tên<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" placeholder="Nguyễn Văn A" required /></label>
         <label>Số điện thoại<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value.replace(/[\s-]/g, ''))} autoComplete="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" placeholder="090 123 4567" required /></label>
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
-        <label className="auth-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} required /><span>Tôi đồng ý để DentaVie xử lý dữ liệu cá nhân phục vụ chăm sóc sức khỏe.</span></label>
+        <label className="auth-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} required /><span>Tôi đồng ý để DentaVie xử lý dữ liệu cá nhân theo <Link to="/chinh-sach-bao-mat" target="_blank">Chính sách bảo mật</Link> và chấp nhận <Link to="/dieu-khoan-su-dung" target="_blank">Điều khoản sử dụng</Link>.</span></label>
         {error && <p className="auth-page-error">{error}</p>}
         <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang tạo tài khoản…' : 'Đăng ký'}</button>
       </form>

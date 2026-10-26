@@ -44,6 +44,12 @@ describe('role access', () => {
     expect(canAccessArea(userWithRole('BRANCH_ADMIN'), 'ORGANIZATION')).toBe(false)
   })
 
+  it('allows every signed-in role into account security', () => {
+    for (const role of ['PATIENT', 'DENTIST', 'BRANCH_ADMIN', 'ORGANIZATION_ADMIN'] as const) {
+      expect(canAccessArea(userWithRole(role), 'AUTHENTICATED')).toBe(true)
+    }
+  })
+
   it('returns branch ids from active memberships only', () => {
     const user = userWithRole('DENTIST')
     user.memberships = [
