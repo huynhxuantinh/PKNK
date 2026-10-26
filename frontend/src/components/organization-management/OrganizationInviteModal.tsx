@@ -11,6 +11,7 @@ export interface InviteFormState {
 interface OrganizationInviteModalProps {
   form: InviteFormState
   branches: OrganizationBranch[]
+  occupiedBranchIds: number[]
   busy: boolean
   error: string
   requiresBranch: boolean
@@ -22,6 +23,7 @@ interface OrganizationInviteModalProps {
 export function OrganizationInviteModal({
   form,
   branches,
+  occupiedBranchIds,
   busy,
   error,
   requiresBranch,
@@ -99,11 +101,18 @@ export function OrganizationInviteModal({
                 <option value="">Chọn chi nhánh</option>
                 {branches
                   .filter((branch) => branch.is_active)
-                  .map((branch) => (
-                    <option key={branch.id_branch} value={branch.id_branch}>
-                      {branch.name}
-                    </option>
-                  ))}
+                  .map((branch) => {
+                    const occupied = occupiedBranchIds.includes(branch.id_branch)
+                    return (
+                      <option
+                        key={branch.id_branch}
+                        value={branch.id_branch}
+                        disabled={occupied}
+                      >
+                        {branch.name}{occupied ? ' (đã có quản lý)' : ''}
+                      </option>
+                    )
+                  })}
               </select>
             </label>
           )}

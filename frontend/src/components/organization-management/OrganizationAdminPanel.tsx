@@ -111,8 +111,6 @@ export function OrganizationAdminPanel({
     () => activeBranches.filter((branch) => !managerByBranch.has(branch.id_branch)),
     [activeBranches, managerByBranch],
   )
-  const availableBranches = missingManagerBranches
-
   function branchName(branchId: number | null) {
     if (!branchId) return 'Toàn tổ chức'
     return branches.find((branch) => branch.id_branch === branchId)?.name
@@ -417,7 +415,8 @@ export function OrganizationAdminPanel({
       {modalOpen && (
         <OrganizationInviteModal
           form={form}
-          branches={availableBranches}
+          branches={activeBranches}
+          occupiedBranchIds={Array.from(managerByBranch.keys())}
           busy={busy}
           error={formError}
           requiresBranch={form.role === 'BRANCH_ADMIN'}
