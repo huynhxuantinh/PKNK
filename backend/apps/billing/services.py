@@ -12,6 +12,7 @@ from apps.notifications.services import NotificationService
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment
+from .payos_service import PayosCancellationUnavailable, cancel_pending_checkouts
 
 
 def _is_whole_vnd(value):
@@ -160,6 +161,12 @@ class BillingService:
             raise ValidationError("Chỉ hóa đơn DRAFT hoặc ISSUED mới được VOID.")
         if invoice.payments.filter(status=Payment.Status.POSTED).exists():
             raise ValidationError("Phải VOID payment trước khi VOID hóa đơn.")
+        try:
+            cancel_pending_checkouts(invoice)
+        except PayosCancellationUnavailable as error:
+            raise ValidationError(
+                "Không thể hủy link thanh toán payOS đang hoạt động; hóa đơn chưa được hủy."
+            ) from error
         old_status = invoice.status
         invoice.status = Invoice.Status.VOID
         invoice.voided_by = actor_user

@@ -13,13 +13,16 @@ from payos.types import CreatePaymentLinkRequest
 from apps.audit.services import AuditService
 
 from .models import Invoice, Payment, PayosTransaction
-from .services import BillingService
 
 
 FRESH_CHECKOUT_WINDOW = timedelta(minutes=15)
 
 
 class PayosCheckoutUnavailable(Exception):
+    pass
+
+
+class PayosCancellationUnavailable(Exception):
     pass
 
 
@@ -97,6 +100,33 @@ def create_checkout(*, invoice, user):
     raise PayosCheckoutUnavailable("Không thể kết nối payOS.") from provider_error
 
 
+def cancel_pending_checkouts(invoice):
+    pending = list(
+        PayosTransaction.objects.select_for_update().filter(
+            invoice=invoice,
+            status=PayosTransaction.Status.PENDING,
+        )
+    )
+    with_checkout_url = [item for item in pending if item.checkout_url]
+    client = get_payos_client() if with_checkout_url else None
+    try:
+        for item in with_checkout_url:
+            payment_link = client.payment_requests.cancel(
+                item.order_code,
+                cancellation_reason="Invoice voided",
+            )
+            if payment_link.status != "CANCELLED":
+                raise PayosCancellationUnavailable(
+                    "payOS không xác nhận link đã được hủy."
+                )
+    except (PayOSError, httpx.RequestError, ImproperlyConfigured) as error:
+        raise PayosCancellationUnavailable("Không thể hủy link payOS.") from error
+
+    for item in pending:
+        item.status = PayosTransaction.Status.CANCELLED
+        item.save(update_fields=["status", "updated_at"])
+
+
 def _mark_for_review(payos_transaction, *, reason):
     payos_transaction.status = PayosTransaction.Status.NEEDS_REVIEW
     payos_transaction.save(update_fields=["status", "updated_at"])
@@ -114,6 +144,8 @@ def _mark_for_review(payos_transaction, *, reason):
 
 @transaction.atomic
 def apply_verified_payment(*, order_code, amount, reference=""):
+    from .services import BillingService
+
     try:
         payos_transaction = PayosTransaction.objects.select_for_update().select_related(
             "invoice__branch__organization", "initiated_by"
