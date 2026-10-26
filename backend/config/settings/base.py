@@ -12,6 +12,8 @@ load_dotenv(ROOT_DIR / ".env")
 
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = False
+ADMIN_PATH = os.getenv("DJANGO_ADMIN_PATH", "admin").strip("/") or "admin"
+API_DOCS_ENABLED = False
 
 ALLOWED_HOSTS = [
     host.strip()

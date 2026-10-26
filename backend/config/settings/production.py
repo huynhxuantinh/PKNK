@@ -1,4 +1,5 @@
 import os
+import re
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -17,9 +18,17 @@ if "DRF_NUM_PROXIES" not in os.environ:
     raise ImproperlyConfigured(
         "DRF_NUM_PROXIES must match the number of trusted reverse proxies."
     )
+if (  # noqa: F405
+    not re.fullmatch(r"[A-Za-z0-9_-]{12,64}", ADMIN_PATH)
+    or ADMIN_PATH == "admin"
+):
+    raise ImproperlyConfigured(
+        "DJANGO_ADMIN_PATH must be a non-default path of 12-64 letters, numbers, underscores or hyphens."
+    )
 
 
 DEBUG = False
+API_DOCS_ENABLED = False
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True

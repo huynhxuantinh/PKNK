@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -7,7 +8,7 @@ from apps.billing.payment_views import PayosWebhookAPIView
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(f"{settings.ADMIN_PATH}/", admin.site.urls),
     path("api/health/", health_check, name="health-check"),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/patients/", include("apps.accounts.patient_urls")),
@@ -18,11 +19,15 @@ urlpatterns = [
     path("api/v1/dentist/", include("apps.dentist_api.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),
     path("api/v1/payments/payos/webhook/", PayosWebhookAPIView.as_view(), name="payos-webhook"),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path(
-        "api/docs/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
-        name="swagger-ui",
-    ),
 ]
+
+if settings.API_DOCS_ENABLED:
+    urlpatterns += [
+        path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path(
+            "api/docs/",
+            SpectacularSwaggerView.as_view(url_name="schema"),
+            name="swagger-ui",
+        ),
+    ]
 

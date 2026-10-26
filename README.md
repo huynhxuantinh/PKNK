@@ -34,8 +34,13 @@ database, SMTP và object storage.
 Image backend mặc định chạy Gunicorn và tự chạy `collectstatic` trước khi khởi động.
 WhiteNoise phục vụ `/static/`; reverse proxy phía trước chịu trách nhiệm TLS và chuyển
 tiếp request. `compose.yaml` chỉ dành cho local/dev nên ghi đè về Django `runserver`.
-Image nginx của frontend chuyển tiếp `/api/`, `/admin/` và `/static/` tới service
+Image nginx của frontend chuyển tiếp `/api/`, đường dẫn quản trị và `/static/` tới service
 `web:8000`, đồng thời giữ nguyên thông tin giao thức và IP qua các header `X-Forwarded-*`.
+Production bắt buộc đặt cùng một `DJANGO_ADMIN_PATH` ngẫu nhiên (12–64 ký tự chữ, số,
+`_` hoặc `-`) cho backend và frontend; giá trị mặc định `admin` sẽ làm backend từ chối
+khởi động. `/api/docs/` và `/api/schema/` chỉ bật ở môi trường development và trả 404
+trên production. Đường dẫn quản trị ẩn không thay thế xác thực; production nên giới hạn
+thêm bằng VPN hoặc allowlist IP tại reverse proxy nếu hạ tầng hỗ trợ.
 
 Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
 
