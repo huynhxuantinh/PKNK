@@ -3,7 +3,9 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import httpx
 from payos import WebhookError
+from payos import PayOSError
 from django.db import DatabaseError, transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -248,6 +250,32 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(first.data["data"]["checkout_url"], "https://pay.payos.vn/web/test")
         self.assertEqual(PayosTransaction.objects.filter(invoice=invoice).count(), 1)
         payos_class.return_value.payment_requests.create.assert_called_once()
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_payos_provider_failures_cancel_attempt_and_return_bad_gateway(self, payos_class):
+        self.client.force_authenticate(self.patient_user)
+        provider_errors = (
+            PayOSError("provider unavailable"),
+            httpx.ConnectError("network unavailable"),
+        )
+
+        for index, provider_error in enumerate(provider_errors):
+            with self.subTest(provider_error=type(provider_error).__name__):
+                invoice = self.issued_invoice(f"APT-PAYOS-FAIL-{index}")
+                self.client.force_authenticate(self.patient_user)
+                payos_class.return_value.payment_requests.create.side_effect = provider_error
+
+                response = self.client.post(
+                    reverse("patients:invoice-payos", kwargs={"invoice_id": invoice.pk})
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+                self.assertIn("payOS", response.data["message"])
+                payos_transaction = PayosTransaction.objects.get(invoice=invoice)
+                self.assertEqual(
+                    payos_transaction.status, PayosTransaction.Status.CANCELLED
+                )
+                self.assertEqual(payos_transaction.checkout_url, "")
 
     def test_payos_checkout_hides_other_patient_invoice_and_rejects_staff(self):
         invoice = self.issued_invoice("APT-PAYOS-SCOPE")
