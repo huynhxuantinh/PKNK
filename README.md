@@ -42,6 +42,23 @@ khởi động. `/api/docs/` và `/api/schema/` chỉ bật ở môi trường d
 trên production. Đường dẫn quản trị ẩn không thay thế xác thực; production nên giới hạn
 thêm bằng VPN hoặc allowlist IP tại reverse proxy nếu hạ tầng hỗ trợ.
 
+### Chạy production bằng Docker Compose
+
+Sao chép `.env.production.example` thành `.env.production`, thay toàn bộ giá trị
+`replace-...` và trỏ `SITE_ADDRESS`/URL về tên miền thật. DNS của tên miền phải trỏ
+về máy chủ và cổng 80, 443 phải được mở để Caddy tự cấp HTTPS.
+
+```bash
+docker compose --env-file .env.production -f compose.production.yaml up -d --build
+docker compose --env-file .env.production -f compose.production.yaml ps
+```
+
+Stack production gồm Caddy, frontend Nginx, Gunicorn, Celery worker, Celery beat,
+PostGIS, Redis và MinIO. Chỉ Caddy mở cổng ra host; database, cache và object storage
+nằm trong mạng Docker nội bộ. Beat chạy lịch hết hạn hold, nhắc lịch và đối soát payOS
+mỗi 5 phút. Không commit `.env.production`; cần sao lưu định kỳ các volume PostgreSQL
+và MinIO.
+
 Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
 
 ```powershell

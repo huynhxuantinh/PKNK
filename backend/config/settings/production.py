@@ -21,6 +21,7 @@ if "DRF_NUM_PROXIES" not in os.environ:
 if (  # noqa: F405
     not re.fullmatch(r"[A-Za-z0-9_-]{12,64}", ADMIN_PATH)
     or ADMIN_PATH == "admin"
+    or "replace" in ADMIN_PATH.lower()
 ):
     raise ImproperlyConfigured(
         "DJANGO_ADMIN_PATH must be a non-default path of 12-64 letters, numbers, underscores or hyphens."

@@ -1,0 +1,198 @@
+x-backend-environment: &backend_environment
+  DJANGO_SETTINGS_MODULE: config.settings.production
+  DB_HOST: db
+  DB_PORT: "5432"
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  REDIS_CACHE_URL: redis://redis:6379/2
+  DRF_NUM_PROXIES: "1"
+  GIS_BIN_DIR: ""
+  GDAL_LIBRARY_PATH: ""
+  GEOS_LIBRARY_PATH: ""
+  USE_S3_STORAGE: "true"
+  AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env.production}
+  AWS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.production}
+  AWS_STORAGE_BUCKET_NAME: ${MINIO_BUCKET:-pknk-clinical}
+  AWS_S3_ENDPOINT_URL: http://minio:9000
+  AWS_S3_REGION_NAME: us-east-1
+
+x-backend-service: &backend_service
+  build:
+    context: .
+  image: pknk-backend:${APP_VERSION:?Set APP_VERSION in .env.production}
+  restart: always
+  init: true
+  env_file:
+    - ${PRODUCTION_ENV_FILE:-.env.production}
+  networks:
+    - backend
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in .env.production}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env.production}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  minio:
+    build:
+      context: .
+      dockerfile: docker/minio/Dockerfile
+      args:
+        MINIO_RELEASE: RELEASE.2025-10-15T17-29-55Z
+    image: pknk-minio:${APP_VERSION:?Set APP_VERSION in .env.production}
+    restart: always
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env.production}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.production}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  storage-init:
+    <<: *backend_service
+    restart: "no"
+    environment:
+      <<: *backend_environment
+      RUN_MIGRATIONS: "false"
+    command: ["python", "manage.py", "ensure_clinical_bucket"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web:
+    <<: *backend_service
+    environment:
+      <<: *backend_environment
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend_service
+    environment:
+      <<: *backend_environment
+      RUN_MIGRATIONS: "false"
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=${CELERY_WORKER_CONCURRENCY:-2}"]
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy
+
+  beat:
+    <<: *backend_service
+    environment:
+      <<: *backend_environment
+      RUN_MIGRATIONS: "false"
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/var/lib/celery/celerybeat-schedule"]
+    volumes:
+      - celerybeat_data:/var/lib/celery
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: frontend
+    image: pknk-frontend:${APP_VERSION:?Set APP_VERSION in .env.production}
+    restart: always
+    environment:
+      DJANGO_ADMIN_PATH: ${DJANGO_ADMIN_PATH:?Set DJANGO_ADMIN_PATH in .env.production}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: always
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env.production}
+      DJANGO_ADMIN_PATH: ${DJANGO_ADMIN_PATH:?Set DJANGO_ADMIN_PATH in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - edge
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  celerybeat_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+  backend:
