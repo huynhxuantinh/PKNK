@@ -95,6 +95,17 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(issued.status_code, status.HTTP_200_OK)
         return Invoice.objects.get(pk=invoice_id)
 
+    def test_payos_order_code_uses_reserved_project_range(self):
+        invoice = self.issued_invoice("APT-PAYOS-ORDER-RANGE")
+
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+        )
+
+        self.assertGreaterEqual(payos_transaction.order_code, 202610260000000)
+
     def test_full_counter_flow_and_payment_void_reconciliation(self):
         created = self.create_invoice(self.appointment())
         invoice_id = created.data["data"]["id_invoice"]
