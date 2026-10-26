@@ -6,6 +6,7 @@ from unittest.mock import patch
 import httpx
 from payos import WebhookError
 from payos import PayOSError
+from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -21,6 +22,7 @@ from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment, PayosTransaction
+from .payos_service import create_checkout
 from .services import BillingService
 from .tasks import reconcile_pending_payos_transactions
 
@@ -308,6 +310,44 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(first.data["data"]["checkout_url"], "https://pay.payos.vn/web/test")
         self.assertEqual(PayosTransaction.objects.filter(invoice=invoice).count(), 1)
         payos_class.return_value.payment_requests.create.assert_called_once()
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_create_checkout_rechecks_invoice_status_after_lock(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-STALE-STATUS")
+        BillingService.void_invoice(
+            invoice_id=invoice.pk,
+            reason="Hủy hóa đơn trước khi tạo link.",
+            actor_user=self.admin,
+        )
+        payos_class.return_value.payment_requests.create.return_value = SimpleNamespace(
+            checkout_url="https://pay.payos.vn/web/stale",
+            payment_link_id="stale-link",
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Hóa đơn không còn ở trạng thái chờ thanh toán.",
+        ):
+            create_checkout(invoice=invoice, user=self.patient_user)
+
+        payos_class.return_value.payment_requests.create.assert_not_called()
+        self.assertFalse(PayosTransaction.objects.filter(invoice=invoice).exists())
+
+    @patch("apps.billing.patient_views.create_checkout")
+    def test_checkout_state_conflict_returns_409(self, create_checkout_mock):
+        invoice = self.issued_invoice("APT-PAYOS-STATE-CONFLICT")
+        create_checkout_mock.side_effect = ValidationError(
+            "Hóa đơn không còn ở trạng thái chờ thanh toán."
+        )
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            reverse("patients:invoice-payos", kwargs={"invoice_id": invoice.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["code"], "invoice_not_payable")
+        self.assertIn("không còn", response.data["message"])
 
     @patch("apps.billing.payos_service.PayOS")
     def test_payos_provider_failures_cancel_attempt_and_return_bad_gateway(self, payos_class):
