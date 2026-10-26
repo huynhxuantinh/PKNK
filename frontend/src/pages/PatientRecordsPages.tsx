@@ -34,6 +34,8 @@ const appointmentStatus: Record<PatientAppointmentStatus, string> = {
   NO_SHOW: 'Không đến',
 }
 
+const PATIENT_INVOICE_PAGE_SIZE = 10
+
 function formatDateTime(value: string | null) {
   if (!value) return 'Chưa cập nhật'
   return new Intl.DateTimeFormat('vi-VN', {
@@ -364,13 +366,38 @@ export function PatientHistoryPage() {
 export function PatientInvoicesPage() {
   const { isAuthenticated } = useAuth()
   const [searchParams] = useSearchParams()
-  const [invoices, setInvoices] = useState<PatientInvoice[] | null>(null)
+  const [invoices, setInvoices] = useState<PatientInvoice[]>([])
+  const [meta, setMeta] = useState<PatientInvoicesResponse['meta'] | null>(null)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyInvoiceId, setBusyInvoiceId] = useState<number | null>(null)
-  useEffect(() => {
+
+  const loadInvoices = useCallback(async () => {
     if (!isAuthenticated) return
-    apiRequest<PatientInvoicesResponse>('/patients/me/invoices/?page=1&page_size=20', {}, { auth: true }).then((response) => setInvoices(response.data)).catch(() => setError('Không thể tải hóa đơn.'))
-  }, [isAuthenticated])
+    setLoading(true)
+    setError('')
+    try {
+      const response = await apiRequest<PatientInvoicesResponse>(
+        `/patients/me/invoices/?page=${page}&page_size=${PATIENT_INVOICE_PAGE_SIZE}`,
+        {},
+        { auth: true },
+      )
+      setInvoices(response.data)
+      setMeta(response.meta)
+    } catch {
+      setInvoices([])
+      setMeta(null)
+      setError('Không thể tải hóa đơn.')
+    } finally {
+      setLoading(false)
+    }
+  }, [isAuthenticated, page])
+
+  useEffect(() => {
+    void loadInvoices()
+  }, [loadInvoices])
+
   async function payInvoice(invoiceId: number) {
     setError('')
     setBusyInvoiceId(invoiceId)
@@ -386,7 +413,12 @@ export function PatientInvoicesPage() {
   return <RecordsLayout title="Hóa đơn" description="Theo dõi các hóa đơn đã phát hành." path="/hoa-don">
     {searchParams.get('huy') === '1' && <p className="patient-record-notice">Bạn đã hủy thanh toán. Hóa đơn vẫn đang chờ thanh toán.</p>}
     {error && <p className="patient-record-error" role="alert">{error}</p>}
-    {invoices === null ? <RecordState>Đang tải hóa đơn...</RecordState> : invoices.length === 0 ? <RecordState><strong>Chưa có hóa đơn.</strong></RecordState> : <div className="patient-record-list">{invoices.map((invoice) => <article className="patient-record-card invoice-record" key={invoice.id_invoice}><div><h2>{invoice.invoice_number}</h2><p>{invoice.branch_name} · {formatDateTime(invoice.issued_at)}</p></div><strong>{new Intl.NumberFormat('vi-VN').format(Number(invoice.total))} {invoice.currency}</strong><span className={`record-status status-${invoice.status.toLowerCase()}`}>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}</span><PatientInvoiceActions status={invoice.status} busy={busyInvoiceId === invoice.id_invoice} onPay={() => void payInvoice(invoice.id_invoice)} /></article>)}</div>}
+    {loading ? <RecordState>Đang tải hóa đơn...</RecordState> : !error && invoices.length === 0 ? <RecordState><strong>Chưa có hóa đơn.</strong></RecordState> : !error && <div className="patient-record-list">{invoices.map((invoice) => <article className="patient-record-card invoice-record" key={invoice.id_invoice}><div><h2>{invoice.invoice_number}</h2><p>{invoice.branch_name} · {formatDateTime(invoice.issued_at)}</p></div><strong>{new Intl.NumberFormat('vi-VN').format(Number(invoice.total))} {invoice.currency}</strong><span className={`record-status status-${invoice.status.toLowerCase()}`}>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}</span><PatientInvoiceActions status={invoice.status} busy={busyInvoiceId === invoice.id_invoice} onPay={() => void payInvoice(invoice.id_invoice)} /></article>)}</div>}
+    {!loading && !error && meta && meta.total_pages > 1 && <nav className="patient-record-pagination" aria-label="Phân trang hóa đơn">
+      <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Trước</button>
+      <span>Trang {meta.page} / {meta.total_pages}</span>
+      <button type="button" disabled={page >= meta.total_pages} onClick={() => setPage((current) => current + 1)}>Sau</button>
+    </nav>}
   </RecordsLayout>
 }
 

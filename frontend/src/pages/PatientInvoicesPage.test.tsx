@@ -92,6 +92,7 @@ describe('PatientInvoicesPage', () => {
       {},
       { auth: true },
     )
-    expect(JSON.stringify(renderer!.toJSON())).toContain('Trang 2 / 3')
+    const updatedPagination = renderer!.root.findByProps({ 'aria-label': 'Phân trang hóa đơn' })
+    expect(updatedPagination.findByType('span').children.join('')).toBe('Trang 2 / 3')
   })
 })

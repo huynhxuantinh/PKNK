@@ -444,7 +444,7 @@ class CounterBillingTests(APITestCase):
     @patch("apps.billing.payos_service.PayOS")
     def test_invalid_payos_webhook_has_no_side_effect(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-BAD-SIGNATURE")
-        payos_transaction = PayosTransaction.objects.create(
+        PayosTransaction.objects.create(
             invoice=invoice, initiated_by=self.patient_user, amount=500000
         )
         payos_class.return_value.webhooks.verify.side_effect = WebhookError("bad signature")
