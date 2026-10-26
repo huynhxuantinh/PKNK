@@ -45,6 +45,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const returnTo = searchParams.get('returnTo')
+  const isInvitationLogin = returnTo?.startsWith('/accept-invitation?token=')
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -62,6 +64,11 @@ export function LoginPage() {
 
   return (
     <AuthShell title="Chào mừng trở lại" description="Đăng nhập để xem hồ sơ và lịch sử chăm sóc của bạn." seoPath="/dang-nhap">
+      {isInvitationLogin && (
+        <p className="auth-page-message" role="status">
+          Hãy đăng nhập bằng đúng email được mời. Nếu chưa có tài khoản, đăng ký và xác minh email đó trước khi quay lại lời mời.
+        </p>
+      )}
       <form className="auth-page-form" onSubmit={handleSubmit}>
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
         <label>
@@ -74,7 +81,7 @@ export function LoginPage() {
         {error && <p className="auth-page-error">{error}</p>}
         <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>
       </form>
-      <p className="auth-switch">Chưa có tài khoản? <Link to="/dang-ky">Đăng ký ngay</Link></p>
+      <p className="auth-switch">Chưa có tài khoản? <Link to={`/dang-ky${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}>Đăng ký ngay</Link></p>
     </AuthShell>
   )
 }
@@ -89,6 +96,9 @@ export function RegisterPage() {
   const [consented, setConsented] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const isInvitationRegister = searchParams
+    .get('returnTo')
+    ?.startsWith('/accept-invitation?token=')
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -110,6 +120,11 @@ export function RegisterPage() {
 
   return (
     <AuthShell title="Tạo tài khoản" description="Đăng ký tài khoản bệnh nhân DentaVie bằng email của bạn." seoPath="/dang-ky">
+      {isInvitationRegister && (
+        <p className="auth-page-message" role="status">
+          Hãy đăng ký bằng đúng email được mời và xác minh email đó. Sau khi xác minh, bạn sẽ quay lại bước nhận lời mời.
+        </p>
+      )}
       <form className="auth-page-form" onSubmit={handleSubmit}>
         <label>Họ và tên<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" placeholder="Nguyễn Văn A" required /></label>
         <label>Số điện thoại<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value.replace(/[\s-]/g, ''))} autoComplete="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" placeholder="090 123 4567" required /></label>

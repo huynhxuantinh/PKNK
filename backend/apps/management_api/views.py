@@ -453,7 +453,10 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
     serializer_class = MembershipManagementSerializer
     def get(self, request, organization_id):
         organization = self.organization(organization_id, BRANCH_MANAGERS)
-        memberships = Membership.objects.filter(organization=organization).select_related("user", "branch")
+        memberships = Membership.objects.filter(
+            organization=organization,
+            role__in=[Membership.Role.ORGANIZATION_ADMIN, Membership.Role.BRANCH_ADMIN],
+        ).select_related("user", "branch")
         if not organization_ids_for(request.user, ORG_ADMIN).filter(
             organization_id=organization.pk
         ).exists():

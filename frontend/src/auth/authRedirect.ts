@@ -7,9 +7,11 @@ export function safeReturnPath(value: string | null | undefined, fallback = '/')
 }
 
 export function destinationAfterLogin(user: User, returnTo?: string | null) {
-  const isBranchAdmin = hasActiveRole(user, ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'])
+  const isOrganizationAdmin = hasActiveRole(user, ['ORGANIZATION_ADMIN'])
+  const isBranchAdmin = hasActiveRole(user, ['BRANCH_ADMIN'])
   const isDentist = hasActiveRole(user, ['DENTIST'])
 
+  if (isOrganizationAdmin) return '/quan-ly-to-chuc'
   if (isBranchAdmin) return '/quan-ly-chi-nhanh'
   if (isDentist) {
     return '/bac-si/chon-chi-nhanh'

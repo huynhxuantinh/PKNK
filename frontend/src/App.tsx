@@ -16,7 +16,12 @@ import { BranchReportsPage } from './pages/BranchReportsPage'
 import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
 import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
 import { PayosResultPage } from './pages/PayosResultPage'
-import { StaffInvitationPage } from './pages/StaffInvitationPage'
+import { AcceptInvitationPage } from './pages/AcceptInvitationPage'
+import { OrganizationOverviewPage } from './pages/OrganizationOverviewPage'
+import { OrganizationBranchesPage } from './pages/OrganizationBranchesPage'
+import { OrganizationStaffPage } from './pages/OrganizationStaffPage'
+import { OrganizationServicesPage } from './pages/OrganizationServicesPage'
+import { OrganizationAuditPage } from './pages/OrganizationAuditPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
 
@@ -46,13 +51,20 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
       <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
     </Route>
+    <Route element={<RequireRole area="ORGANIZATION" />}>
+      <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
+      <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
+      <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
+      <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
+      <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+    </Route>
     <Route path="/dang-nhap" element={<LoginPage />} />
     <Route path="/dang-ky" element={<RegisterPage />} />
     <Route path="/xac-minh-email" element={<EmailVerificationPendingPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />
     <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
-    <Route path="/accept-invitation" element={<StaffInvitationPage />} />
+    <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route>,
 ))

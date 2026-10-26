@@ -232,6 +232,29 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(BranchService.objects.exists())
 
+    def test_membership_list_only_returns_admin_roles(self):
+        Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            role=Membership.Role.PATIENT,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.get(
+            reverse("management:organization-memberships", kwargs={"organization_id": self.org_a.pk}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rows = response.data["data"]
+        self.assertEqual(
+            {row["role"] for row in rows},
+            {Membership.Role.ORGANIZATION_ADMIN, Membership.Role.BRANCH_ADMIN},
+        )
+        self.assertNotIn(
+            self.staff_user.email,
+            {row["user_email"] for row in rows},
+        )
+
     def test_org_admin_assigns_existing_verified_staff(self):
         PatientProfile.objects.create(user=self.staff_user)
         patient_membership = Membership.objects.create(

@@ -1,6 +1,6 @@
 import type { Membership, User } from '../types/api'
 
-export type ProtectedArea = 'PATIENT' | 'DENTIST' | 'MANAGEMENT'
+export type ProtectedArea = 'PATIENT' | 'DENTIST' | 'MANAGEMENT' | 'ORGANIZATION'
 
 const STAFF_ROLES: Membership['role'][] = [
   'DENTIST',
@@ -28,6 +28,16 @@ export function activeBranchIdsForRole(user: User | null, role: Membership['role
   ))
 }
 
+export function activeOrganizationIdsForRole(user: User | null, role: Membership['role']) {
+  return Array.from(new Set(
+    user?.memberships
+      ?.filter(
+        (membership) => membership.is_active && membership.role === role,
+      )
+      .map((membership) => membership.organization_id) ?? [],
+  ))
+}
+
 export function isStaffUser(user: User | null) {
   return hasActiveRole(user, STAFF_ROLES)
 }
@@ -36,5 +46,6 @@ export function canAccessArea(user: User | null, area: ProtectedArea) {
   if (!user) return false
   if (area === 'PATIENT') return !isStaffUser(user)
   if (area === 'DENTIST') return hasActiveRole(user, ['DENTIST'])
+  if (area === 'ORGANIZATION') return hasActiveRole(user, ['ORGANIZATION_ADMIN'])
   return hasActiveRole(user, ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'])
 }
