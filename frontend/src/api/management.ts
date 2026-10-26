@@ -28,6 +28,14 @@ export interface ManagedBranch {
   name: string
   is_active: boolean
 }
+export interface ManagedMembership {
+  id_membership: number
+  user_id: number
+  organization_id: number
+  branch_id: number | null
+  role: 'DENTIST' | 'BRANCH_ADMIN' | 'ORGANIZATION_ADMIN'
+  is_active: boolean
+}
 export interface ManagedDentist { id_dentist: number; full_name: string; is_active: boolean }
 export interface ManagedWorkShift { id_work_shift: number; branch_id: number; dentist_id: number; weekday: number; start_time: string; end_time: string; valid_from: string; valid_to: string | null; is_active: boolean }
 export interface ManagedTimeOff { id_time_off: number; branch_id: number | null; dentist_id: number; starts_at: string; ends_at: string; reason: string; is_active: boolean }
@@ -71,6 +79,14 @@ export function listBranchAppointments(branchId: number, date: string, status?: 
 
 export function listManagedOrganizationBranches(organizationId: number) {
   return apiRequest<{ data: ManagedBranch[] }>(`/management/organizations/${organizationId}/branches/`, {}, { auth: true })
+}
+
+export function acceptStaffInvitation(token: string) {
+  return apiRequest<{ data: ManagedMembership }>(
+    '/management/invitations/accept/',
+    { method: 'POST', body: JSON.stringify({ token }) },
+    { auth: true },
+  )
 }
 
 function updateAppointment(publicCode: string, action: 'confirm' | 'check-in' | 'no-show') {

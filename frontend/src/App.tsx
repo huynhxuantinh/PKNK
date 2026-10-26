@@ -16,6 +16,7 @@ import { BranchReportsPage } from './pages/BranchReportsPage'
 import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
 import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
 import { PayosResultPage } from './pages/PayosResultPage'
+import { StaffInvitationPage } from './pages/StaffInvitationPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
 
@@ -51,6 +52,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/verify-email" element={<VerifyEmailPage />} />
     <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <Route path="/accept-invitation" element={<StaffInvitationPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route>,
 ))

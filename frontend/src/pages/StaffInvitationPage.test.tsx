@@ -31,6 +31,9 @@ describe('StaffInvitationPage', () => {
       isAuthenticated: false,
       isAuthReady: true,
       updateUser: vi.fn(),
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
     } as ReturnType<typeof useAuth>)
     let renderer: ReactTestRenderer
 
@@ -55,6 +58,9 @@ describe('StaffInvitationPage', () => {
       isAuthenticated: true,
       isAuthReady: true,
       updateUser,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
     } as ReturnType<typeof useAuth>)
     vi.mocked(acceptStaffInvitation).mockResolvedValue({
       data: {

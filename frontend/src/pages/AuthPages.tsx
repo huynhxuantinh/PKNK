@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { destinationAfterLogin } from '../auth/authRedirect'
 import { Seo } from '../seo/Seo'
 
-function AuthShell({ children, title, description, seoPath }: { children: ReactNode; title: string; description: string; seoPath: string }) {
+export function AuthShell({ children, title, description, seoPath }: { children: ReactNode; title: string; description: string; seoPath: string }) {
   return (
     <>
       <Seo title={`${title} | DentaVie`} description={description} path={seoPath} noIndex />
