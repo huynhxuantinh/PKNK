@@ -7,6 +7,37 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ProductionContainerConfigurationTests(unittest.TestCase):
+    def test_production_compose_declares_complete_isolated_stack(self):
+        compose = (ROOT / "compose.production.yaml").read_text(encoding="utf-8")
+
+        for service in (
+            "caddy:",
+            "frontend:",
+            "web:",
+            "worker:",
+            "beat:",
+            "db:",
+            "redis:",
+            "minio:",
+            "storage-init:",
+        ):
+            with self.subTest(service=service):
+                self.assertIn(service, compose)
+        self.assertGreaterEqual(
+            compose.count("DJANGO_SETTINGS_MODULE: config.settings.production"),
+            4,
+        )
+        self.assertIn('command: ["celery", "-A", "config", "worker"', compose)
+        self.assertIn('command: ["celery", "-A", "config", "beat"', compose)
+        self.assertNotRegex(compose, r'"(?:5432|6379|9000|9001):')
+        self.assertNotIn("./backend:/app/backend", compose)
+
+        caddyfile = (ROOT / "docker" / "Caddyfile.production").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("reverse_proxy web:8000", caddyfile)
+        self.assertIn("reverse_proxy frontend:80", caddyfile)
+
     def test_image_uses_gunicorn_and_collects_static_files(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         entrypoint = (ROOT / "docker" / "entrypoint.sh").read_text(encoding="utf-8")
