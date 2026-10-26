@@ -2,9 +2,11 @@ from datetime import date, time
 from decimal import Decimal
 
 from django.contrib.gis.geos import Point
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
+from django.utils.text import slugify
 
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.catalog.models import BranchService, DentistService, Service
@@ -445,26 +447,11 @@ class Command(BaseCommand):
             defaults={"is_active": True},
         )
 
-        # Each branch has its own manager account. The legacy shared account
-        # is deactivated so the one-manager-per-branch rule stays satisfied.
-        Membership.objects.filter(
-            user__email="branch.admin@demo.pknk.vn",
-            role=Membership.Role.BRANCH_ADMIN,
-            is_active=True,
-        ).update(is_active=False)
-        for index, branch in enumerate(branches.values(), start=1):
-            branch_admin = self._upsert_user(
-                email=f"branch.admin.{index}@demo.pknk.vn",
-                full_name=f"Quản lý {branch.name}",
-                password=password,
-            )
-            Membership.objects.update_or_create(
-                user=branch_admin,
-                organization=organization,
-                branch=branch,
-                role=Membership.Role.BRANCH_ADMIN,
-                defaults={"is_active": True},
-            )
+        branch_admin_emails = self._seed_branch_admins(
+            organization=organization,
+            branches=branches,
+            password=password,
+        )
 
         for dentist_data in DENTISTS:
             user = self._upsert_user(
@@ -543,9 +530,57 @@ class Command(BaseCommand):
         self.stdout.write(f"Chi nhánh: {len(branches)} | Dịch vụ: {len(services)} | Nha sĩ: {len(DENTISTS)}")
         self.stdout.write(
             "Tài khoản: patient@demo.pknk.vn, admin@demo.pknk.vn, "
-            f"branch.admin.1@demo.pknk.vn … branch.admin.{len(branches)}@demo.pknk.vn"
+            + ", ".join(branch_admin_emails)
         )
         self.stdout.write(f"Mật khẩu demo: {password}")
+
+    def _seed_branch_admins(self, *, organization, branches, password):
+        email_by_branch_id = {}
+        for branch in branches.values():
+            branch_slug = slugify(branch.code)
+            if not branch_slug:
+                raise CommandError(
+                    f"Không thể tạo email demo từ mã chi nhánh {branch.code!r}."
+                )
+            email = f"branch.admin.{branch_slug}@demo.pknk.vn"
+            if email in email_by_branch_id.values():
+                raise CommandError(
+                    f"Mã chi nhánh tạo email demo bị trùng: {email}."
+                )
+            email_by_branch_id[branch.pk] = email
+
+        demo_admin_users = User.objects.filter(
+            Q(email="branch.admin@demo.pknk.vn")
+            | Q(
+                email__startswith="branch.admin.",
+                email__endswith="@demo.pknk.vn",
+            )
+        )
+        Membership.objects.filter(
+            user__in=demo_admin_users,
+            organization=organization,
+            role=Membership.Role.BRANCH_ADMIN,
+        ).update(is_active=False)
+        demo_admin_users.update(is_active=False)
+
+        emails = []
+        for branch in branches.values():
+            email = email_by_branch_id[branch.pk]
+            branch_admin = self._upsert_user(
+                email=email,
+                full_name=f"Quản lý {branch.name}",
+                password=password,
+            )
+            Membership.objects.update_or_create(
+                user=branch_admin,
+                organization=organization,
+                branch=branch,
+                role=Membership.Role.BRANCH_ADMIN,
+                defaults={"is_active": True},
+            )
+            emails.append(email)
+
+        return sorted(emails)
 
     @staticmethod
     def _upsert_user(*, email, full_name, password):

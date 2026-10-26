@@ -46,15 +46,15 @@ khẩu **`Demo123!`** (chỉ dùng cho môi trường demo/local).
 | --- | --- | --- |
 | Bệnh nhân | Nguyễn Minh Anh | `patient@demo.pknk.vn` |
 | Quản trị toàn hệ thống | Quản trị PKNK Dental | `admin@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Sài Gòn | `branch.admin.1@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental An Khánh | `branch.admin.2@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Cầu Kiệu | `branch.admin.3@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Bàn Cờ | `branch.admin.4@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental An Đông | `branch.admin.5@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Tân Thuận | `branch.admin.6@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Thạnh Mỹ Tây | `branch.admin.7@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Thông Tây Hội | `branch.admin.8@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Bảy Hiền | `branch.admin.9@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Sài Gòn | `branch.admin.q1@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental An Khánh | `branch.admin.td@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Cầu Kiệu | `branch.admin.pn@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Bàn Cờ | `branch.admin.q3@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental An Đông | `branch.admin.q5@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Tân Thuận | `branch.admin.q7@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Thạnh Mỹ Tây | `branch.admin.bt@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Thông Tây Hội | `branch.admin.gv@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý PKNK Dental Bảy Hiền | `branch.admin.tb@demo.pknk.vn` |
 | Nha sĩ | BS. Nguyễn Hoàng Minh | `minh.dentist@demo.pknk.vn` |
 | Nha sĩ | BS. Trần Ngọc Lan | `lan.dentist@demo.pknk.vn` |
 | Nha sĩ | BS. Lê Quốc Huy | `huy.dentist@demo.pknk.vn` |
