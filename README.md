@@ -37,9 +37,29 @@ Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
 docker compose exec web python manage.py seed_demo
 ```
 
-Tài khoản mẫu dùng chung mật khẩu `Demo123!`: `patient@demo.pknk.vn`,
-`admin@demo.pknk.vn`, `branch.admin@demo.pknk.vn` và các nha sĩ có email
-đuôi `@demo.pknk.vn`.
+## Tài khoản demo
+
+Chạy `seed_demo` trước khi đăng nhập. Tất cả tài khoản dưới đây dùng chung mật
+khẩu **`Demo123!`** (chỉ dùng cho môi trường demo/local).
+
+| Vai trò | Họ tên | Email |
+| --- | --- | --- |
+| Bệnh nhân | Nguyễn Minh Anh | `patient@demo.pknk.vn` |
+| Quản trị toàn hệ thống | Quản trị PKNK Dental | `admin@demo.pknk.vn` |
+| Quản lý chi nhánh | Quản lý chi nhánh Demo | `branch.admin@demo.pknk.vn` |
+| Nha sĩ | BS. Nguyễn Hoàng Minh | `minh.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Trần Ngọc Lan | `lan.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Lê Quốc Huy | `huy.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Phạm Thùy An | `an.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Đặng Minh Thảo | `thao.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Vũ Anh Khoa | `khoa.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Nguyễn Quỳnh Như | `nhu.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Trương Quốc Phong | `phong.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Lê Thanh Mai | `mai.dentist@demo.pknk.vn` |
+| Nha sĩ | BS. Phan Hoàng Sơn | `son.dentist@demo.pknk.vn` |
+
+Sau đăng nhập, bệnh nhân vào trang chủ; nha sĩ vào màn hình chọn chi nhánh làm
+việc; quản trị và quản lý chi nhánh vào khu vực quản lý.
 
 - API health: `http://127.0.0.1:8000/api/health/`
 - React đặt lịch: `http://127.0.0.1:5173/`
