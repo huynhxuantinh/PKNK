@@ -286,6 +286,44 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(invoice.status, Invoice.Status.ISSUED)
         self.assertEqual(payos_transaction.status, PayosTransaction.Status.PENDING)
 
+    @patch("apps.billing.payos_service.PayOS")
+    def test_void_invoice_accepts_already_cancelled_or_expired_payos_link(self, payos_class):
+        payos_class.return_value.payment_requests.cancel.side_effect = PayOSError(
+            "link cannot be cancelled"
+        )
+        payos_class.return_value.payment_requests.get.side_effect = [
+            SimpleNamespace(status="CANCELLED"),
+            SimpleNamespace(status="EXPIRED"),
+        ]
+        self.client.force_authenticate(self.admin)
+
+        for index, remote_status in enumerate(("CANCELLED", "EXPIRED")):
+            with self.subTest(remote_status=remote_status):
+                invoice = self.issued_invoice(f"APT-VOID-PAYOS-{remote_status}-{index}")
+                payos_transaction = PayosTransaction.objects.create(
+                    invoice=invoice,
+                    initiated_by=self.patient_user,
+                    amount=500000,
+                    checkout_url=f"https://pay.payos.vn/web/{remote_status.lower()}",
+                )
+                self.client.force_authenticate(self.admin)
+
+                response = self.client.post(
+                    reverse("management:invoice-void", kwargs={"invoice_id": invoice.pk}),
+                    {"reason": "Hóa đơn lập sai"},
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                invoice.refresh_from_db()
+                payos_transaction.refresh_from_db()
+                self.assertEqual(invoice.status, Invoice.Status.VOID)
+                self.assertEqual(
+                    payos_transaction.status, PayosTransaction.Status.CANCELLED
+                )
+
+        self.assertEqual(payos_class.return_value.payment_requests.get.call_count, 2)
+
     def test_payos_transaction_statuses_are_explicit(self):
         self.assertEqual(
             set(PayosTransaction.Status.values),
