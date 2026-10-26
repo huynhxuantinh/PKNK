@@ -184,6 +184,8 @@ Môi trường phát triển dùng email console. Muốn gửi email thật, đ�
 Chỉ đặt `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` và `PAYOS_CHECKSUM_KEY` thật trong
 `.env` của môi trường chạy; không commit các giá trị này. Cập nhật
 `PAYOS_RETURN_URL` và `PAYOS_CANCEL_URL` sang HTTPS của frontend khi deploy.
+Sequence `order_code` được khởi tạo từ `202610260000000` để tách dải mã của
+PKNK khỏi các hệ thống khác có thể dùng chung tài khoản payOS.
 
 - Bệnh nhân tạo link: `POST /api/v1/patients/me/invoices/{id}/payos/`.
 - Webhook công khai: `POST /api/v1/payments/payos/webhook/`.
