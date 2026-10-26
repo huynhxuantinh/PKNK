@@ -33,13 +33,18 @@ class ProductionContainerConfigurationTests(unittest.TestCase):
 
     def test_frontend_nginx_proxies_django_routes_with_forwarded_headers(self):
         nginx = (ROOT / "frontend" / "nginx.conf").read_text(encoding="utf-8")
+        frontend_dockerfile = (ROOT / "frontend" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
 
-        for path in ("/api/", "/admin/", "/static/"):
+        for path in ("/api/", "/static/"):
             with self.subTest(path=path):
                 self.assertRegex(
                     nginx,
                     rf"location (?:\^~ )?{re.escape(path)}",
                 )
+        self.assertIn("location ^~ /${DJANGO_ADMIN_PATH}/", nginx)
+        self.assertIn("/etc/nginx/templates/default.conf.template", frontend_dockerfile)
         self.assertGreaterEqual(nginx.count("proxy_pass http://web:8000;"), 3)
         self.assertGreaterEqual(
             nginx.count("proxy_set_header X-Forwarded-Proto $scheme;"), 3
