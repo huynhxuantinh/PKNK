@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from celery import shared_task
@@ -6,6 +7,9 @@ from django.utils import timezone
 
 from .models import PayosTransaction
 from .payos_service import apply_remote_status, get_payos_client
+
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -26,7 +30,16 @@ def reconcile_pending_payos_transactions():
         return 0
     processed = 0
     for item in pending:
-        payment_link = client.payment_requests.get(item.order_code)
-        apply_remote_status(item, payment_link)
-        processed += 1
+        try:
+            payment_link = client.payment_requests.get(item.order_code)
+            apply_remote_status(item, payment_link)
+        except Exception as error:
+            logger.warning(
+                "Không thể đối soát giao dịch payOS order_code=%s error_type=%s",
+                item.order_code,
+                type(error).__name__,
+            )
+            continue
+        else:
+            processed += 1
     return processed
