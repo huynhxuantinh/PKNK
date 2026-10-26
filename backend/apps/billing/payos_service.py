@@ -110,13 +110,21 @@ def cancel_pending_checkouts(invoice):
         )
     )
     with_checkout_url = [item for item in pending if item.checkout_url]
-    client = get_payos_client() if with_checkout_url else None
     try:
+        client = get_payos_client() if with_checkout_url else None
         for item in with_checkout_url:
-            payment_link = client.payment_requests.cancel(
-                item.order_code,
-                cancellation_reason="Invoice voided",
-            )
+            try:
+                payment_link = client.payment_requests.cancel(
+                    item.order_code,
+                    cancellation_reason="Invoice voided",
+                )
+            except (PayOSError, httpx.RequestError):
+                payment_link = client.payment_requests.get(item.order_code)
+                if payment_link.status in {"CANCELLED", "EXPIRED"}:
+                    continue
+                raise PayosCancellationUnavailable(
+                    "Link payOS vẫn chưa được hủy."
+                )
             if payment_link.status != "CANCELLED":
                 raise PayosCancellationUnavailable(
                     "payOS không xác nhận link đã được hủy."
