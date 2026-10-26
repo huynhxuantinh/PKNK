@@ -7,9 +7,11 @@ import { listSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
+import { ClinicalImageLightbox } from '../components/clinical/ClinicalImageLightbox'
 import { PatientInvoiceActions } from '../components/billing/PatientInvoiceActions'
 import { Seo } from '../seo/Seo'
 import type {
+  ClinicalAttachment,
   PatientAppointment,
   PatientAppointmentsResponse,
   PatientClinicalEncounter,
@@ -280,6 +282,7 @@ export function PatientHistoryPage() {
   const { isAuthenticated } = useAuth()
   const [encounters, setEncounters] = useState<PatientClinicalEncounter[] | null>(null)
   const [error, setError] = useState('')
+  const [preview, setPreview] = useState<ClinicalAttachment | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -334,7 +337,7 @@ export function PatientHistoryPage() {
                   <div className="record-thumbnail-grid">
                     {encounter.attachments.filter((attachment) => attachment.content_type.startsWith('image/')).map((attachment) => (
                       <article key={attachment.id_clinical_attachment}>
-                        <button className="record-thumbnail" type="button" aria-label={`Tải ${attachment.description || 'ảnh bệnh án'}`} onClick={() => downloadAuthenticatedFile(attachment.download_url, `${attachment.kind}-${attachment.id_clinical_attachment}`)}>
+                        <button className="record-thumbnail" type="button" aria-label={`Xem ${attachment.description || 'ảnh bệnh án'}`} onClick={() => setPreview(attachment)}>
                           <AuthenticatedThumbnail attachment={attachment} />
                         </button>
                         <div><span>{attachment.kind === 'XRAY' ? 'X-quang' : 'Ảnh lâm sàng'}</span><p>{attachment.description || 'Không có mô tả'}</p></div>
@@ -347,6 +350,12 @@ export function PatientHistoryPage() {
             </article>
           ))}
         </div>
+      )}
+      {preview && (
+        <ClinicalImageLightbox
+          attachment={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </RecordsLayout>
   )

@@ -1919,6 +1919,15 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .record-attachments .record-thumbnail { width: 100%; height: 118px; display: grid; place-items: center; overflow: hidden; border-radius: 0; background: #eaf3f5; color: #69808a; font-size: 10px; }
 .record-thumbnail img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s ease; }.record-thumbnail:hover img { transform: scale(1.025); }
 .record-thumbnail-grid article > div { padding: 9px 10px 11px; }.record-thumbnail-grid span { color: #08738b; font-size: 8px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }.record-thumbnail-grid p { margin: 4px 0 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.record-lightbox-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 28px; background: rgba(6, 32, 40, .72); backdrop-filter: blur(4px); }
+.record-lightbox { width: min(980px, 100%); max-height: calc(100vh - 56px); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; overflow: hidden; border-radius: 18px; background: #0b2530; box-shadow: 0 30px 70px rgba(0, 0, 0, .38); }
+.record-lightbox > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 16px 20px; background: #fff; border-bottom: 1px solid var(--line); }
+.record-lightbox > header strong { display: block; color: var(--ink); font-size: 12px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
+.record-lightbox > header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.record-lightbox > header button { flex: 0 0 auto; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: #f5fafb; color: var(--primary-dark); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.record-lightbox > header button:hover { background: #e6f4f7; }
+.record-lightbox > img { display: block; width: 100%; height: 100%; max-height: calc(100vh - 160px); object-fit: contain; background: #0b2530; }
+.record-lightbox > p { margin: 0; padding: 48px 20px; color: #d6eaf0; font-size: 13px; text-align: center; }
 .invoice-record { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 20px 24px; }
 .invoice-record h2 { margin: 0 0 5px; font-size: 16px; }.invoice-record p { margin: 0; color: var(--muted); font-size: 12px; }
 .invoice-payos-button { grid-column: 1 / -1; justify-self: end; }
@@ -1945,6 +1954,10 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
   .patient-record-content, .history-record { padding: 18px; }
   .patient-record-title-row { align-items: flex-start; flex-direction: column; gap: 10px; }
   .record-meta { grid-template-columns: 1fr; }
+  .record-lightbox-backdrop { padding: 12px; }
+  .record-lightbox > header { padding: 12px 14px; }
+  .record-lightbox > header p { display: none; }
+  .record-lightbox > img { max-height: calc(100vh - 140px); }
 }
 
 /* Dedicated authentication pages */

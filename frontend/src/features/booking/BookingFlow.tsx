@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import {
   cancelAppointmentHold,
@@ -56,6 +56,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const { user, isAuthenticated, logout } = useAuth()
   const isStaff = isStaffUser(user)
   const location = useLocation()
+  const navigate = useNavigate()
   const [selection, dispatch] = useReducer(
     bookingSelectionReducer,
     undefined,
@@ -346,9 +347,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
               setAppointment(null)
               setPatientNote('')
               dispatch({ type: 'reset' })
+              navigate('/')
             }}
           >
-            Đặt lịch khác
+            Về trang chủ
           </button>
         </div>
 
