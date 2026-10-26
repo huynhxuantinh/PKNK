@@ -20,6 +20,7 @@ from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment, PayosTransaction
 from .services import BillingService
+from .tasks import reconcile_pending_payos_transactions
 
 
 @override_settings(
@@ -268,7 +269,7 @@ class CounterBillingTests(APITestCase):
     @patch("apps.billing.payos_service.PayOS")
     def test_invalid_payos_webhook_has_no_side_effect(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-BAD-SIGNATURE")
-        PayosTransaction.objects.create(
+        payos_transaction = PayosTransaction.objects.create(
             invoice=invoice, initiated_by=self.patient_user, amount=500000
         )
         payos_class.return_value.webhooks.verify.side_effect = WebhookError("bad signature")
@@ -372,3 +373,18 @@ class CounterBillingTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("hoàn tiền", response.data["message"].lower())
+
+    @override_settings(PAYOS_CLIENT_ID="", PAYOS_API_KEY="", PAYOS_CHECKSUM_KEY="")
+    def test_reconciliation_skips_cleanly_when_payos_is_not_configured(self):
+        invoice = self.issued_invoice("APT-PAYOS-NO-CONFIG")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/pending",
+        )
+        PayosTransaction.objects.filter(pk=payos_transaction.pk).update(
+            created_at=timezone.now() - timedelta(minutes=10)
+        )
+
+        self.assertEqual(reconcile_pending_payos_transactions(), 0)
