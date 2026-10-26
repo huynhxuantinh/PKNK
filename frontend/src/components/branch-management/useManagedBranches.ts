@@ -20,7 +20,8 @@ export function useManagedBranches(user: User | null) {
           id_branch: membership.branch_id as number,
           name: membership.branch_name || `Chi nhánh #${membership.branch_id}`,
           is_active: true,
-        })),
+        }))
+        .slice(0, 1),
     [user],
   )
   const organizationIds = useMemo(
@@ -70,9 +71,12 @@ export function useManagedBranches(user: User | null) {
     }
   }, [directBranches, organizationIds])
 
+  const primaryBranchId = directBranches[0]?.id_branch ?? null
   return {
     branches: branches.filter((branch) => branch.is_active),
     loading,
     error,
+    isBranchAdmin: primaryBranchId !== null,
+    primaryBranchId,
   }
 }

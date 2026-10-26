@@ -92,6 +92,16 @@ class Membership(models.Model):
                 nulls_distinct=False,
                 name="uq_memberships_scope_role",
             ),
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(role="BRANCH_ADMIN", is_active=True),
+                name="uq_one_active_branch_admin_per_user",
+            ),
+            models.UniqueConstraint(
+                fields=["branch"],
+                condition=models.Q(role="BRANCH_ADMIN", is_active=True),
+                name="uq_one_active_branch_admin_per_branch",
+            ),
         ]
 
     def __str__(self):

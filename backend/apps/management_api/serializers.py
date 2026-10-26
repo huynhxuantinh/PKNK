@@ -4,7 +4,15 @@ from rest_framework import serializers
 from apps.accounts.models import Dentist, User
 from apps.catalog.models import BranchService, Service
 from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday, Province, Ward
-from apps.organizations.models import Membership, Organization
+from apps.organizations.models import Membership, Organization, StaffInvitation
+from apps.organizations.services import (
+    BranchAdminConflict,
+    StaffRoleConflict,
+    validate_branch_admin_scope,
+    validate_staff_role_separation,
+)
+
+from .exceptions import ManagementConflict
 
 
 class OrganizationManagementSerializer(serializers.ModelSerializer):
@@ -181,6 +189,15 @@ class MembershipCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"branch_id": "Organization Admin không gắn chi nhánh."})
         if role == Membership.Role.BRANCH_ADMIN and branch is None:
             raise serializers.ValidationError({"branch_id": "Branch Admin phải gắn chi nhánh."})
+        if branch is not None and not branch.is_active:
+            raise serializers.ValidationError({"branch_id": "Chi nhánh đã ngưng hoạt động."})
+        email = attrs["email"]
+        try:
+            if role == Membership.Role.BRANCH_ADMIN:
+                validate_branch_admin_scope(branch=branch, email=email)
+            validate_staff_role_separation(role=role, email=email)
+        except (BranchAdminConflict, StaffRoleConflict) as error:
+            raise ManagementConflict(str(error)) from error
         return attrs
 
 
@@ -230,3 +247,31 @@ class IdListSerializer(serializers.Serializer):
 
 class StaffInvitationAcceptSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=200, trim_whitespace=False)
+
+
+class StaffInvitationManagementSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StaffInvitation
+        fields = (
+            "id_staff_invitation",
+            "email",
+            "role",
+            "branch_id",
+            "branch_name",
+            "status",
+            "expires_at",
+            "created_at",
+            "invited_by_email",
+        )
+        read_only_fields = fields
+
+    def get_status(self, obj):
+        if obj.accepted_at is not None:
+            return "ACCEPTED"
+        if obj.revoked_at is not None:
+            return "REVOKED"
+        return "PENDING"

@@ -77,6 +77,18 @@ export interface PendingMembershipInvitation {
   status: 'PENDING'
 }
 
+export interface OrganizationInvitation {
+  id_staff_invitation: number
+  email: string
+  role: OrganizationAdminRole
+  branch_id: number | null
+  branch_name: string | null
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED'
+  expires_at: string
+  created_at: string
+  invited_by_email: string
+}
+
 export interface OrganizationMembershipInput {
   email: string
   role: OrganizationAdminRole
@@ -347,6 +359,24 @@ export function updateOrganizationMembership(
   return data<OrganizationMembership>(
     `/management/memberships/${membershipId}/`,
     { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
+export function listOrganizationInvitations(
+  organizationId: number,
+  signal?: AbortSignal,
+) {
+  return data<OrganizationInvitation[]>(
+    `/management/organizations/${organizationId}/invitations/`,
+    { signal },
+  )
+}
+
+export function revokeOrganizationInvitation(invitationId: number) {
+  return apiRequest<void>(
+    `/management/invitations/${invitationId}/`,
+    { method: 'DELETE' },
+    { auth: true },
   )
 }
 

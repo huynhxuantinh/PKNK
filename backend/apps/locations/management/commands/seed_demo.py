@@ -445,12 +445,19 @@ class Command(BaseCommand):
             defaults={"is_active": True},
         )
 
-        branch_admin = self._upsert_user(
-            email="branch.admin@demo.pknk.vn",
-            full_name="Quản lý chi nhánh Demo",
-            password=password,
-        )
-        for branch in branches.values():
+        # Each branch has its own manager account. The legacy shared account
+        # is deactivated so the one-manager-per-branch rule stays satisfied.
+        Membership.objects.filter(
+            user__email="branch.admin@demo.pknk.vn",
+            role=Membership.Role.BRANCH_ADMIN,
+            is_active=True,
+        ).update(is_active=False)
+        for index, branch in enumerate(branches.values(), start=1):
+            branch_admin = self._upsert_user(
+                email=f"branch.admin.{index}@demo.pknk.vn",
+                full_name=f"Quản lý {branch.name}",
+                password=password,
+            )
             Membership.objects.update_or_create(
                 user=branch_admin,
                 organization=organization,
@@ -534,7 +541,10 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Đã tạo/cập nhật dữ liệu demo."))
         self.stdout.write(f"Chi nhánh: {len(branches)} | Dịch vụ: {len(services)} | Nha sĩ: {len(DENTISTS)}")
-        self.stdout.write("Tài khoản: patient@demo.pknk.vn, admin@demo.pknk.vn, branch.admin@demo.pknk.vn")
+        self.stdout.write(
+            "Tài khoản: patient@demo.pknk.vn, admin@demo.pknk.vn, "
+            f"branch.admin.1@demo.pknk.vn … branch.admin.{len(branches)}@demo.pknk.vn"
+        )
         self.stdout.write(f"Mật khẩu demo: {password}")
 
     @staticmethod

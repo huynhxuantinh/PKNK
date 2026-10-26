@@ -1,13 +1,19 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { listOrganizationMemberships } from '../../api/organization'
+import {
+  listOrganizationInvitations,
+  listOrganizationMemberships,
+  revokeOrganizationInvitation,
+} from '../../api/organization'
 import { OrganizationAdminPanel } from './OrganizationAdminPanel'
 
 vi.mock('../../api/organization', () => ({
   listOrganizationMemberships: vi.fn(),
+  listOrganizationInvitations: vi.fn(),
   createOrganizationMembership: vi.fn(),
   updateOrganizationMembership: vi.fn(),
+  revokeOrganizationInvitation: vi.fn(),
 }))
 
 const branches = [{
@@ -48,6 +54,9 @@ function membership(
 describe('OrganizationAdminPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(listOrganizationInvitations).mockResolvedValue({
+      data: [],
+    } as Awaited<ReturnType<typeof listOrganizationInvitations>>)
   })
 
   it('only displays organization and branch administrators', async () => {
@@ -77,5 +86,162 @@ describe('OrganizationAdminPanel', () => {
     expect(markup).toContain('branch@example.com')
     expect(markup).not.toContain('dentist@example.com')
     expect(markup).not.toContain('patient@example.com')
+  })
+
+  it('shows one manager row per branch with invite or change actions', async () => {
+    const twoBranches = [
+      branches[0],
+      {
+        ...branches[0],
+        id_branch: 3,
+        code: 'CG',
+        name: 'Cầu Giấy',
+      },
+    ]
+    vi.mocked(listOrganizationMemberships).mockResolvedValue({
+      data: [
+        membership(1, 'ORGANIZATION_ADMIN', 'owner@example.com'),
+        membership(2, 'BRANCH_ADMIN', 'branch@example.com', 2),
+      ],
+    } as Awaited<ReturnType<typeof listOrganizationMemberships>>)
+
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <OrganizationAdminPanel
+          organizationId={1}
+          branches={twoBranches}
+          currentUserId={1}
+        />,
+      )
+    })
+    await act(async () => undefined)
+
+    const markup = JSON.stringify(renderer!.toJSON())
+    expect(markup).toContain('branch@example.com')
+    expect(markup).toContain('Đổi người')
+    expect(markup).toContain('Chưa có quản lý')
+    expect(markup).toContain('Mời')
+    expect(markup).toContain('Cầu Giấy')
+  })
+
+  it('warns by branch coverage instead of comparing manager counts', async () => {
+    const twoBranches = [
+      branches[0],
+      {
+        ...branches[0],
+        id_branch: 3,
+        code: 'CG',
+        name: 'Cầu Giấy',
+      },
+    ]
+    vi.mocked(listOrganizationMemberships).mockResolvedValue({
+      data: [
+        membership(2, 'BRANCH_ADMIN', 'first@example.com', 2),
+        membership(3, 'BRANCH_ADMIN', 'second@example.com', 2),
+      ],
+    } as Awaited<ReturnType<typeof listOrganizationMemberships>>)
+
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <OrganizationAdminPanel
+          organizationId={1}
+          branches={twoBranches}
+          currentUserId={1}
+        />,
+      )
+    })
+    await act(async () => undefined)
+
+    const markup = JSON.stringify(renderer!.toJSON())
+    expect(markup).toMatch(/"children":\["1"," chi nhánh chưa có quản lý:"/)
+    expect(markup).toContain('"Cầu Giấy"')
+    expect(markup).not.toMatch(/"children":\["2"," chi nhánh chưa có quản lý:"/)
+  })
+
+  it('lists pending invitations with their role and branch', async () => {
+    vi.mocked(listOrganizationMemberships).mockResolvedValue({
+      data: [membership(1, 'ORGANIZATION_ADMIN', 'owner@example.com')],
+    } as Awaited<ReturnType<typeof listOrganizationMemberships>>)
+    vi.mocked(listOrganizationInvitations).mockResolvedValue({
+      data: [{
+        id_staff_invitation: 9,
+        email: 'pending@example.com',
+        role: 'BRANCH_ADMIN',
+        branch_id: 2,
+        branch_name: 'Mỹ Đình',
+        status: 'PENDING',
+        expires_at: '2026-11-02T00:00:00Z',
+        created_at: '2026-10-26T00:00:00Z',
+        invited_by_email: 'owner@example.com',
+      }],
+    } as Awaited<ReturnType<typeof listOrganizationInvitations>>)
+
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <OrganizationAdminPanel
+          organizationId={1}
+          branches={branches}
+          currentUserId={1}
+        />,
+      )
+    })
+    await act(async () => undefined)
+
+    const markup = JSON.stringify(renderer!.toJSON())
+    expect(markup).toContain('Lời mời chưa được chấp nhận')
+    expect(markup).toContain('pending@example.com')
+    expect(markup).toContain('Mỹ Đình')
+    expect(markup).toContain('Thu hồi')
+  })
+
+  it('revokes a pending invitation after confirmation', async () => {
+    vi.mocked(listOrganizationMemberships).mockResolvedValue({
+      data: [membership(1, 'ORGANIZATION_ADMIN', 'owner@example.com')],
+    } as Awaited<ReturnType<typeof listOrganizationMemberships>>)
+    vi.mocked(listOrganizationInvitations).mockResolvedValue({
+      data: [{
+        id_staff_invitation: 9,
+        email: 'pending@example.com',
+        role: 'BRANCH_ADMIN',
+        branch_id: 2,
+        branch_name: 'Mỹ Đình',
+        status: 'PENDING',
+        expires_at: '2026-11-02T00:00:00Z',
+        created_at: '2026-10-26T00:00:00Z',
+        invited_by_email: 'owner@example.com',
+      }],
+    } as Awaited<ReturnType<typeof listOrganizationInvitations>>)
+    vi.mocked(revokeOrganizationInvitation).mockResolvedValue(undefined as never)
+
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <OrganizationAdminPanel
+          organizationId={1}
+          branches={branches}
+          currentUserId={1}
+        />,
+      )
+    })
+    await act(async () => undefined)
+
+    const revokeButton = renderer!.root.findAllByType('button').find(
+      (button) => JSON.stringify(button.children).includes('Thu hồi'),
+    )
+    await act(async () => {
+      revokeButton!.props.onClick()
+    })
+
+    const confirmButton = renderer!.root.findAllByType('button').find(
+      (button) => JSON.stringify(button.children).includes('Thu hồi lời mời'),
+    )
+    await act(async () => {
+      await confirmButton!.props.onClick()
+    })
+
+    expect(revokeOrganizationInvitation).toHaveBeenCalledWith(9)
   })
 })

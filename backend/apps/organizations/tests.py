@@ -43,3 +43,78 @@ class OrganizationModelTests(TestCase):
                 branch=branch_b,
                 role=Membership.Role.BRANCH_ADMIN,
             )
+
+    def test_database_allows_one_active_branch_admin_per_user_and_branch(self):
+        province = Province.objects.create(code="79", name="HCM", full_name="HCM")
+        ward = Ward.objects.create(
+            code="00001", province=province, name="Ward", full_name="Ward"
+        )
+        organization = Organization.objects.create(
+            name="Org", slug="one-branch-admin-org"
+        )
+        branch_a = Branch.objects.create(
+            organization=organization,
+            code="A1",
+            name="A1",
+            province=province,
+            ward=ward,
+            address_line="A1",
+            location="POINT(106.7 10.7)",
+        )
+        branch_b = Branch.objects.create(
+            organization=organization,
+            code="B1",
+            name="B1",
+            province=province,
+            ward=ward,
+            address_line="B1",
+            location="POINT(106.8 10.8)",
+        )
+        first_user = User.objects.create_user(
+            email="branch-manager-one@example.com",
+            password="test",
+            full_name="Manager One",
+        )
+        second_user = User.objects.create_user(
+            email="branch-manager-two@example.com",
+            password="test",
+            full_name="Manager Two",
+        )
+        first_membership = Membership.objects.create(
+            user=first_user,
+            organization=organization,
+            branch=branch_a,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Membership.objects.create(
+                user=first_user,
+                organization=organization,
+                branch=branch_b,
+                role=Membership.Role.BRANCH_ADMIN,
+            )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Membership.objects.create(
+                user=second_user,
+                organization=organization,
+                branch=branch_a,
+                role=Membership.Role.BRANCH_ADMIN,
+            )
+
+        first_membership.is_active = False
+        first_membership.save(update_fields=["is_active"])
+        Membership.objects.create(
+            user=first_user,
+            organization=organization,
+            branch=branch_b,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
+        self.assertTrue(
+            Membership.objects.filter(
+                user=first_user,
+                branch=branch_b,
+                role=Membership.Role.BRANCH_ADMIN,
+                is_active=True,
+            ).exists()
+        )

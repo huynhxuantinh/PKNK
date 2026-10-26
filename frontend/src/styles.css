@@ -2775,6 +2775,9 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .organization-report-section { margin-top: 1rem; }
 .organization-report-section > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .organization-report-section > header h2 { margin: .25rem 0 0; font-size: 1.35rem; }
+.organization-pending { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e0edf1; }
+.organization-pending > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.organization-pending > header h3 { margin: .25rem 0 0; font-size: 1.05rem; }
 .organization-report-table td small, .organization-report-table th small { display: block; margin-top: .2rem; color: #7c97a3; font-size: .72rem; font-weight: 600; }
 .organization-report-table td { vertical-align: top; }
 .organization-report-table td:last-child { color: #264f64; font-weight: 600; }

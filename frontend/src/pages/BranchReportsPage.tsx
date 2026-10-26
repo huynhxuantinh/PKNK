@@ -12,6 +12,7 @@ import {
 import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
 import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { ManagedBranchSelector } from '../components/branch-management/ManagedBranchSelector'
+import { resolveScopedManagedBranchId } from '../components/branch-management/managedBranchSelection'
 import { useManagedBranches } from '../components/branch-management/useManagedBranches'
 
 const iso = (date: Date) => new Intl.DateTimeFormat('en-CA', {
@@ -26,9 +27,13 @@ export function BranchReportsPage() {
   const [params, setParams] = useSearchParams()
   const requestedBranchId = Number(params.get('chi-nhanh')) || 0
   const managedBranches = useManagedBranches(user)
-  const branchId = managedBranches.branches.some(
-    (branch) => branch.id_branch === requestedBranchId,
-  ) ? requestedBranchId : 0
+  const branchId = resolveScopedManagedBranchId({
+    isBranchAdmin: managedBranches.isBranchAdmin,
+    primaryBranchId: managedBranches.primaryBranchId,
+    requestedBranchId: requestedBranchId || null,
+    branches: managedBranches.branches,
+    loaded: !managedBranches.loading,
+  }) ?? 0
   const [from, setFrom] = useState(() => iso(new Date(Date.now() - 29 * 86400000)))
   const [to, setTo] = useState(() => iso(new Date()))
   const [data, setData] = useState<BranchReportData | null>(null)

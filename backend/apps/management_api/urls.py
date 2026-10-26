@@ -19,8 +19,10 @@ from .views import (
     OrganizationHolidayListCreateAPIView,
     OrganizationMembershipListCreateAPIView,
     OrganizationServiceListCreateAPIView,
+    OrganizationStaffInvitationListAPIView,
     ServiceDetailAPIView,
     StaffInvitationAcceptAPIView,
+    StaffInvitationDetailAPIView,
 )
 from .scheduling_views import (
     AppointmentCancelManagementAPIView,
@@ -58,6 +60,7 @@ app_name = "management"
 
 urlpatterns = [
     path("invitations/accept/", StaffInvitationAcceptAPIView.as_view(), name="invitation-accept"),
+    path("invitations/<int:invitation_id>/", StaffInvitationDetailAPIView.as_view(), name="staff-invitation-detail"),
     path("organizations/<int:organization_id>/", OrganizationDetailAPIView.as_view(), name="organization-detail"),
     path("organizations/<int:organization_id>/branches/", OrganizationBranchListCreateAPIView.as_view(), name="organization-branches"),
     path("branches/<int:branch_id>/", BranchDetailAPIView.as_view(), name="branch-detail"),
@@ -72,6 +75,7 @@ urlpatterns = [
     path("branches/<int:branch_id>/services/", BranchServiceListCreateAPIView.as_view(), name="branch-services"),
     path("branch-services/<int:branch_service_id>/", BranchServiceDetailAPIView.as_view(), name="branch-service-detail"),
     path("organizations/<int:organization_id>/memberships/", OrganizationMembershipListCreateAPIView.as_view(), name="organization-memberships"),
+    path("organizations/<int:organization_id>/invitations/", OrganizationStaffInvitationListAPIView.as_view(), name="organization-invitations"),
     path("memberships/<int:membership_id>/", MembershipDetailAPIView.as_view(), name="membership-detail"),
     path("organizations/<int:organization_id>/dentists/", OrganizationDentistListCreateAPIView.as_view(), name="organization-dentists"),
     path("dentists/<int:dentist_id>/", DentistDetailAPIView.as_view(), name="dentist-detail"),

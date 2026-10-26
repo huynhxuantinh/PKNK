@@ -28,7 +28,7 @@ import {
   appointmentStatusLabels,
   hcmDate,
 } from '../components/branch-management/appointmentPresentation'
-import { resolveManagedBranchId } from '../components/branch-management/managedBranchSelection'
+import { resolveScopedManagedBranchId } from '../components/branch-management/managedBranchSelection'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail, Slot } from '../types/api'
 
@@ -51,7 +51,8 @@ export function BranchManagementPage() {
           id_branch: membership.branch_id as number,
           name: membership.branch_name || `Chi nhánh #${membership.branch_id}`,
           is_active: true,
-        })),
+        }))
+        .slice(0, 1),
     [user],
   )
   const organizationIds = useMemo(
@@ -84,7 +85,15 @@ export function BranchManagementPage() {
   const activeBranches = branches.filter((item) => item.is_active)
   const branchIds = activeBranches.map((item) => item.id_branch)
   const requestedBranchId = Number(params.get('chi-nhanh')) || null
-  const branchId = resolveManagedBranchId(requestedBranchId, branches, loaded)
+  const isBranchAdmin = directBranches.length > 0
+  const primaryBranchId = directBranches[0]?.id_branch ?? null
+  const branchId = resolveScopedManagedBranchId({
+    isBranchAdmin,
+    primaryBranchId,
+    requestedBranchId,
+    branches,
+    loaded,
+  })
   const isManager = canAccessArea(user, 'MANAGEMENT')
 
   useEffect(() => {
@@ -266,7 +275,7 @@ export function BranchManagementPage() {
             <h1>{branch?.name || 'Quản lý chi nhánh'}</h1>
             <p>{branch?.full_address || 'Đang tải...'}</p>
           </div>
-          {branchIds.length > 1 && (
+          {!isBranchAdmin && branchIds.length > 1 && (
             <label>
               Chi nhánh
               <select

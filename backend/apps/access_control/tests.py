@@ -71,21 +71,21 @@ class AccessScopeTests(TestCase):
         self.assertEqual(organization_ids, {self.org_a.pk})
         self.assertEqual(branch_ids, {self.branch_a1.pk, self.branch_a2.pk})
 
-    def test_branch_admin_with_multiple_memberships_gets_exact_scope(self):
+    def test_branch_admin_scope_is_exactly_one_branch(self):
         user = self.create_user("branch-admin@example.com")
-        for branch in (self.branch_a1, self.branch_a2):
-            Membership.objects.create(
-                user=user,
-                organization=self.org_a,
-                branch=branch,
-                role=Membership.Role.BRANCH_ADMIN,
-            )
+        Membership.objects.create(
+            user=user,
+            organization=self.org_a,
+            branch=self.branch_a1,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
 
         branch_ids = set(
             branch_ids_for(user, [Membership.Role.BRANCH_ADMIN])
         )
 
-        self.assertEqual(branch_ids, {self.branch_a1.pk, self.branch_a2.pk})
+        self.assertEqual(branch_ids, {self.branch_a1.pk})
+        self.assertNotIn(self.branch_a2.pk, branch_ids)
 
     def test_inactive_membership_and_inactive_organization_grant_no_access(self):
         user = self.create_user("inactive@example.com")

@@ -21,12 +21,16 @@ from apps.accounts.permissions import IsEmailVerified, IsManagementStaff
 from apps.audit.services import AuditService
 from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday
-from apps.organizations.models import Membership, Organization
+from apps.organizations.models import Membership, Organization, StaffInvitation
 from apps.organizations.services import (
     ActivePatientAppointmentsExist,
+    BranchAdminConflict,
     InvalidStaffInvitation,
     StaffInvitationService,
+    StaffRoleConflict,
     deactivate_patient_memberships,
+    validate_branch_admin_scope,
+    validate_staff_role_separation,
 )
 from apps.organizations.tasks import send_staff_invitation_email
 from apps.scheduling.models import ACTIVE_APPOINTMENT_STATUSES, Appointment
@@ -47,6 +51,7 @@ from .serializers import (
     OrganizationManagementSerializer,
     ServiceManagementSerializer,
     StaffInvitationAcceptSerializer,
+    StaffInvitationManagementSerializer,
 )
 from .services import audit_model_change, ensure_no_active_future_appointments
 
@@ -64,6 +69,32 @@ def deactivate_patient_role_for_staff(user, *, actor_user, request, source):
             source=source,
         )
     except ActivePatientAppointmentsExist as error:
+        raise ManagementConflict(str(error)) from error
+
+
+def validate_membership_assignment(
+    *,
+    branch,
+    role,
+    user=None,
+    email=None,
+    exclude_membership_id=None,
+):
+    try:
+        if role == Membership.Role.BRANCH_ADMIN:
+            validate_branch_admin_scope(
+                branch=branch,
+                user=user,
+                email=email,
+                exclude_membership_id=exclude_membership_id,
+            )
+        validate_staff_role_separation(
+            role=role,
+            user=user,
+            email=email,
+            exclude_membership_id=exclude_membership_id,
+        )
+    except (BranchAdminConflict, StaffRoleConflict) as error:
         raise ManagementConflict(str(error)) from error
 
 
@@ -479,13 +510,16 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
         if user is None or user.email_verified_at is None:
             if user is not None and not user.is_active:
                 raise ValidationError({"email": "Tài khoản đã bị vô hiệu hóa."})
-            invitation, raw_token = StaffInvitationService.create(
-                organization=organization,
-                branch=branch,
-                email=email,
-                role=role,
-                invited_by=request.user,
-            )
+            try:
+                invitation, raw_token = StaffInvitationService.create(
+                    organization=organization,
+                    branch=branch,
+                    email=email,
+                    role=role,
+                    invited_by=request.user,
+                )
+            except (BranchAdminConflict, StaffRoleConflict) as error:
+                raise ManagementConflict(str(error)) from error
             transaction.on_commit(
                 lambda: send_staff_invitation_email.delay(invitation.pk, raw_token)
             )
@@ -505,6 +539,7 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
             )
         if Membership.objects.filter(user=user, organization=organization, branch=branch, role=role).exists():
             raise ValidationError("Membership đã tồn tại.")
+        validate_membership_assignment(branch=branch, role=role, user=user)
         deactivate_patient_role_for_staff(
             user,
             actor_user=request.user,
@@ -539,7 +574,7 @@ class StaffInvitationAcceptAPIView(APIView):
             raise ValidationError(
                 {"token": "Lời mời không hợp lệ, đã dùng hoặc đã hết hạn."}
             ) from error
-        except ActivePatientAppointmentsExist as error:
+        except (ActivePatientAppointmentsExist, BranchAdminConflict, StaffRoleConflict) as error:
             raise ManagementConflict(str(error)) from error
         AuditService.record_write(
             actor_user=request.user,
@@ -552,6 +587,62 @@ class StaffInvitationAcceptAPIView(APIView):
             request=request,
         )
         return Response({"data": MembershipManagementSerializer(membership).data})
+
+
+class OrganizationStaffInvitationListAPIView(ManagementAPIView):
+    serializer_class = StaffInvitationManagementSerializer
+
+    @extend_schema(responses={200: StaffInvitationManagementSerializer(many=True)})
+    def get(self, request, organization_id):
+        organization = self.organization(organization_id)
+        invitations = (
+            StaffInvitation.objects.filter(
+                organization=organization,
+                accepted_at__isnull=True,
+                revoked_at__isnull=True,
+                expires_at__gt=timezone.now(),
+            )
+            .select_related("branch", "invited_by")
+            .order_by("created_at", "id_staff_invitation")
+        )
+        return Response(
+            {"data": StaffInvitationManagementSerializer(invitations, many=True).data}
+        )
+
+
+class StaffInvitationDetailAPIView(ManagementAPIView):
+    serializer_class = StaffInvitationManagementSerializer
+
+    @transaction.atomic
+    def delete(self, request, invitation_id):
+        invitation = get_object_or_404(
+            StaffInvitation.objects.select_related("organization", "branch").filter(
+                organization_id__in=organization_ids_for(request.user, ORG_ADMIN)
+            ),
+            pk=invitation_id,
+        )
+        invitation = StaffInvitation.objects.select_for_update().get(pk=invitation.pk)
+        now = timezone.now()
+        if (
+            invitation.accepted_at is not None
+            or invitation.revoked_at is not None
+            or invitation.expires_at <= now
+        ):
+            raise ManagementConflict("Lời mời không còn ở trạng thái chờ.")
+        invitation.revoked_at = now
+        invitation.save(update_fields=["revoked_at"])
+        AuditService.record_write(
+            actor_user=request.user,
+            organization=invitation.organization,
+            branch=invitation.branch,
+            action="STAFF_INVITATION_REVOKED",
+            resource_type="StaffInvitation",
+            resource_id=invitation.pk,
+            before_data={"email": invitation.email, "role": invitation.role},
+            after_data={"revoked_at": invitation.revoked_at},
+            request=request,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MembershipDetailAPIView(ManagementAPIView):
@@ -582,6 +673,13 @@ class MembershipDetailAPIView(ManagementAPIView):
             role=role,
         ).exclude(pk=membership.pk).exists():
             raise ValidationError("Membership cùng scope và role đã tồn tại.")
+        if active:
+            validate_membership_assignment(
+                branch=branch,
+                role=role,
+                user=membership.user,
+                exclude_membership_id=membership.pk,
+            )
         if (
             membership.role == Membership.Role.ORGANIZATION_ADMIN
             and membership.is_active
@@ -771,6 +869,11 @@ class DentistBranchesAPIView(ManagementAPIView):
             raise ValidationError({"ids": "Có chi nhánh không thuộc organization."})
         target_ids = {branch.pk for branch in branches}
         if target_ids:
+            validate_membership_assignment(
+                branch=None,
+                role=Membership.Role.DENTIST,
+                user=dentist.user,
+            )
             deactivate_patient_role_for_staff(
                 dentist.user,
                 actor_user=request.user,
