@@ -46,6 +46,26 @@ describe('safeReturnPath', () => {
     expect(destinationAfterLogin(manager)).toBe('/quan-ly-chi-nhanh')
   })
 
+  it('routes organization administrators to organization management', () => {
+    const administrator = {
+      id_user: 5,
+      email: 'org-admin@example.com',
+      full_name: 'Organization Admin',
+      email_verified: true,
+      email_verified_at: '2026-10-22T00:00:00Z',
+      memberships: [{
+        role: 'ORGANIZATION_ADMIN',
+        is_active: true,
+        organization_id: 9,
+        organization_name: 'DentaVie',
+        branch_id: null,
+        branch_name: null,
+      }],
+    } satisfies User
+
+    expect(destinationAfterLogin(administrator)).toBe('/quan-ly-to-chuc')
+  })
+
   it('routes patient accounts to the home page after a direct login', () => {
     const patient = {
       id_user: 3,
