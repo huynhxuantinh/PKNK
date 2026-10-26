@@ -150,3 +150,18 @@ Sau khi đăng ký, hệ thống gửi link xác minh có hiệu lực 24 giờ.
 Link đặt lại mật khẩu có hiệu lực 60 phút và chỉ dùng một lần. API yêu cầu đặt lại luôn trả phản hồi chung, không tiết lộ email có tồn tại trong hệ thống. Đổi mật khẩu thành công sẽ vô hiệu các JWT đã cấp trước đó.
 
 Môi trường phát triển dùng email console. Muốn gửi email thật, đổi `EMAIL_BACKEND` sang `django.core.mail.backends.smtp.EmailBackend` và cấu hình các biến `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` trong `.env`.
+
+## Thanh toán payOS
+
+Chỉ đặt `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` và `PAYOS_CHECKSUM_KEY` thật trong
+`.env` của môi trường chạy; không commit các giá trị này. Cập nhật
+`PAYOS_RETURN_URL` và `PAYOS_CANCEL_URL` sang HTTPS của frontend khi deploy.
+
+- Bệnh nhân tạo link: `POST /api/v1/patients/me/invoices/{id}/payos/`.
+- Webhook công khai: `POST /api/v1/payments/payos/webhook/`.
+- URL webhook production phải là HTTPS và truy cập được từ Internet, ví dụ
+  `https://api.example.com/api/v1/payments/payos/webhook/`.
+
+Đăng ký URL đó trong kênh thanh toán payOS hoặc gọi `webhooks.confirm(...)`
+bằng SDK ở môi trường đã nạp biến bí mật. Không coi query redirect là kết quả
+thanh toán; hệ thống chỉ ghi nhận sau webhook hợp lệ hoặc tác vụ đối soát.

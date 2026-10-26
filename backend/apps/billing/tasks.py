@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from celery import shared_task
+from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 from .models import PayosTransaction
@@ -19,7 +20,10 @@ def reconcile_pending_payos_transactions():
     )
     if not pending:
         return 0
-    client = get_payos_client()
+    try:
+        client = get_payos_client()
+    except ImproperlyConfigured:
+        return 0
     processed = 0
     for item in pending:
         payment_link = client.payment_requests.get(item.order_code)
