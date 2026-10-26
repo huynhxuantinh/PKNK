@@ -112,7 +112,12 @@ class PatientInvoicePayosAPIView(APIView):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        except (ImproperlyConfigured, ValidationError) as error:
+        except ValidationError as error:
+            return Response(
+                {"code": "invoice_not_payable", "message": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except ImproperlyConfigured as error:
             return Response(
                 {"code": "payos_unavailable", "message": str(error)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,

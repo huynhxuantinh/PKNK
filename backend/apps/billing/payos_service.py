@@ -59,6 +59,8 @@ def create_checkout(*, invoice, user):
     provider_error = None
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+        if invoice.status != Invoice.Status.ISSUED:
+            raise ValidationError("Hóa đơn không còn ở trạng thái chờ thanh toán.")
         amount = _whole_vnd(invoice)
         fresh_after = timezone.now() - FRESH_CHECKOUT_WINDOW
         reusable = invoice.payos_transactions.filter(
