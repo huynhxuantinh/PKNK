@@ -135,8 +135,8 @@ export function OrganizationServicesPage() {
       {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
       <p className="organization-hint">
-        Giá và thời lượng riêng theo chi nhánh được cấu hình tại trang Cấu hình chi nhánh
-        (branch-services). Trang này chỉ quản lý danh mục dịch vụ dùng chung của tổ chức.
+        Giá và thời lượng riêng theo chi nhánh được cấu hình tại trang Cấu hình chi nhánh.
+        Trang này chỉ quản lý danh mục dịch vụ dùng chung của tổ chức.
       </p>
 
       <section className="branch-management-schedule organization-report-section" aria-labelledby="organization-services-title">
