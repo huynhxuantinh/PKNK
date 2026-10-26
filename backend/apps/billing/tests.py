@@ -501,3 +501,38 @@ class CounterBillingTests(APITestCase):
         )
 
         self.assertEqual(reconcile_pending_payos_transactions(), 0)
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_reconciliation_continues_after_one_payos_lookup_fails(self, payos_class):
+        first_invoice = self.issued_invoice("APT-RECONCILE-FAIL")
+        second_invoice = self.issued_invoice("APT-RECONCILE-NEXT")
+        first = PayosTransaction.objects.create(
+            invoice=first_invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/first",
+        )
+        second = PayosTransaction.objects.create(
+            invoice=second_invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/second",
+        )
+        stale_at = timezone.now() - timedelta(minutes=10)
+        PayosTransaction.objects.filter(pk=first.pk).update(
+            created_at=stale_at - timedelta(seconds=1)
+        )
+        PayosTransaction.objects.filter(pk=second.pk).update(created_at=stale_at)
+        payos_class.return_value.payment_requests.get.side_effect = [
+            PayOSError("first lookup failed"),
+            SimpleNamespace(status="CANCELLED"),
+        ]
+
+        processed = reconcile_pending_payos_transactions()
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(processed, 1)
+        self.assertEqual(first.status, PayosTransaction.Status.PENDING)
+        self.assertEqual(second.status, PayosTransaction.Status.CANCELLED)
+        self.assertEqual(payos_class.return_value.payment_requests.get.call_count, 2)
