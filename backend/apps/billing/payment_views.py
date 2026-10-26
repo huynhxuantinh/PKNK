@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ImproperlyConfigured
 from payos import PayOSError, WebhookError
 from rest_framework import status
@@ -8,6 +10,9 @@ from rest_framework.views import APIView
 from .payos_service import apply_verified_payment, get_payos_client
 
 
+logger = logging.getLogger(__name__)
+
+
 class PayosWebhookAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -15,7 +20,17 @@ class PayosWebhookAPIView(APIView):
     def post(self, request):
         try:
             webhook_data = get_payos_client().webhooks.verify(request.body)
-        except (WebhookError, PayOSError, ImproperlyConfigured, ValueError, TypeError):
+        except (
+            WebhookError,
+            PayOSError,
+            ImproperlyConfigured,
+            ValueError,
+            TypeError,
+        ) as error:
+            logger.warning(
+                "payos_webhook_rejected reason=invalid_signature error_type=%s",
+                type(error).__name__,
+            )
             return Response(
                 {"message": "Chữ ký webhook không hợp lệ."},
                 status=status.HTTP_400_BAD_REQUEST,

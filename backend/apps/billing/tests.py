@@ -450,11 +450,18 @@ class CounterBillingTests(APITestCase):
         payos_class.return_value.webhooks.verify.side_effect = WebhookError("bad signature")
         self.client.force_authenticate(None)
 
-        response = self.client.post(reverse("payos-webhook"), {"data": {}}, format="json")
+        with self.assertLogs("apps.billing.payment_views", level="WARNING") as logs:
+            response = self.client.post(
+                reverse("payos-webhook"), {"data": {}}, format="json"
+            )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Payment.objects.exists())
         self.assertEqual(invoice.payos_transactions.get().status, PayosTransaction.Status.PENDING)
+        self.assertTrue(
+            any("payos_webhook_rejected" in message for message in logs.output)
+        )
+        self.assertFalse(any("bad signature" in message for message in logs.output))
 
     @patch("apps.billing.payos_service.PayOS")
     def test_duplicate_payos_webhook_posts_exactly_one_payment(self, payos_class):
