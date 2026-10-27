@@ -33,6 +33,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id_user = models.BigAutoField(primary_key=True)
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=16, blank=True, default="")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)

@@ -116,6 +116,7 @@ export interface User {
   id_user: number
   email: string
   full_name: string
+  phone?: string
   email_verified_at: string | null
   email_verified: boolean
   memberships?: Membership[]

@@ -1,5 +1,6 @@
 from zoneinfo import ZoneInfo
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -7,7 +8,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -18,6 +19,7 @@ from apps.access_control.scopes import (
 )
 from apps.accounts.models import Dentist, User
 from apps.accounts.permissions import IsEmailVerified, IsManagementStaff
+from apps.accounts.serializers import UserSerializer, token_pair_for_user
 from apps.audit.services import AuditService
 from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday
@@ -26,6 +28,7 @@ from apps.organizations.services import (
     ActivePatientAppointmentsExist,
     BRANCH_ADMIN_RACE_MESSAGE,
     BranchAdminConflict,
+    InvitationAccountExists,
     InvalidStaffInvitation,
     StaffInvitationService,
     StaffRoleConflict,
@@ -52,7 +55,9 @@ from .serializers import (
     OrganizationManagementSerializer,
     ServiceManagementSerializer,
     StaffInvitationAcceptSerializer,
+    StaffInvitationAcceptNewSerializer,
     StaffInvitationManagementSerializer,
+    StaffInvitationPreviewSerializer,
 )
 from .services import audit_model_change, ensure_no_active_future_appointments
 
@@ -508,55 +513,43 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
         if branch and branch.organization_id != organization.pk:
             raise ValidationError({"branch_id": "Chi nhánh không thuộc organization."})
         user = User.objects.filter(email__iexact=email).first()
-        if user is None or user.email_verified_at is None:
-            if user is not None and not user.is_active:
-                raise ValidationError({"email": "Tài khoản đã bị vô hiệu hóa."})
-            try:
-                invitation, raw_token = StaffInvitationService.create(
-                    organization=organization,
-                    branch=branch,
-                    email=email,
-                    role=role,
-                    invited_by=request.user,
-                )
-            except (BranchAdminConflict, StaffRoleConflict) as error:
-                raise ManagementConflict(str(error)) from error
-            transaction.on_commit(
-                lambda: send_staff_invitation_email.delay(invitation.pk, raw_token)
-            )
-            AuditService.record_write(
-                actor_user=request.user,
+        if user is not None and not user.is_active:
+            raise ValidationError({"email": "Tài khoản đã bị vô hiệu hóa."})
+        if user is not None and Membership.objects.filter(
+            user=user,
+            organization=organization,
+            branch=branch,
+            role=role,
+            is_active=True,
+        ).exists():
+            raise ValidationError("Membership đã tồn tại.")
+        try:
+            invitation, raw_token = StaffInvitationService.create(
                 organization=organization,
                 branch=branch,
-                action="STAFF_INVITATION_CREATED",
-                resource_type="StaffInvitation",
-                resource_id=invitation.pk,
-                after_data={"role": role},
-                request=request,
+                email=email,
+                role=role,
+                invited_by=request.user,
             )
-            return Response(
-                {"data": {"invitation_id": invitation.pk, "status": "PENDING"}},
-                status=status.HTTP_202_ACCEPTED,
-            )
-        if Membership.objects.filter(user=user, organization=organization, branch=branch, role=role).exists():
-            raise ValidationError("Membership đã tồn tại.")
-        validate_membership_assignment(branch=branch, role=role, user=user)
-        deactivate_patient_role_for_staff(
-            user,
-            actor_user=request.user,
-            request=request,
-            source="ORGANIZATION_MEMBERSHIP_CREATED",
+        except (BranchAdminConflict, StaffRoleConflict) as error:
+            raise ManagementConflict(str(error)) from error
+        transaction.on_commit(
+            lambda: send_staff_invitation_email.delay(invitation.pk, raw_token)
         )
-        try:
-            membership = Membership.objects.create(
-                user=user, organization=organization, branch=branch, role=role
-            )
-        except IntegrityError as error:
-            if role == Membership.Role.BRANCH_ADMIN:
-                raise ManagementConflict(BRANCH_ADMIN_RACE_MESSAGE) from error
-            raise
-        audit_model_change(request=request, instance=membership, action="MEMBERSHIP_CREATED")
-        return Response({"data": MembershipManagementSerializer(membership).data}, status=status.HTTP_201_CREATED)
+        AuditService.record_write(
+            actor_user=request.user,
+            organization=organization,
+            branch=branch,
+            action="STAFF_INVITATION_CREATED",
+            resource_type="StaffInvitation",
+            resource_id=invitation.pk,
+            after_data={"role": role},
+            request=request,
+        )
+        return Response(
+            {"data": {"invitation_id": invitation.pk, "status": "PENDING"}},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class StaffInvitationAcceptAPIView(APIView):
@@ -595,6 +588,93 @@ class StaffInvitationAcceptAPIView(APIView):
         return Response({"data": MembershipManagementSerializer(membership).data})
 
 
+class StaffInvitationPreviewAPIView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "staff_invitation_preview"
+    serializer_class = StaffInvitationAcceptSerializer
+
+    @extend_schema(responses={200: StaffInvitationPreviewSerializer})
+    def get(self, request):
+        serializer = StaffInvitationAcceptSerializer(
+            data={"token": request.query_params.get("token", "")}
+        )
+        serializer.is_valid(raise_exception=True)
+        try:
+            invitation, has_account = StaffInvitationService.preview(
+                raw_token=serializer.validated_data["token"]
+            )
+        except InvalidStaffInvitation as error:
+            raise ValidationError(
+                {"token": "Lời mời không hợp lệ, đã dùng hoặc đã hết hạn."}
+            ) from error
+        return Response(
+            {
+                "data": {
+                    "email": invitation.email,
+                    "organization_name": invitation.organization.name,
+                    "branch_name": invitation.branch.name if invitation.branch else None,
+                    "role": invitation.role,
+                    "invited_by_name": invitation.invited_by.full_name,
+                    "expires_at": invitation.expires_at,
+                    "has_account": has_account,
+                }
+            }
+        )
+
+
+class StaffInvitationAcceptNewAPIView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "staff_invitation_accept_new"
+    serializer_class = StaffInvitationAcceptNewSerializer
+
+    @extend_schema(request=StaffInvitationAcceptNewSerializer, responses={201: None})
+    def post(self, request):
+        serializer = StaffInvitationAcceptNewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user, membership, invitation = StaffInvitationService.accept_new(
+                raw_token=serializer.validated_data["token"],
+                full_name=serializer.validated_data["full_name"],
+                phone=serializer.validated_data["phone"],
+                password=serializer.validated_data["password"],
+            )
+        except InvalidStaffInvitation as error:
+            raise ValidationError(
+                {"token": "Lời mời không hợp lệ, đã dùng hoặc đã hết hạn."}
+            ) from error
+        except InvitationAccountExists as error:
+            raise ManagementConflict(
+                "Email này đã có tài khoản. Hãy đăng nhập để nhận lời mời."
+            ) from error
+        except DjangoValidationError as error:
+            raise ValidationError({"password": error.messages}) from error
+        except (BranchAdminConflict, StaffRoleConflict) as error:
+            raise ManagementConflict(str(error)) from error
+
+        AuditService.record_write(
+            actor_user=user,
+            organization=membership.organization,
+            branch=membership.branch,
+            action="STAFF_INVITATION_ACCEPTED_NEW_ACCOUNT",
+            resource_type="Membership",
+            resource_id=membership.pk,
+            after_data={"invitation_id": invitation.pk, "role": membership.role},
+            request=request,
+        )
+        return Response(
+            {
+                "data": {
+                    "user": UserSerializer(user).data,
+                    "tokens": token_pair_for_user(user),
+                    "membership": MembershipManagementSerializer(membership).data,
+                }
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class OrganizationStaffInvitationListAPIView(ManagementAPIView):
     serializer_class = StaffInvitationManagementSerializer
 
@@ -606,7 +686,6 @@ class OrganizationStaffInvitationListAPIView(ManagementAPIView):
                 organization=organization,
                 accepted_at__isnull=True,
                 revoked_at__isnull=True,
-                expires_at__gt=timezone.now(),
             )
             .select_related("branch", "invited_by")
             .order_by("created_at", "id_staff_invitation")

@@ -1,6 +1,6 @@
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.audit.models import AuditEvent
@@ -47,7 +47,9 @@ class PasswordChangeAPITests(APITestCase):
         self.assertTrue(self.user.check_password(self.old_password))
 
     def test_changes_password_revokes_refresh_tokens_and_writes_audit(self):
-        refresh = str(RefreshToken.for_user(self.user))
+        refresh_token = RefreshToken.for_user(self.user)
+        refresh = str(refresh_token)
+        access = str(refresh_token.access_token)
         self.client.force_authenticate(self.user)
 
         response = self.client.post(self.url, self.payload(), format="json")
@@ -56,11 +58,15 @@ class PasswordChangeAPITests(APITestCase):
             {"refresh": refresh},
             format="json",
         )
+        old_access_client = APIClient()
+        old_access_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        old_access = old_access_client.get(reverse("accounts:me"))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password(self.new_password))
         self.assertEqual(revoked.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(old_access.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertTrue(
             AuditEvent.objects.filter(
                 actor_user=self.user,

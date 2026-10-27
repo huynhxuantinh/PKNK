@@ -1,4 +1,5 @@
 from django.contrib.gis.geos import Point
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.models import Dentist, User
@@ -249,6 +250,31 @@ class StaffInvitationAcceptSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=200, trim_whitespace=False)
 
 
+class StaffInvitationPreviewSerializer(serializers.Serializer):
+    email = serializers.EmailField(read_only=True)
+    organization_name = serializers.CharField(read_only=True)
+    branch_name = serializers.CharField(read_only=True, allow_null=True)
+    role = serializers.ChoiceField(choices=Membership.Role.choices, read_only=True)
+    invited_by_name = serializers.CharField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+    has_account = serializers.BooleanField(read_only=True)
+
+
+class StaffInvitationAcceptNewSerializer(StaffInvitationAcceptSerializer):
+    full_name = serializers.CharField(max_length=200)
+    phone = serializers.RegexField(
+        regex=r"^\+?[0-9]{9,15}$",
+        max_length=16,
+        error_messages={"invalid": "Số điện thoại không hợp lệ."},
+    )
+    password = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+        min_length=8,
+        max_length=128,
+    )
+
+
 class StaffInvitationManagementSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source="branch.name", read_only=True)
     invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
@@ -263,6 +289,9 @@ class StaffInvitationManagementSerializer(serializers.ModelSerializer):
             "branch_id",
             "branch_name",
             "status",
+            "email_delivery_status",
+            "email_sent_at",
+            "email_failed_at",
             "expires_at",
             "created_at",
             "invited_by_email",
@@ -274,4 +303,6 @@ class StaffInvitationManagementSerializer(serializers.ModelSerializer):
             return "ACCEPTED"
         if obj.revoked_at is not None:
             return "REVOKED"
+        if obj.expires_at <= timezone.now():
+            return "EXPIRED"
         return "PENDING"

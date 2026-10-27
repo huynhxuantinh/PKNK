@@ -83,7 +83,10 @@ export interface OrganizationInvitation {
   role: OrganizationAdminRole
   branch_id: number | null
   branch_name: string | null
-  status: 'PENDING' | 'ACCEPTED' | 'REVOKED'
+  status: 'PENDING' | 'EXPIRED' | 'ACCEPTED' | 'REVOKED'
+  email_delivery_status: 'PENDING' | 'SENT' | 'FAILED'
+  email_sent_at: string | null
+  email_failed_at: string | null
   expires_at: string
   created_at: string
   invited_by_email: string
@@ -346,7 +349,7 @@ export function createOrganizationMembership(
   organizationId: number,
   input: OrganizationMembershipInput,
 ) {
-  return data<OrganizationMembership | PendingMembershipInvitation>(
+  return data<PendingMembershipInvitation>(
     `/management/organizations/${organizationId}/memberships/`,
     { method: 'POST', body: JSON.stringify(input) },
   )

@@ -96,6 +96,22 @@ class AuthenticationAPITests(APITestCase):
             hashlib.sha256(raw_token.encode()).hexdigest(),
         )
 
+    def test_verification_email_preserves_internal_return_to(self):
+        return_to = "/accept-invitation?token=invitation-token"
+
+        response = self.register(return_to=return_to)
+
+        verification_url = mail.outbox[-1].body.splitlines()[-1]
+        query = parse_qs(urlparse(verification_url).query)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(query["returnTo"], [return_to])
+
+    def test_register_rejects_external_return_to(self):
+        response = self.register(return_to="https://evil.example/steal")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.exists())
+
     def test_valid_token_verifies_email_and_cannot_be_reused(self):
         self.register()
         raw_token = self.verification_token_from_latest_email()
@@ -153,6 +169,22 @@ class AuthenticationAPITests(APITestCase):
                 token_digest=hashlib.sha256(first_raw_token.encode()).hexdigest()
             ).used_at
         )
+
+    def test_resend_verification_preserves_return_to(self):
+        self.register()
+        mail.outbox.clear()
+        return_to = "/accept-invitation?token=resend-invitation-token"
+
+        response = self.client.post(
+            reverse("accounts:email-verification-resend"),
+            {"email": self.registration_data["email"], "return_to": return_to},
+            format="json",
+        )
+
+        verification_url = mail.outbox[-1].body.splitlines()[-1]
+        query = parse_qs(urlparse(verification_url).query)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(query["returnTo"], [return_to])
 
     def test_register_requires_data_processing_consent(self):
         response = self.register(consent_to_data_processing=False)

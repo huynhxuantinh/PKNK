@@ -250,6 +250,8 @@ REST_FRAMEWORK = {
         "password_reset_request_email": "3/hour",
         "password_reset_confirm": "10/min",
         "password_change": "5/min",
+        "staff_invitation_preview": "30/hour",
+        "staff_invitation_accept_new": "10/hour",
         "branch_list": "60/min",
         "branch_detail": "120/min",
         "branch_services": "120/min",

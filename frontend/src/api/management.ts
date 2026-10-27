@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { Slot } from '../types/api'
+import type { Slot, TokenPair, User } from '../types/api'
 
 export type ManagementAppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
@@ -35,6 +35,15 @@ export interface ManagedMembership {
   branch_id: number | null
   role: 'DENTIST' | 'BRANCH_ADMIN' | 'ORGANIZATION_ADMIN'
   is_active: boolean
+}
+export interface StaffInvitationPreview {
+  email: string
+  organization_name: string
+  branch_name: string | null
+  role: 'DENTIST' | 'BRANCH_ADMIN' | 'ORGANIZATION_ADMIN'
+  invited_by_name: string
+  expires_at: string
+  has_account: boolean
 }
 export interface ManagedDentist { id_dentist: number; full_name: string; is_active: boolean }
 export interface ManagedWorkShift { id_work_shift: number; branch_id: number; dentist_id: number; weekday: number; start_time: string; end_time: string; valid_from: string; valid_to: string | null; is_active: boolean }
@@ -86,6 +95,26 @@ export function acceptStaffInvitation(token: string) {
     '/management/invitations/accept/',
     { method: 'POST', body: JSON.stringify({ token }) },
     { auth: true },
+  )
+}
+
+export function previewStaffInvitation(token: string) {
+  return apiRequest<{ data: StaffInvitationPreview }>(
+    `/management/invitations/preview/?${new URLSearchParams({ token })}`,
+  )
+}
+
+export function acceptNewStaffInvitation(input: {
+  token: string
+  full_name: string
+  phone: string
+  password: string
+}) {
+  return apiRequest<{
+    data: { user: User; tokens: TokenPair; membership: ManagedMembership }
+  }>(
+    '/management/invitations/accept-new/',
+    { method: 'POST', body: JSON.stringify(input) },
   )
 }
 

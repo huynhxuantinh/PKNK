@@ -22,7 +22,9 @@ from .views import (
     OrganizationStaffInvitationListAPIView,
     ServiceDetailAPIView,
     StaffInvitationAcceptAPIView,
+    StaffInvitationAcceptNewAPIView,
     StaffInvitationDetailAPIView,
+    StaffInvitationPreviewAPIView,
 )
 from .scheduling_views import (
     AppointmentCancelManagementAPIView,
@@ -59,6 +61,8 @@ from .reporting_views import (
 app_name = "management"
 
 urlpatterns = [
+    path("invitations/preview/", StaffInvitationPreviewAPIView.as_view(), name="invitation-preview"),
+    path("invitations/accept-new/", StaffInvitationAcceptNewAPIView.as_view(), name="invitation-accept-new"),
     path("invitations/accept/", StaffInvitationAcceptAPIView.as_view(), name="invitation-accept"),
     path("invitations/<int:invitation_id>/", StaffInvitationDetailAPIView.as_view(), name="staff-invitation-detail"),
     path("organizations/<int:organization_id>/", OrganizationDetailAPIView.as_view(), name="organization-detail"),

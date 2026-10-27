@@ -24,6 +24,12 @@ const emptyInvite = (): InviteFormState => ({
   branchId: '',
 })
 
+const emailDeliveryLabels: Record<OrganizationInvitation['email_delivery_status'], string> = {
+  PENDING: 'Đang gửi',
+  SENT: 'Đã gửi',
+  FAILED: 'Gửi lỗi',
+}
+
 export function OrganizationAdminPanel({
   organizationId,
   branches,
@@ -111,6 +117,12 @@ export function OrganizationAdminPanel({
     () => activeBranches.filter((branch) => !managerByBranch.has(branch.id_branch)),
     [activeBranches, managerByBranch],
   )
+  const pendingInvitationCount = invitations.filter(
+    (invitation) => invitation.status === 'PENDING',
+  ).length
+  const expiredInvitationCount = invitations.filter(
+    (invitation) => invitation.status === 'EXPIRED',
+  ).length
   function branchName(branchId: number | null) {
     if (!branchId) return 'Toàn tổ chức'
     return branches.find((branch) => branch.id_branch === branchId)?.name
@@ -137,16 +149,12 @@ export function OrganizationAdminPanel({
     setFormError('')
     setNotice('')
     try {
-      const response = await createOrganizationMembership(organizationId, {
+      await createOrganizationMembership(organizationId, {
         email: form.email.trim(),
         role: form.role,
         branch_id: form.role === 'BRANCH_ADMIN' ? Number(form.branchId) : null,
       })
-      if ('status' in response.data) {
-        setNotice(`Đã gửi lời mời tới ${form.email.trim()}.`)
-      } else {
-        setNotice('Đã thêm quản trị viên.')
-      }
+      setNotice(`Đã gửi lời mời tới ${form.email.trim()}.`)
       setModalOpen(false)
       setReloadKey((current) => current + 1)
     } catch (caught) {
@@ -170,6 +178,25 @@ export function OrganizationAdminPanel({
     } catch (caught) {
       setRevokingInvitation(null)
       setError(caught instanceof Error ? caught.message : 'Không thể thu hồi lời mời.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function resendInvitation(invitation: OrganizationInvitation) {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await createOrganizationMembership(organizationId, {
+        email: invitation.email,
+        role: invitation.role,
+        branch_id: invitation.branch_id,
+      })
+      setNotice(`Đã gửi lại lời mời tới ${invitation.email}.`)
+      setReloadKey((current) => current + 1)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Không thể gửi lại lời mời.')
     } finally {
       setBusy(false)
     }
@@ -369,7 +396,8 @@ export function OrganizationAdminPanel({
               <h3 id="organization-pending-title">Lời mời chưa được chấp nhận</h3>
             </div>
             <span className="organization-status is-inactive">
-              {invitations.length} lời mời
+              {pendingInvitationCount} đang chờ
+              {expiredInvitationCount > 0 ? ` · ${expiredInvitationCount} hết hạn` : ''}
             </span>
           </header>
           {invitations.length === 0 ? (
@@ -387,6 +415,7 @@ export function OrganizationAdminPanel({
                     <th>Người được mời</th>
                     <th>Vai trò</th>
                     <th>Chi nhánh</th>
+                    <th>Email</th>
                     <th>Hết hạn</th>
                     <th>Thao tác</th>
                   </tr>
@@ -400,17 +429,32 @@ export function OrganizationAdminPanel({
                       </td>
                       <td>{organizationRoleLabel(invitation.role)}</td>
                       <td>{invitation.branch_name || branchName(invitation.branch_id)}</td>
-                      <td>{new Date(invitation.expires_at).toLocaleString('vi-VN')}</td>
+                      <td>
+                        <span className={`organization-status ${invitation.email_delivery_status === 'SENT' ? 'is-active' : 'is-inactive'}`}>
+                          {emailDeliveryLabels[invitation.email_delivery_status]}
+                        </span>
+                      </td>
+                      <td>
+                        {new Date(invitation.expires_at).toLocaleString('vi-VN')}
+                        {invitation.status === 'EXPIRED' && (
+                          <small className="organization-status is-inactive">Đã hết hạn</small>
+                        )}
+                      </td>
                       <td>
                         <div className="organization-row-actions">
-                          <button
-                            type="button"
-                            className="is-danger"
-                            disabled={busy}
-                            onClick={() => setRevokingInvitation(invitation)}
-                          >
-                            Thu hồi
+                          <button type="button" disabled={busy} onClick={() => void resendInvitation(invitation)}>
+                            Gửi lại
                           </button>
+                          {invitation.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              className="is-danger"
+                              disabled={busy}
+                              onClick={() => setRevokingInvitation(invitation)}
+                            >
+                              Thu hồi
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

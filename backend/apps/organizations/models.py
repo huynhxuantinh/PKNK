@@ -117,6 +117,11 @@ class Membership(models.Model):
 
 
 class StaffInvitation(models.Model):
+    class EmailDeliveryStatus(models.TextChoices):
+        PENDING = "PENDING", "Đang gửi"
+        SENT = "SENT", "Đã gửi"
+        FAILED = "FAILED", "Gửi lỗi"
+
     id_staff_invitation = models.BigAutoField(primary_key=True)
     organization = models.ForeignKey(
         Organization, db_column="id_organization", on_delete=models.PROTECT,
@@ -134,6 +139,13 @@ class StaffInvitation(models.Model):
         related_name="staff_invitations_sent",
     )
     expires_at = models.DateTimeField()
+    email_delivery_status = models.CharField(
+        max_length=20,
+        choices=EmailDeliveryStatus.choices,
+        default=EmailDeliveryStatus.PENDING,
+    )
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    email_failed_at = models.DateTimeField(null=True, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

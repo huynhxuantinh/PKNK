@@ -52,9 +52,9 @@ from .throttles import EmailScopedRateThrottle
 logger = logging.getLogger(__name__)
 
 
-def queue_verification_email(user_id):
+def queue_verification_email(user_id, return_to=""):
     try:
-        send_email_verification.delay(user_id)
+        send_email_verification.delay(user_id, return_to)
     except Exception:
         logger.exception("Không thể đưa email xác minh vào hàng đợi.")
 
@@ -109,7 +109,10 @@ class RegistrationAPIView(APIView):
                 user_agent=request.META.get("HTTP_USER_AGENT"),
             )
         if user is not None:
-            queue_verification_email(user.pk)
+            queue_verification_email(
+                user.pk,
+                serializer.validated_data.get("return_to", ""),
+            )
         return Response(
             {"data": {"message": REGISTRATION_MESSAGE}},
             status=status.HTTP_202_ACCEPTED,
@@ -296,7 +299,10 @@ class EmailVerificationResendAPIView(APIView):
             email_verified_at__isnull=True,
         ).first()
         if user is not None:
-            queue_verification_email(user.pk)
+            queue_verification_email(
+                user.pk,
+                serializer.validated_data.get("return_to", ""),
+            )
         return Response(
             {"data": {"message": "Nếu cần xác minh, email mới sẽ được gửi."}},
             status=status.HTTP_202_ACCEPTED,

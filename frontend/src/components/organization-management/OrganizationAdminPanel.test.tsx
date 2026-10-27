@@ -2,6 +2,7 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  createOrganizationMembership,
   listOrganizationInvitations,
   listOrganizationMemberships,
   revokeOrganizationInvitation,
@@ -175,6 +176,9 @@ describe('OrganizationAdminPanel', () => {
         branch_id: 2,
         branch_name: 'Mỹ Đình',
         status: 'PENDING',
+        email_delivery_status: 'SENT',
+        email_sent_at: '2026-10-26T00:01:00Z',
+        email_failed_at: null,
         expires_at: '2026-11-02T00:00:00Z',
         created_at: '2026-10-26T00:00:00Z',
         invited_by_email: 'owner@example.com',
@@ -197,6 +201,7 @@ describe('OrganizationAdminPanel', () => {
     expect(markup).toContain('Lời mời chưa được chấp nhận')
     expect(markup).toContain('pending@example.com')
     expect(markup).toContain('Mỹ Đình')
+    expect(markup).toContain('Đã gửi')
     expect(markup).toContain('Thu hồi')
   })
 
@@ -212,6 +217,9 @@ describe('OrganizationAdminPanel', () => {
         branch_id: 2,
         branch_name: 'Mỹ Đình',
         status: 'PENDING',
+        email_delivery_status: 'SENT',
+        email_sent_at: '2026-10-26T00:01:00Z',
+        email_failed_at: null,
         expires_at: '2026-11-02T00:00:00Z',
         created_at: '2026-10-26T00:00:00Z',
         invited_by_email: 'owner@example.com',
@@ -246,5 +254,61 @@ describe('OrganizationAdminPanel', () => {
     })
 
     expect(revokeOrganizationInvitation).toHaveBeenCalledWith(9)
+  })
+
+  it('shows an expired invitation and sends it again', async () => {
+    vi.mocked(listOrganizationMemberships).mockResolvedValue({
+      data: [membership(1, 'ORGANIZATION_ADMIN', 'owner@example.com')],
+    } as Awaited<ReturnType<typeof listOrganizationMemberships>>)
+    vi.mocked(listOrganizationInvitations).mockResolvedValue({
+      data: [{
+        id_staff_invitation: 10,
+        email: 'expired@example.com',
+        role: 'BRANCH_ADMIN',
+        branch_id: 2,
+        branch_name: 'Mỹ Đình',
+        status: 'EXPIRED',
+        email_delivery_status: 'FAILED',
+        email_sent_at: null,
+        email_failed_at: '2026-09-28T00:05:00Z',
+        expires_at: '2026-10-01T00:00:00Z',
+        created_at: '2026-09-28T00:00:00Z',
+        invited_by_email: 'owner@example.com',
+      }],
+    } as Awaited<ReturnType<typeof listOrganizationInvitations>>)
+    vi.mocked(createOrganizationMembership).mockResolvedValue({
+      data: { invitation_id: 11, status: 'PENDING' },
+    })
+
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <OrganizationAdminPanel
+          organizationId={1}
+          branches={branches}
+          currentUserId={1}
+        />,
+      )
+    })
+    await act(async () => undefined)
+
+    const markup = JSON.stringify(renderer!.toJSON())
+    expect(markup).toContain('Đã hết hạn')
+    expect(markup).toContain('Gửi lỗi')
+    expect(markup).toContain('Gửi lại')
+    expect(markup).not.toContain('Thu hồi')
+
+    const resendButton = renderer!.root.findAllByType('button').find(
+      (button) => JSON.stringify(button.children).includes('Gửi lại'),
+    )
+    await act(async () => {
+      await resendButton!.props.onClick()
+    })
+
+    expect(createOrganizationMembership).toHaveBeenCalledWith(1, {
+      email: 'expired@example.com',
+      role: 'BRANCH_ADMIN',
+      branch_id: 2,
+    })
   })
 })

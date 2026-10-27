@@ -108,8 +108,8 @@ export function RegisterPage() {
     setError('')
     try {
       if (!consented) throw new Error('Bạn cần đồng ý xử lý dữ liệu cá nhân.')
-      await register({ fullName, phone, email })
       const returnTo = searchParams.get('returnTo')
+      await register({ fullName, phone, email, returnTo: returnTo || undefined })
       const next = new URLSearchParams({ email: email.trim() })
       if (returnTo) next.set('returnTo', returnTo)
       navigate(`/xac-minh-email?${next}`, { replace: true })
@@ -147,13 +147,17 @@ export function EmailVerificationPendingPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const email = searchParams.get('email') || user?.email || ''
+  const returnTo = searchParams.get('returnTo')
 
   async function resend() {
     if (!email) return
     setIsSubmitting(true)
     setError('')
     try {
-      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', { method: 'POST', body: JSON.stringify({ email }) })
+      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', {
+        method: 'POST',
+        body: JSON.stringify({ email, return_to: returnTo || '' }),
+      })
       setMessage(response.data.message)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể gửi lại email xác minh.')

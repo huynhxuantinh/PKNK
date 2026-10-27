@@ -3,8 +3,11 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+
+from apps.accounts.models import User
 
 from .models import Membership, StaffInvitation
 
@@ -22,6 +25,10 @@ class BranchAdminConflict(Exception):
 
 
 class StaffRoleConflict(Exception):
+    pass
+
+
+class InvitationAccountExists(Exception):
     pass
 
 
@@ -74,18 +81,15 @@ def validate_staff_role_separation(
     email=None,
     exclude_membership_id=None,
 ):
-    """A branch manager cannot also hold organization admin or dentist roles."""
-    if role not in {
+    """A staff account can hold only one active staff role."""
+    staff_roles = (
         Membership.Role.BRANCH_ADMIN,
         Membership.Role.ORGANIZATION_ADMIN,
         Membership.Role.DENTIST,
-    }:
-        return
-    conflicting_roles = (
-        [Membership.Role.ORGANIZATION_ADMIN, Membership.Role.DENTIST]
-        if role == Membership.Role.BRANCH_ADMIN
-        else [Membership.Role.BRANCH_ADMIN]
     )
+    if role not in staff_roles:
+        return
+    conflicting_roles = [item for item in staff_roles if item != role]
     memberships = Membership.objects.filter(
         role__in=conflicting_roles,
         is_active=True,
@@ -173,6 +177,33 @@ class StaffInvitationService:
         return hashlib.sha256(raw_token.encode()).hexdigest()
 
     @classmethod
+    def _invitation(cls, raw_token, *, lock=False):
+        queryset = StaffInvitation.objects.select_related(
+            "organization", "branch", "invited_by"
+        )
+        if lock:
+            queryset = queryset.select_for_update(of=("self",))
+        try:
+            invitation = queryset.get(token_digest=cls.digest(raw_token))
+        except StaffInvitation.DoesNotExist as error:
+            raise InvalidStaffInvitation from error
+        now = timezone.now()
+        if (
+            invitation.accepted_at is not None
+            or invitation.revoked_at is not None
+            or invitation.expires_at <= now
+            or not invitation.organization.is_active
+            or (invitation.branch_id and not invitation.branch.is_active)
+        ):
+            raise InvalidStaffInvitation
+        return invitation
+
+    @classmethod
+    def preview(cls, *, raw_token):
+        invitation = cls._invitation(raw_token)
+        return invitation, User.objects.filter(email__iexact=invitation.email).exists()
+
+    @classmethod
     @transaction.atomic
     def create(cls, *, organization, branch, email, role, invited_by):
         if role == Membership.Role.BRANCH_ADMIN:
@@ -208,22 +239,12 @@ class StaffInvitationService:
     @classmethod
     @transaction.atomic
     def accept(cls, *, raw_token, user, request=None):
-        try:
-            invitation = StaffInvitation.objects.select_for_update(of=("self",)).select_related(
-                "organization", "branch"
-            ).get(token_digest=cls.digest(raw_token))
-        except StaffInvitation.DoesNotExist as error:
-            raise InvalidStaffInvitation from error
+        invitation = cls._invitation(raw_token, lock=True)
         now = timezone.now()
         if (
-            invitation.accepted_at is not None
-            or invitation.revoked_at is not None
-            or invitation.expires_at <= now
-            or invitation.email.lower() != user.email.lower()
+            invitation.email.lower() != user.email.lower()
             or user.email_verified_at is None
             or not user.is_active
-            or not invitation.organization.is_active
-            or (invitation.branch_id and not invitation.branch.is_active)
         ):
             raise InvalidStaffInvitation
         if invitation.role == Membership.Role.BRANCH_ADMIN:
@@ -250,3 +271,47 @@ class StaffInvitationService:
         invitation.accepted_at = now
         invitation.save(update_fields=["accepted_at"])
         return membership, invitation
+
+    @classmethod
+    @transaction.atomic
+    def accept_new(cls, *, raw_token, full_name, phone, password):
+        invitation = cls._invitation(raw_token, lock=True)
+        if User.objects.filter(email__iexact=invitation.email).exists():
+            raise InvitationAccountExists
+
+        if invitation.role == Membership.Role.BRANCH_ADMIN:
+            validate_branch_admin_scope(branch=invitation.branch, email=invitation.email)
+        validate_staff_role_separation(role=invitation.role, email=invitation.email)
+
+        now = timezone.now()
+        user = User(
+            email=invitation.email.strip().lower(),
+            full_name=full_name.strip(),
+            phone=phone.strip(),
+            email_verified_at=now,
+            is_active=True,
+        )
+        validate_password(password, user=user)
+        user.set_password(password)
+        try:
+            with transaction.atomic():
+                user.save()
+        except IntegrityError as error:
+            raise InvitationAccountExists from error
+
+        try:
+            with transaction.atomic():
+                membership = Membership.objects.create(
+                    user=user,
+                    organization=invitation.organization,
+                    branch=invitation.branch,
+                    role=invitation.role,
+                )
+        except IntegrityError as error:
+            if invitation.role == Membership.Role.BRANCH_ADMIN:
+                raise BranchAdminConflict(BRANCH_ADMIN_RACE_MESSAGE) from error
+            raise
+
+        invitation.accepted_at = now
+        invitation.save(update_fields=["accepted_at"])
+        return user, membership, invitation

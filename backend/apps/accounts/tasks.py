@@ -14,7 +14,7 @@ from .services import EmailVerificationService, PasswordResetService
     retry_jitter=True,
     max_retries=3,
 )
-def send_email_verification(user_id):
+def send_email_verification(user_id, return_to=""):
     user = User.objects.filter(pk=user_id, is_active=True).first()
     if user is None or user.email_verified_at is not None:
         return 0
@@ -23,7 +23,10 @@ def send_email_verification(user_id):
     if raw_token is None:
         return 0
 
-    query = urlencode({"token": raw_token})
+    query_params = {"token": raw_token}
+    if return_to:
+        query_params["returnTo"] = return_to
+    query = urlencode(query_params)
     verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?{query}"
     return send_mail(
         subject="Xác minh email tài khoản phòng khám nha khoa",

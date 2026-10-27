@@ -10,7 +10,7 @@ import {
 
 import { AUTH_EXPIRED_EVENT, apiRequest, getStoredTokens, storeTokens } from '../api/client'
 import { clearClinicalDraftCaches } from '../features/dentist/clinicalDraft'
-import type { LoginResponse, User } from '../types/api'
+import type { LoginResponse, TokenPair, User } from '../types/api'
 
 const USER_STORAGE_KEY = 'pknk_user'
 
@@ -30,6 +30,7 @@ interface AuthContextValue {
   isAuthReady: boolean
   login: (email: string, password: string) => Promise<User>
   register: (input: RegisterInput) => Promise<void>
+  startSession?: (user: User, tokens: TokenPair) => void
   updateUser: (changes: Partial<User>) => void
   logout: () => Promise<void>
 }
@@ -38,6 +39,7 @@ interface RegisterInput {
   fullName: string
   phone: string
   email: string
+  returnTo?: string
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -103,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: input.fullName,
         phone: input.phone,
         email: input.email,
+        return_to: input.returnTo || '',
         consent_to_data_processing: true,
       }),
     })
@@ -116,6 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
+
+  const startSession = useCallback((nextUser: User, tokens: TokenPair) => {
+    storeTokens(tokens)
+    persistUser(nextUser)
+  }, [persistUser])
 
   const logout = useCallback(async () => {
     const logoutRequest = (): RequestInit | null => {
@@ -150,10 +158,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthReady,
       login,
       register,
+      startSession,
       updateUser,
       logout,
     }),
-    [isAuthReady, login, logout, register, updateUser, user],
+    [isAuthReady, login, logout, register, startSession, updateUser, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,8 @@
 import hashlib
+import sys
 from datetime import timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
 
@@ -17,6 +19,7 @@ from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization, StaffInvitation
 from apps.organizations.services import StaffInvitationService
+from apps.organizations.tasks import StaffInvitationEmailTask
 from apps.scheduling.models import Appointment
 
 
@@ -274,12 +277,16 @@ class ManagementAPITests(APITestCase):
     def test_cannot_assign_second_branch_to_same_branch_admin(self):
         first_branch = self.make_branch(self.org_a, "SECOND1")
         second_branch = self.make_branch(self.org_a, "SECOND2")
+        Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            branch=first_branch,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
         self.client.force_authenticate(self.org_admin)
 
-        first = self.assign_branch_admin(self.staff_user.email, first_branch)
         second = self.assign_branch_admin(self.staff_user.email, second_branch)
 
-        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
         self.assertEqual(second.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("quản lý chi nhánh khác", second.data["message"])
         self.assertFalse(
@@ -298,32 +305,25 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("Chi nhánh này đã có quản lý", response.data["message"])
 
-    @patch("apps.management_api.views.Membership.objects.create")
-    def test_create_branch_admin_converts_database_race_to_conflict(self, create):
-        free_branch = self.make_branch(self.org_a, "RACE-CREATE")
-        create.side_effect = IntegrityError("duplicate branch manager")
-        self.client.force_authenticate(self.org_admin)
-
-        response = self.assign_branch_admin(self.staff_user.email, free_branch)
-
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        self.assertIn("dữ liệu vừa thay đổi", response.data["message"])
-
     def test_patch_branch_and_reactivation_enforce_one_branch_rule(self):
         first_branch = self.make_branch(self.org_a, "PATCH1")
         second_branch = self.make_branch(self.org_a, "PATCH2")
         reactivate_branch = self.make_branch(self.org_a, "PATCH3")
+        membership = Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            branch=first_branch,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
         self.client.force_authenticate(self.org_admin)
-        created = self.assign_branch_admin(self.staff_user.email, first_branch)
-        membership_id = created.data["data"]["id_membership"]
 
         conflict_branch = self.client.patch(
-            reverse("management:membership-detail", kwargs={"membership_id": membership_id}),
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
             {"branch_id": self.branch_a.pk},
             format="json",
         )
         transfer = self.client.patch(
-            reverse("management:membership-detail", kwargs={"membership_id": membership_id}),
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
             {"branch_id": second_branch.pk},
             format="json",
         )
@@ -538,7 +538,7 @@ class ManagementAPITests(APITestCase):
             Membership.objects.filter(user=invited_user, is_active=True).exists()
         )
 
-    def test_organization_invitation_list_shows_only_pending(self):
+    def test_organization_invitation_list_includes_expired(self):
         free_branch = self.make_branch(self.org_a, "INVLIST")
         pending, _ = StaffInvitationService.create(
             organization=self.org_a,
@@ -570,12 +570,14 @@ class ManagementAPITests(APITestCase):
         rows = response.data["data"]
         self.assertEqual(
             [row["id_staff_invitation"] for row in rows],
-            [pending.pk],
+            [pending.pk, expired.pk],
         )
         self.assertEqual(rows[0]["email"], "pending-manager@example.com")
         self.assertEqual(rows[0]["role"], Membership.Role.BRANCH_ADMIN)
         self.assertEqual(rows[0]["status"], "PENDING")
         self.assertEqual(rows[0]["branch_name"], free_branch.name)
+        self.assertEqual(rows[1]["email"], "expired-admin@example.com")
+        self.assertEqual(rows[1]["status"], "EXPIRED")
 
     def test_revoke_pending_invitation_blocks_acceptance(self):
         free_branch = self.make_branch(self.org_a, "INVREVOKE")
@@ -725,6 +727,51 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("quản lý chi nhánh", response.data["message"])
 
+    def test_organization_admin_and_dentist_roles_cannot_be_combined(self):
+        Dentist.objects.create(user=self.staff_user, organization=self.org_a)
+        Membership.objects.create(
+            user=self.staff_user,
+            organization=self.org_a,
+            branch=self.branch_a,
+            role=Membership.Role.DENTIST,
+        )
+        second_org_admin = self.make_user("org-admin-dentist-conflict@example.com")
+        Membership.objects.create(
+            user=second_org_admin,
+            organization=self.org_a,
+            role=Membership.Role.ORGANIZATION_ADMIN,
+        )
+        second_admin_dentist = Dentist.objects.create(
+            user=second_org_admin,
+            organization=self.org_a,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        dentist_to_admin = self.client.post(
+            reverse(
+                "management:organization-memberships",
+                kwargs={"organization_id": self.org_a.pk},
+            ),
+            {
+                "email": self.staff_user.email,
+                "role": Membership.Role.ORGANIZATION_ADMIN,
+            },
+            format="json",
+        )
+        admin_to_dentist = self.client.put(
+            reverse(
+                "management:dentist-branches",
+                kwargs={"dentist_id": second_admin_dentist.pk},
+            ),
+            {"ids": [self.branch_a.pk]},
+            format="json",
+        )
+
+        self.assertEqual(dentist_to_admin.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("nha sĩ", dentist_to_admin.data["message"])
+        self.assertEqual(admin_to_dentist.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("quản trị tổ chức", admin_to_dentist.data["message"])
+
     def test_organization_admin_and_dentist_memberships_are_not_limited(self):
         branch_two = self.make_branch(self.org_a, "ROLE3")
         second_org_admin = self.make_user("second-org-admin@example.com")
@@ -765,7 +812,7 @@ class ManagementAPITests(APITestCase):
             2,
         )
 
-    def test_org_admin_assigns_existing_verified_staff(self):
+    def test_existing_verified_user_must_accept_invitation_before_role_is_granted(self):
         free_branch = self.make_branch(self.org_a, "FREE1")
         PatientProfile.objects.create(user=self.staff_user)
         patient_membership = Membership.objects.create(
@@ -785,30 +832,21 @@ class ManagementAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Membership.objects.filter(user=self.staff_user, branch=free_branch).exists())
-        self.assertFalse(
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data["data"]["status"], "PENDING")
+        self.assertFalse(Membership.objects.filter(user=self.staff_user, branch=free_branch).exists())
+        self.assertTrue(
             Membership.objects.filter(
                 user=self.staff_user,
                 role=Membership.Role.PATIENT,
                 is_active=True,
             ).exists()
         )
-        audit_event = AuditEvent.objects.get(
-            action="PATIENT_MEMBERSHIP_AUTO_DEACTIVATED",
-            resource_type="Membership",
-            resource_id=str(patient_membership.pk),
-        )
-        self.assertEqual(audit_event.actor_user, self.org_admin)
-        self.assertEqual(audit_event.organization, self.org_a)
-        self.assertEqual(audit_event.before_data, {"is_active": True})
-        self.assertEqual(
-            audit_event.after_data,
-            {
-                "is_active": False,
-                "reason": "STAFF_ROLE_ASSIGNED",
-                "source": "ORGANIZATION_MEMBERSHIP_CREATED",
-            },
+        self.assertFalse(
+            AuditEvent.objects.filter(
+                action="PATIENT_MEMBERSHIP_AUTO_DEACTIVATED",
+                resource_id=str(patient_membership.pk),
+            ).exists()
         )
 
     def test_cannot_assign_staff_role_while_patient_has_active_appointment(self):
@@ -829,8 +867,13 @@ class ManagementAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        self.assertIn("lịch hẹn bệnh nhân", response.data["message"])
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(
+            StaffInvitation.objects.filter(
+                email__iexact=self.staff_user.email,
+                branch=free_branch,
+            ).exists()
+        )
         self.assertTrue(
             Membership.objects.filter(
                 user=self.staff_user,
@@ -947,7 +990,8 @@ class ManagementAPITests(APITestCase):
                 format="json",
             )
         invitation = StaffInvitation.objects.get(email=invite_email)
-        raw_token = parse_qs(urlparse(mail.outbox[-1].body.splitlines()[-1]).query)["token"][0]
+        invitation_email = mail.outbox[-1]
+        raw_token = parse_qs(urlparse(invitation_email.body.splitlines()[-1]).query)["token"][0]
         invited_user = self.make_user(invite_email)
         self.client.force_authenticate(invited_user)
         first = self.client.post(
@@ -958,11 +1002,155 @@ class ManagementAPITests(APITestCase):
         )
 
         self.assertEqual(invite_response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertIn(self.org_admin.full_name, invitation_email.body)
+        self.assertIn("Quản lý chi nhánh", invitation_email.body)
+        self.assertIn(f"tại {free_branch.name} của {self.org_a.name}", invitation_email.body)
+        self.assertIn("Liên kết có hiệu lực đến", invitation_email.body)
+        self.assertNotIn("Hãy đăng ký/xác minh", invitation_email.body)
+        invitation.refresh_from_db()
+        self.assertEqual(
+            invitation.email_delivery_status,
+            StaffInvitation.EmailDeliveryStatus.SENT,
+        )
+        self.assertIsNotNone(invitation.email_sent_at)
         self.assertEqual(invitation.token_digest, hashlib.sha256(raw_token.encode()).hexdigest())
         self.assertNotEqual(invitation.token_digest, raw_token)
         self.assertEqual(first.status_code, status.HTTP_200_OK)
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(Membership.objects.filter(user=invited_user, branch=free_branch, is_active=True).exists())
+
+    def test_invitation_email_records_final_delivery_failure(self):
+        invitation, raw_token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=None,
+            email="mail-failure@example.com",
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            invited_by=self.org_admin,
+        )
+
+        error = RuntimeError("SMTP down")
+        try:
+            raise error
+        except RuntimeError:
+            exception_info = SimpleNamespace(exc_info=sys.exc_info())
+        with self.assertLogs("apps.organizations.tasks", level="ERROR") as logs:
+            StaffInvitationEmailTask().on_failure(
+                error,
+                "task-id",
+                [invitation.pk, raw_token],
+                {},
+                exception_info,
+            )
+
+        invitation.refresh_from_db()
+        self.assertEqual(
+            invitation.email_delivery_status,
+            StaffInvitation.EmailDeliveryStatus.FAILED,
+        )
+        self.assertIsNotNone(invitation.email_failed_at)
+        self.assertTrue(
+            any("thất bại sau khi retry" in message for message in logs.output)
+        )
+
+    def test_new_user_accepts_invitation_and_creates_verified_staff_account(self):
+        free_branch = self.make_branch(self.org_a, "FREE-NEW")
+        invitation, raw_token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=free_branch,
+            email="new.staff@example.com",
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.org_admin,
+        )
+        self.client.force_authenticate(user=None)
+
+        preview = self.client.get(
+            reverse("management:invitation-preview"),
+            {"token": raw_token},
+        )
+        accepted = self.client.post(
+            reverse("management:invitation-accept-new"),
+            {
+                "token": raw_token,
+                "full_name": "Nguyễn Quản Lý",
+                "phone": "0901234567",
+                "password": "NewStaff!2026",
+            },
+            format="json",
+        )
+
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        self.assertFalse(preview.data["data"]["has_account"])
+        self.assertEqual(preview.data["data"]["organization_name"], self.org_a.name)
+        self.assertEqual(preview.data["data"]["branch_name"], free_branch.name)
+        self.assertEqual(preview.data["data"]["role"], Membership.Role.BRANCH_ADMIN)
+        self.assertEqual(preview.data["data"]["invited_by_name"], self.org_admin.full_name)
+        self.assertEqual(
+            preview.data["data"]["expires_at"],
+            invitation.expires_at,
+        )
+        self.assertEqual(accepted.status_code, status.HTTP_201_CREATED)
+        self.assertIn("access", accepted.data["data"]["tokens"])
+        user = User.objects.get(email="new.staff@example.com")
+        self.assertEqual(user.full_name, "Nguyễn Quản Lý")
+        self.assertEqual(user.phone, "0901234567")
+        self.assertIsNotNone(user.email_verified_at)
+        self.assertTrue(user.check_password("NewStaff!2026"))
+        self.assertFalse(PatientProfile.objects.filter(user=user).exists())
+        self.assertTrue(
+            Membership.objects.filter(
+                user=user,
+                branch=free_branch,
+                role=Membership.Role.BRANCH_ADMIN,
+                is_active=True,
+            ).exists()
+        )
+        invitation.refresh_from_db()
+        self.assertIsNotNone(invitation.accepted_at)
+
+        reused = self.client.post(
+            reverse("management:invitation-accept-new"),
+            {
+                "token": raw_token,
+                "full_name": "Nguyễn Quản Lý",
+                "phone": "0901234567",
+                "password": "NewStaff!2026",
+            },
+            format="json",
+        )
+        self.assertEqual(reused.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_existing_account_must_sign_in_instead_of_accepting_as_new(self):
+        free_branch = self.make_branch(self.org_a, "FREE-EXISTING")
+        existing = self.make_user("existing.invitee@example.com")
+        _invitation, raw_token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=free_branch,
+            email=existing.email,
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.org_admin,
+        )
+        self.client.force_authenticate(user=None)
+
+        preview = self.client.get(
+            reverse("management:invitation-preview"),
+            {"token": raw_token},
+        )
+        accepted = self.client.post(
+            reverse("management:invitation-accept-new"),
+            {
+                "token": raw_token,
+                "full_name": "Tên khác",
+                "phone": "0901234567",
+                "password": "NewStaff!2026",
+            },
+            format="json",
+        )
+
+        self.assertTrue(preview.data["data"]["has_account"])
+        self.assertEqual(accepted.status_code, status.HTTP_409_CONFLICT)
+        existing.refresh_from_db()
+        self.assertNotEqual(existing.full_name, "Tên khác")
+        self.assertFalse(Membership.objects.filter(user=existing, branch=free_branch).exists())
 
     def test_last_organization_admin_cannot_be_deactivated(self):
         self.client.force_authenticate(self.org_admin)

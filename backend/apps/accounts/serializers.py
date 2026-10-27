@@ -9,6 +9,13 @@ from .models import User
 from .services import RegistrationService
 
 
+def validate_internal_return_to(value):
+    value = value.strip()
+    if value and (not value.startswith("/") or value.startswith("//")):
+        raise serializers.ValidationError("Đường dẫn quay lại không hợp lệ.")
+    return value
+
+
 class InvalidCredentials(APIException):
     status_code = 401
     default_detail = "Thông tin đăng nhập không hợp lệ."
@@ -43,6 +50,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id_user",
             "email",
             "full_name",
+            "phone",
             "email_verified_at",
             "email_verified",
             "memberships",
@@ -88,6 +96,12 @@ class RegistrationSerializer(serializers.Serializer):
         error_messages={"invalid": "Số điện thoại không hợp lệ."},
     )
     consent_to_data_processing = serializers.BooleanField(write_only=True)
+    return_to = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2048,
+        validators=[validate_internal_return_to],
+    )
 
     def validate_email(self, value):
         return value.strip().lower()
@@ -165,6 +179,12 @@ class EmailVerificationConfirmSerializer(serializers.Serializer):
 
 class EmailVerificationResendSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
+    return_to = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2048,
+        validators=[validate_internal_return_to],
+    )
 
     def validate_email(self, value):
         return value.strip().lower()

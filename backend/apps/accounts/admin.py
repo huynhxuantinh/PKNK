@@ -14,11 +14,11 @@ from .models import (
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
-    list_display = ("email", "full_name", "is_staff", "is_active")
-    search_fields = ("email", "full_name")
+    list_display = ("email", "full_name", "phone", "is_staff", "is_active")
+    search_fields = ("email", "full_name", "phone")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Thông tin", {"fields": ("full_name", "email_verified_at")}),
+        ("Thông tin", {"fields": ("full_name", "phone", "email_verified_at")}),
         (
             "Phân quyền",
             {
@@ -42,6 +42,7 @@ class UserAdmin(BaseUserAdmin):
                 "fields": (
                     "email",
                     "full_name",
+                    "phone",
                     "password1",
                     "password2",
                     "is_staff",
