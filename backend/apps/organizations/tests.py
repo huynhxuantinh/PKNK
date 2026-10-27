@@ -1,10 +1,14 @@
+from datetime import timedelta
+
 from django.db import DatabaseError, IntegrityError, transaction
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.locations.models import Branch, Province, Ward
 
-from .models import Membership, Organization
+from .models import Membership, Organization, StaffInvitation
+from .tasks import archive_expired_staff_invitations
 
 
 class OrganizationModelTests(TestCase):
@@ -118,3 +122,53 @@ class OrganizationModelTests(TestCase):
                 is_active=True,
             ).exists()
         )
+
+
+class StaffInvitationCleanupTaskTests(TestCase):
+    @override_settings(STAFF_INVITATION_RETENTION_DAYS=30)
+    def test_archives_only_unresolved_invitations_expired_over_retention_period(self):
+        organization = Organization.objects.create(
+            name="Cleanup Org", slug="cleanup-org"
+        )
+        inviter = User.objects.create_user(
+            email="cleanup-owner@example.com",
+            password="test",
+            full_name="Cleanup Owner",
+        )
+        now = timezone.now()
+
+        stale = StaffInvitation.objects.create(
+            organization=organization,
+            email="stale@example.com",
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            token_digest="a" * 64,
+            invited_by=inviter,
+            expires_at=now - timedelta(days=31),
+        )
+        recent = StaffInvitation.objects.create(
+            organization=organization,
+            email="recent@example.com",
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            token_digest="b" * 64,
+            invited_by=inviter,
+            expires_at=now - timedelta(days=29),
+        )
+        accepted = StaffInvitation.objects.create(
+            organization=organization,
+            email="accepted@example.com",
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            token_digest="c" * 64,
+            invited_by=inviter,
+            expires_at=now - timedelta(days=31),
+            accepted_at=now - timedelta(days=30),
+        )
+
+        archived_count = archive_expired_staff_invitations()
+
+        self.assertEqual(archived_count, 1)
+        stale.refresh_from_db()
+        recent.refresh_from_db()
+        accepted.refresh_from_db()
+        self.assertIsNotNone(stale.revoked_at)
+        self.assertIsNone(recent.revoked_at)
+        self.assertIsNone(accepted.revoked_at)

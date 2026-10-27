@@ -183,7 +183,7 @@ class DentistPatientSummaryAPIView(DentistAPIView):
                     "full_name": patient.user.full_name,
                     "date_of_birth": patient.date_of_birth,
                     "gender": patient.gender,
-                    "phone": patient.phone,
+                    "phone": patient.user.phone,
                     "appointment_context": {
                         "public_code": appointment.public_code,
                         "branch_id": appointment.branch_id,

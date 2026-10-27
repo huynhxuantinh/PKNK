@@ -29,7 +29,7 @@ class DentistAppointmentSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     patient_phone = serializers.CharField(
-        source="patient_profile.phone",
+        source="patient_profile.user.phone",
         read_only=True,
     )
     contact_name_snapshot = serializers.CharField(read_only=True, allow_null=True)

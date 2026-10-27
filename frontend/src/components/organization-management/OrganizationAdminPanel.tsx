@@ -445,14 +445,14 @@ export function OrganizationAdminPanel({
                           <button type="button" disabled={busy} onClick={() => void resendInvitation(invitation)}>
                             Gửi lại
                           </button>
-                          {invitation.status === 'PENDING' && (
+                          {(invitation.status === 'PENDING' || invitation.status === 'EXPIRED') && (
                             <button
                               type="button"
                               className="is-danger"
                               disabled={busy}
                               onClick={() => setRevokingInvitation(invitation)}
                             >
-                              Thu hồi
+                              {invitation.status === 'EXPIRED' ? 'Ẩn' : 'Thu hồi'}
                             </button>
                           )}
                         </div>
@@ -496,9 +496,13 @@ export function OrganizationAdminPanel({
 
       {revokingInvitation && (
         <ConfirmationModal
-          title="Thu hồi lời mời"
-          description={`Thu hồi lời mời tới ${revokingInvitation.email}? Link trong email sẽ không còn dùng được.`}
-          confirmLabel="Thu hồi lời mời"
+          title={revokingInvitation.status === 'EXPIRED' ? 'Ẩn lời mời hết hạn' : 'Thu hồi lời mời'}
+          description={
+            revokingInvitation.status === 'EXPIRED'
+              ? `Ẩn lời mời hết hạn tới ${revokingInvitation.email} khỏi danh sách?`
+              : `Thu hồi lời mời tới ${revokingInvitation.email}? Link trong email sẽ không còn dùng được.`
+          }
+          confirmLabel={revokingInvitation.status === 'EXPIRED' ? 'Ẩn lời mời' : 'Thu hồi lời mời'}
           danger
           busy={busy}
           onCancel={() => setRevokingInvitation(null)}

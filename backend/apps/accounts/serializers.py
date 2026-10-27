@@ -1,3 +1,5 @@
+import unicodedata
+
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
@@ -10,6 +12,8 @@ from .services import RegistrationService
 
 
 def validate_internal_return_to(value):
+    if "\\" in value or any(unicodedata.category(char) == "Cc" for char in value):
+        raise serializers.ValidationError("Đường dẫn quay lại không hợp lệ.")
     value = value.strip()
     if value and (not value.startswith("/") or value.startswith("//")):
         raise serializers.ValidationError("Đường dẫn quay lại không hợp lệ.")

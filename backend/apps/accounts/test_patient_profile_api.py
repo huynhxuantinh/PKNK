@@ -46,7 +46,9 @@ class PatientProfileAPITests(APITestCase):
             password="StrongPassword!2026",
             full_name="Người khác",
         )
-        PatientProfile.objects.create(user=other_user, phone="0999999999")
+        other_user.phone = "0999999999"
+        other_user.save(update_fields=["phone"])
+        PatientProfile.objects.create(user=other_user)
         self.client.force_authenticate(self.user)
 
         response = self.client.get(self.url)
@@ -86,7 +88,7 @@ class PatientProfileAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.user.full_name, "Nguyễn Văn Bình")
         self.assertEqual(self.profile.date_of_birth, date(1998, 5, 20))
-        self.assertEqual(self.profile.phone, "0901234567")
+        self.assertEqual(self.user.phone, "0901234567")
         self.assertEqual(self.profile.province, self.province)
         self.assertEqual(self.profile.ward, self.ward)
         event = AuditEvent.objects.get(action="PATIENT_PROFILE_UPDATED")
@@ -111,7 +113,7 @@ class PatientProfileAPITests(APITestCase):
         self.profile.refresh_from_db()
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.user.email, "patient@example.com")
-        self.assertEqual(self.profile.phone, "0900000000")
+        self.assertEqual(self.user.phone, "0900000000")
 
     def test_patch_rejects_invalid_phone(self):
         self.client.force_authenticate(self.user)
@@ -124,8 +126,8 @@ class PatientProfileAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("phone", response.data)
-        self.profile.refresh_from_db()
-        self.assertIsNone(self.profile.phone)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.phone, "")
 
     def test_patch_rejects_ward_from_another_province(self):
         other_province = Province.objects.create(

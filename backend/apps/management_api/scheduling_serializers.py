@@ -74,7 +74,7 @@ class RescheduleSlotQuerySerializer(serializers.Serializer):
 
 class CalendarAppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient_profile.user.full_name", read_only=True)
-    patient_phone = serializers.CharField(source="patient_profile.phone", read_only=True)
+    patient_phone = serializers.CharField(source="patient_profile.user.phone", read_only=True)
     dentist_name = serializers.CharField(source="dentist.user.full_name", read_only=True)
     chair_name = serializers.CharField(source="chair.name", read_only=True)
     rescheduled_from_code = serializers.CharField(

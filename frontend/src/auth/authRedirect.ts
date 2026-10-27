@@ -2,7 +2,12 @@ import type { User } from '../types/api'
 import { hasActiveRole } from './roles'
 
 export function safeReturnPath(value: string | null | undefined, fallback = '/') {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return fallback
+  if (
+    !value
+    || !value.startsWith('/')
+    || value.startsWith('//')
+    || /[\\\u0000-\u001F\u007F-\u009F]/u.test(value)
+  ) return fallback
   return value
 }
 

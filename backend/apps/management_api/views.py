@@ -1,3 +1,4 @@
+import logging
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -64,6 +65,22 @@ from .services import audit_model_change, ensure_no_active_future_appointments
 
 ORG_ADMIN = [Membership.Role.ORGANIZATION_ADMIN]
 BRANCH_MANAGERS = [Membership.Role.ORGANIZATION_ADMIN, Membership.Role.BRANCH_ADMIN]
+
+logger = logging.getLogger(__name__)
+
+
+def queue_staff_invitation_email(invitation_id, raw_token):
+    try:
+        send_staff_invitation_email.delay(invitation_id, raw_token)
+    except Exception:
+        StaffInvitation.objects.filter(pk=invitation_id).update(
+            email_delivery_status=StaffInvitation.EmailDeliveryStatus.FAILED,
+            email_failed_at=timezone.now(),
+        )
+        logger.exception(
+            "Không thể đưa email mời nhân viên vào hàng đợi invitation_id=%s.",
+            invitation_id,
+        )
 
 
 def deactivate_patient_role_for_staff(user, *, actor_user, request, source):
@@ -534,7 +551,7 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
         except (BranchAdminConflict, StaffRoleConflict) as error:
             raise ManagementConflict(str(error)) from error
         transaction.on_commit(
-            lambda: send_staff_invitation_email.delay(invitation.pk, raw_token)
+            lambda: queue_staff_invitation_email(invitation.pk, raw_token)
         )
         AuditService.record_write(
             actor_user=request.user,
@@ -711,7 +728,6 @@ class StaffInvitationDetailAPIView(ManagementAPIView):
         if (
             invitation.accepted_at is not None
             or invitation.revoked_at is not None
-            or invitation.expires_at <= now
         ):
             raise ManagementConflict("Lời mời không còn ở trạng thái chờ.")
         invitation.revoked_at = now

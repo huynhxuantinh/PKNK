@@ -55,9 +55,13 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(PatientProfile)
 class PatientProfileAdmin(admin.ModelAdmin):
-    list_display = ("id_patient_profile", "user", "phone", "gender")
-    search_fields = ("user__email", "user__full_name", "phone")
+    list_display = ("id_patient_profile", "user", "user_phone", "gender")
+    search_fields = ("user__email", "user__full_name", "user__phone")
     list_select_related = ("user", "province", "ward")
+
+    @admin.display(description="Số điện thoại", ordering="user__phone")
+    def user_phone(self, obj):
+        return obj.user.phone
 
     def has_add_permission(self, request):
         return False

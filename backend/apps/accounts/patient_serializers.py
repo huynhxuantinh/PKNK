@@ -12,7 +12,9 @@ class PatientProfileSerializer(serializers.ModelSerializer):
     email_verified = serializers.SerializerMethodField()
     full_name = serializers.CharField(source="user.full_name", max_length=200)
     phone = serializers.RegexField(
+        source="user.phone",
         regex=r"^\+?[0-9]{9,15}$",
+        allow_blank=True,
         allow_null=True,
         required=False,
         error_messages={
@@ -57,6 +59,11 @@ class PatientProfileSerializer(serializers.ModelSerializer):
     def get_email_verified(self, obj) -> bool:
         return obj.user.email_verified_at is not None
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["phone"] = data["phone"] or None
+        return data
+
     def validate_date_of_birth(self, value):
         if value and value > timezone.localdate():
             raise serializers.ValidationError("Ngày sinh không được ở tương lai.")
@@ -74,9 +81,13 @@ class PatientProfileSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
-        if "full_name" in user_data:
-            instance.user.full_name = user_data["full_name"]
-            instance.user.save(update_fields=["full_name"])
+        user_fields = []
+        for field in ("full_name", "phone"):
+            if field in user_data:
+                setattr(instance.user, field, user_data[field] or "")
+                user_fields.append(field)
+        if user_fields:
+            instance.user.save(update_fields=user_fields)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)

@@ -626,6 +626,37 @@ class ManagementAPITests(APITestCase):
             Membership.objects.filter(user=invited_user, is_active=True).exists()
         )
 
+    def test_revoke_expired_invitation_hides_it_from_list(self):
+        invitation, _ = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=None,
+            email="expired-hidden@example.com",
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            invited_by=self.org_admin,
+        )
+        StaffInvitation.objects.filter(pk=invitation.pk).update(
+            expires_at=timezone.now() - timedelta(minutes=1)
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.delete(
+            reverse(
+                "management:staff-invitation-detail",
+                kwargs={"invitation_id": invitation.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        invitation.refresh_from_db()
+        self.assertIsNotNone(invitation.revoked_at)
+        listing = self.client.get(
+            reverse(
+                "management:organization-invitations",
+                kwargs={"organization_id": self.org_a.pk},
+            )
+        )
+        self.assertEqual(listing.data["data"], [])
+
     def test_revoke_invitation_requires_same_organization(self):
         invitation, _ = StaffInvitationService.create(
             organization=self.org_b,
@@ -1050,6 +1081,40 @@ class ManagementAPITests(APITestCase):
         self.assertIsNotNone(invitation.email_failed_at)
         self.assertTrue(
             any("thất bại sau khi retry" in message for message in logs.output)
+        )
+
+    @patch(
+        "apps.management_api.views.send_staff_invitation_email.delay",
+        side_effect=RuntimeError("Redis unavailable"),
+    )
+    def test_invitation_marks_email_failed_when_broker_enqueue_fails(self, _delay):
+        free_branch = self.make_branch(self.org_a, "BROKER-FAIL")
+        self.client.force_authenticate(self.org_admin)
+
+        with self.assertLogs("apps.management_api.views", level="ERROR") as logs:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse(
+                        "management:organization-memberships",
+                        kwargs={"organization_id": self.org_a.pk},
+                    ),
+                    {
+                        "email": "broker-failure@example.com",
+                        "role": Membership.Role.BRANCH_ADMIN,
+                        "branch_id": free_branch.pk,
+                    },
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        invitation = StaffInvitation.objects.get(email="broker-failure@example.com")
+        self.assertEqual(
+            invitation.email_delivery_status,
+            StaffInvitation.EmailDeliveryStatus.FAILED,
+        )
+        self.assertIsNotNone(invitation.email_failed_at)
+        self.assertTrue(
+            any("Không thể đưa email mời nhân viên" in message for message in logs.output)
         )
 
     def test_new_user_accepts_invitation_and_creates_verified_staff_account(self):

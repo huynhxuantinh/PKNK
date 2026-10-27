@@ -76,7 +76,7 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         user = User.objects.get(email="patient@example.com")
         self.assertFalse(user.has_usable_password())
-        self.assertEqual(PatientProfile.objects.get(user=user).phone, "0901234567")
+        self.assertEqual(user.phone, "0901234567")
         self.assertTrue(
             ConsentRecord.objects.filter(user=user, is_granted=True).exists()
         )
@@ -108,6 +108,18 @@ class AuthenticationAPITests(APITestCase):
 
     def test_register_rejects_external_return_to(self):
         response = self.register(return_to="https://evil.example/steal")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.exists())
+
+    def test_register_rejects_backslash_in_return_to(self):
+        response = self.register(return_to="/\\evil.example")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.exists())
+
+    def test_register_rejects_control_character_in_return_to(self):
+        response = self.register(return_to="/safe\u0000evil")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(User.objects.exists())
@@ -213,7 +225,7 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(user.full_name, "Chủ email thực tế")
         self.assertFalse(user.has_usable_password())
-        self.assertEqual(user.patient_profile.phone, "0987654321")
+        self.assertEqual(user.phone, "0987654321")
         self.assertEqual(ConsentRecord.objects.filter(user=user).count(), 2)
 
     def test_verification_rejects_weak_password(self):

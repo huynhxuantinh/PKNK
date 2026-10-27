@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from celery import Task, shared_task
@@ -9,6 +10,18 @@ from django.utils import timezone
 from .models import StaffInvitation
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task
+def archive_expired_staff_invitations():
+    """Hide stale invitations while retaining them for audit purposes."""
+    now = timezone.now()
+    cutoff = now - timedelta(days=settings.STAFF_INVITATION_RETENTION_DAYS)
+    return StaffInvitation.objects.filter(
+        accepted_at__isnull=True,
+        revoked_at__isnull=True,
+        expires_at__lte=cutoff,
+    ).update(revoked_at=now)
 
 
 class StaffInvitationEmailTask(Task):

@@ -361,8 +361,8 @@ class SchedulingApiTests(APITestCase):
         self.assertEqual(appointment.contact_name_snapshot, "Người liên hệ khác")
         self.assertEqual(appointment.contact_phone_snapshot, "0912345678")
         self.assertEqual(appointment.patient_note, "Đau răng số 7 khi nhai.")
-        self.patient.refresh_from_db()
-        self.assertIsNone(self.patient.phone)
+        self.patient_user.refresh_from_db()
+        self.assertEqual(self.patient_user.phone, "")
 
     def test_patient_profile_is_derived_from_authenticated_user(self):
         self.client.force_authenticate(self.patient_user)

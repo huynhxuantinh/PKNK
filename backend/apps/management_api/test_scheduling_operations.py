@@ -56,7 +56,9 @@ class BranchSchedulingManagementTests(APITestCase):
         )
 
         patient_user = cls.make_user("patient-schedule-manage@example.com", "Patient")
-        cls.patient = PatientProfile.objects.create(user=patient_user, phone="0901234567")
+        patient_user.phone = "0901234567"
+        patient_user.save(update_fields=["phone"])
+        cls.patient = PatientProfile.objects.create(user=patient_user)
         Membership.objects.create(
             user=patient_user, organization=cls.organization, role=Membership.Role.PATIENT
         )

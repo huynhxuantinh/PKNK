@@ -501,12 +501,13 @@ class Command(BaseCommand):
             full_name="Nguyễn Minh Anh",
             password=password,
         )
+        patient.phone = "0901234567"
+        patient.save(update_fields=["phone"])
         PatientProfile.objects.update_or_create(
             user=patient,
             defaults={
                 "date_of_birth": date(1995, 6, 15),
                 "gender": PatientProfile.Gender.FEMALE,
-                "phone": "0901234567",
                 "province": province,
                 "ward": Ward.objects.get(code="26740"),
                 "address_line": "20 Lê Thánh Tôn",

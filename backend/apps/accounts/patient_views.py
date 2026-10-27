@@ -33,7 +33,7 @@ def profile_audit_snapshot(profile, changed_fields):
         "full_name": profile.user.full_name,
         "date_of_birth": profile.date_of_birth.isoformat() if profile.date_of_birth else None,
         "gender": profile.gender,
-        "phone": profile.phone,
+        "phone": profile.user.phone or None,
         "province_code": profile.province_id,
         "ward_code": profile.ward_id,
         "address_line": profile.address_line,
@@ -86,7 +86,10 @@ class PatientProfileMeAPIView(APIView):
             field
             for field in PROFILE_AUDIT_FIELDS
             if serializer_field_names.get(field, field) in serializer.validated_data
-            or (field == "full_name" and "full_name" in serializer.validated_data.get("user", {}))
+            or (
+                field in {"full_name", "phone"}
+                and field in serializer.validated_data.get("user", {})
+            )
         ]
         before_data = profile_audit_snapshot(profile, changed_fields)
         serializer.save()

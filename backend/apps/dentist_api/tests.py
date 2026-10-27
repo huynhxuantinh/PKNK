@@ -60,9 +60,10 @@ class DentistAppointmentAPITests(APITestCase):
             role=Membership.Role.DENTIST,
         )
         patient_user = cls.make_user("dentist-patient@example.com", "Patient A")
+        patient_user.phone = "0901234567"
+        patient_user.save(update_fields=["phone"])
         cls.patient = PatientProfile.objects.create(
             user=patient_user,
-            phone="0901234567",
             date_of_birth="2000-01-02",
             gender=PatientProfile.Gender.FEMALE,
         )

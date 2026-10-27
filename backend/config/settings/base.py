@@ -321,6 +321,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.billing.tasks.reconcile_pending_payos_transactions",
         "schedule": 300.0,
     },
+    "archive-expired-staff-invitations-daily": {
+        "task": "apps.organizations.tasks.archive_expired_staff_invitations",
+        "schedule": 86400.0,
+    },
 }
 
 EMAIL_BACKEND = os.getenv(
@@ -348,6 +352,9 @@ PASSWORD_RESET_TOKEN_TTL_MINUTES = int(
     os.getenv("PASSWORD_RESET_TOKEN_TTL_MINUTES", "60")
 )
 STAFF_INVITATION_TTL_HOURS = int(os.getenv("STAFF_INVITATION_TTL_HOURS", "72"))
+STAFF_INVITATION_RETENTION_DAYS = int(
+    os.getenv("STAFF_INVITATION_RETENTION_DAYS", "30")
+)
 
 MAX_ACTIVE_HOLDS_PER_PATIENT = int(
     os.getenv("MAX_ACTIVE_HOLDS_PER_PATIENT", "3")

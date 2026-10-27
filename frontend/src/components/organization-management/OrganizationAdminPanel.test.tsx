@@ -296,7 +296,7 @@ describe('OrganizationAdminPanel', () => {
     expect(markup).toContain('Đã hết hạn')
     expect(markup).toContain('Gửi lỗi')
     expect(markup).toContain('Gửi lại')
-    expect(markup).not.toContain('Thu hồi')
+    expect(markup).toContain('Ẩn')
 
     const resendButton = renderer!.root.findAllByType('button').find(
       (button) => JSON.stringify(button.children).includes('Gửi lại'),

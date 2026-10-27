@@ -174,9 +174,10 @@ class RegistrationService:
         user = User.objects.create_user(
             email=email,
             full_name=full_name,
+            phone=phone,
             password=None,
         )
-        PatientProfile.objects.create(user=user, phone=phone)
+        PatientProfile.objects.create(user=user)
         ConsentRecord.objects.create(
             user=user,
             policy_version=settings.PRIVACY_POLICY_VERSION,
@@ -218,11 +219,10 @@ class RegistrationService:
             return None
 
         user.full_name = full_name
+        user.phone = phone
         user.set_unusable_password()
-        user.save(update_fields=["full_name", "password"])
-        profile = PatientProfile.objects.select_for_update().get(user=user)
-        profile.phone = phone
-        profile.save(update_fields=["phone", "updated_at"])
+        user.save(update_fields=["full_name", "phone", "password"])
+        PatientProfile.objects.select_for_update().get(user=user)
         # Sessions created by a previous registrant must not survive a
         # credential replacement.
         for outstanding_token in OutstandingToken.objects.filter(user=user):

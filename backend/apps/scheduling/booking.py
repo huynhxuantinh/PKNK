@@ -144,7 +144,7 @@ class BookingService:
                             service_name_snapshot=branch_service.service.name,
                             service_price_snapshot=branch_service.price,
                             contact_name_snapshot=(contact_name or patient_user.full_name).strip(),
-                            contact_phone_snapshot=(contact_phone or patient_profile.phone or "").strip() or None,
+                            contact_phone_snapshot=(contact_phone or patient_user.phone or "").strip() or None,
                             contact_email_snapshot=(contact_email or patient_user.email).strip().lower(),
                             patient_note=patient_note.strip(),
                             duration_minutes=duration_minutes,

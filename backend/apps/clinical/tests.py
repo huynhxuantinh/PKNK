@@ -49,8 +49,10 @@ class ClinicalAPITests(APITestCase):
             role=Membership.Role.DENTIST,
         )
         patient_user = cls.user("clinical-patient@example.com", "Clinical Patient")
+        patient_user.phone = "0900000000"
+        patient_user.save(update_fields=["phone"])
         cls.patient_user = patient_user
-        cls.patient = PatientProfile.objects.create(user=patient_user, phone="0900000000")
+        cls.patient = PatientProfile.objects.create(user=patient_user)
         Membership.objects.create(
             user=patient_user, organization=cls.organization, role=Membership.Role.PATIENT
         )

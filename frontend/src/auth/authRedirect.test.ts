@@ -103,4 +103,9 @@ describe('safeReturnPath', () => {
   it('trả về trang chủ khi không có đường dẫn', () => {
     expect(safeReturnPath(null)).toBe('/')
   })
+
+  it('rejects backslashes and control characters', () => {
+    expect(safeReturnPath('/\\evil.example')).toBe('/')
+    expect(safeReturnPath('/safe\u0000evil')).toBe('/')
+  })
 })
