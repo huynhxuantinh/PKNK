@@ -45,7 +45,7 @@ export function DentistBranchSelectionPage() {
       <main className="dentist-branch-selection-main">
         <p className="eyebrow">Bắt đầu ca làm việc</p>
         <h1>Chọn chi nhánh làm việc</h1>
-        <p className="dentist-branch-selection-copy">Bạn đang được phân công tại {branchIds.length} chi nhánh. Chọn một chi nhánh để xem lịch khám và bắt đầu làm việc.</p>
+        <p className="dentist-branch-selection-copy">Bạn đang được phân công tại {branchIds.length} chi nhánh. Chọn nơi để bắt đầu ca làm việc.</p>
         {error && <div className="dentist-error" role="alert">{error}</div>}
         {!branches ? <div className="dentist-branch-select-loading">Đang tải chi nhánh được phân công...</div> : branches.length === 0 ? (
           <div className="dentist-branch-select-loading">Chưa có chi nhánh làm việc được phân công.</div>

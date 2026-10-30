@@ -46,7 +46,7 @@ export function PricingPage() {
         </Link>
         <nav className="main-nav" aria-label="Điều hướng bảng giá">
           <Link className="active" to="/bang-gia">Bảng giá</Link>
-          <Link to="/#ly-do">Về DentaVie</Link>
+          <Link to="/ve-dentavie">Về DentaVie</Link>
           <Link to="/#chi-nhanh">Chi nhánh</Link>
           <Link to="/#lien-he">Liên hệ</Link>
         </nav>
@@ -67,7 +67,7 @@ export function PricingPage() {
       <div className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`} role="dialog" aria-label="Menu di động">
         <nav className="mobile-nav-links">
           <Link to="/bang-gia">Bảng giá</Link>
-          <Link to="/#ly-do">Về DentaVie</Link>
+          <Link to="/ve-dentavie">Về DentaVie</Link>
           <Link to="/#chi-nhanh">Hệ thống chi nhánh</Link>
           <Link to="/#lien-he">Thông tin liên hệ</Link>
         </nav>
@@ -82,7 +82,7 @@ export function PricingPage() {
             <div>
               <p className="eyebrow">Chi phí rõ ràng</p>
               <h1>Bảng giá dịch vụ nha khoa</h1>
-              <p>Tham khảo chi phí theo từng nhóm điều trị trước khi chọn chi nhánh và đặt lịch với bác sĩ.</p>
+              <p>Tham khảo chi phí trước khi chọn chi nhánh và đặt lịch.</p>
             </div>
             <div className="pricing-hero-note">
               <strong>Giá minh bạch, tư vấn trước điều trị</strong>
@@ -142,7 +142,7 @@ export function PricingPage() {
 
           <aside className="pricing-disclaimer">
             <strong>Lưu ý về chi phí điều trị</strong>
-            <p>Bảng giá mang tính tham khảo. Mức phí có thể thay đổi theo tình trạng răng miệng, vật liệu, mức độ phức tạp và chỉ định chuyên môn. DentaVie sẽ thông báo kế hoạch cùng chi phí dự kiến trước khi điều trị.</p>
+            <p>Giá mang tính tham khảo. Bác sĩ sẽ xác nhận chi phí sau thăm khám và trước khi điều trị.</p>
             <Link to="/#chi-nhanh">Chọn chi nhánh để được tư vấn</Link>
           </aside>
         </section>

@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { BranchDetailPage } from './pages/BranchDetailPage'
 import { BookingPage } from './pages/BookingPage'
 import { PricingPage } from './pages/PricingPage'
+import { AboutDentaViePage } from './pages/AboutDentaViePage'
 import { PatientProfilePage } from './pages/PatientProfilePage'
 import { NotificationsPage, PatientAppointmentsPage, PatientHistoryPage, PatientInvoicesPage } from './pages/PatientRecordsPages'
 import { DentistDashboardPage } from './pages/DentistDashboardPage'
@@ -32,6 +33,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/" element={<HomePage />} />
     <Route path="/chi-nhanh/:branchId" element={<BranchDetailPage />} />
     <Route path="/bang-gia" element={<PricingPage />} />
+    <Route path="/ve-dentavie" element={<AboutDentaViePage />} />
     <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicyPage />} />
     <Route path="/dieu-khoan-su-dung" element={<TermsPage />} />
     <Route element={<RequireRole area="AUTHENTICATED" />}>

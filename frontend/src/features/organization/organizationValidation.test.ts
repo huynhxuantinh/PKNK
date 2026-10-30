@@ -4,8 +4,12 @@ import {
   buildBranchInput,
   buildDentistInput,
   buildServiceInput,
+  coordinateWarning,
   emptyBranchForm,
   emptyServiceForm,
+  isOutsideVietnam,
+  parseCoordinates,
+  roundCoordinate,
   validateBranchForm,
   validateCoordinates,
   validateDentistForm,
@@ -14,6 +18,25 @@ import {
 } from './organizationValidation'
 
 describe('branch form validation', () => {
+  it('parses, normalises and rounds coordinates', () => {
+    expect(roundCoordinate(10.12345678)).toBe(10.123457)
+    expect(parseCoordinates(' 10.77691234 ', ' 106.70091234 ')).toEqual({
+      lat: 10.776912,
+      lng: 106.700912,
+    })
+    expect(parseCoordinates('', '106.7')).toBeNull()
+    expect(parseCoordinates('abc', '106.7')).toBeNull()
+  })
+
+  it('warns softly when coordinates are outside Vietnam', () => {
+    expect(isOutsideVietnam(10.77, 106.7)).toBe(false)
+    expect(isOutsideVietnam(106.7, 10.77)).toBe(true)
+    expect(coordinateWarning('106.7', '10.77')).toBe(
+      'Vị trí nằm ngoài Việt Nam, kiểm tra xem có đảo vĩ độ và kinh độ không.',
+    )
+    expect(coordinateWarning('10.77', '106.7')).toBe('')
+  })
+
   it('requires latitude and longitude together', () => {
     expect(validateCoordinates('', '')).toBe(
       'Vui lòng nhập vĩ độ và kinh độ của chi nhánh.',

@@ -43,6 +43,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const returnTo = searchParams.get('returnTo')
@@ -75,7 +76,16 @@ export function LoginPage() {
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
         <label>
           Mật khẩu
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Nhập mật khẩu" required />
+          <span className="auth-password-field">
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Nhập mật khẩu" required />
+            <button type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPassword} onClick={() => setShowPassword((current) => !current)}>
+              {showPassword ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.9 10.9 0 0 1 12 4c5.1 0 8.9 4.2 10 8-0.5 1.6-1.5 3-2.8 4.2M6.2 6.2C4.4 7.7 3.3 9.8 2 12c1.1 3.8 4.9 8 10 8 1.5 0 2.9-.4 4.1-1" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+              )}
+            </button>
+          </span>
         </label>
         <div className="auth-password-actions">
           <Link to="/quen-mat-khau">Quên mật khẩu?</Link>

@@ -266,7 +266,7 @@ export function HomePage() {
         </a>
         <nav className="main-nav" aria-label="Điều hướng chính">
           <Link to="/bang-gia">Bảng giá</Link>
-          <a href="#ly-do">Về DentaVie</a>
+          <Link to="/ve-dentavie">Về DentaVie</Link>
           <a href="#chi-nhanh">Chi nhánh</a>
           <a href="#lien-he">Liên hệ</a>
         </nav>
@@ -289,7 +289,7 @@ export function HomePage() {
       <div className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`} role="dialog" aria-label="Menu di động">
         <nav className="mobile-nav-links">
           <Link to="/bang-gia" onClick={() => setMobileMenuOpen(false)}>Bảng giá</Link>
-          <a href="#ly-do" onClick={() => setMobileMenuOpen(false)}>Về DentaVie</a>
+          <Link to="/ve-dentavie" onClick={() => setMobileMenuOpen(false)}>Về DentaVie</Link>
           <a href="#chi-nhanh" onClick={() => setMobileMenuOpen(false)}>Hệ thống chi nhánh</a>
           <a href="#lien-he" onClick={() => setMobileMenuOpen(false)}>Thông tin liên hệ</a>
         </nav>
@@ -310,9 +310,8 @@ export function HomePage() {
 
         <section className="home-section services-section" id="dich-vu">
           <div className="section-heading-centered">
-            <p className="eyebrow">Dịch vụ nha khoa</p>
             <h2>Chăm sóc toàn diện cho mọi nụ cười</h2>
-            <p>Từ phòng ngừa cơ bản đến điều trị chuyên sâu, mỗi dịch vụ đều được xây dựng theo nhu cầu thực tế của bạn.</p>
+            <p>Từ chăm sóc định kỳ đến điều trị chuyên sâu, mỗi dịch vụ được thiết kế theo nhu cầu của bạn.</p>
           </div>
           <div className="services-grid">
             {services.map((service) => (
@@ -331,11 +330,10 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="recognition-section" id="ly-do">
-          <div className="section-heading-centered">
-            <p className="eyebrow">Chứng nhận & thành tựu</p>
+        <section className="recognition-section">
+          <div className="section-heading-centered" id="ly-do">
             <h2>Những dấu ấn trên hành trình chăm sóc nụ cười.</h2>
-            <p>Các chứng nhận và ghi nhận thể hiện định hướng phát triển chất lượng, chuyên môn và đóng góp cộng đồng của DentaVie.</p>
+            <p>Các chứng nhận ghi dấu cam kết về chất lượng chuyên môn và đóng góp cộng đồng của DentaVie.</p>
           </div>
           <div
             className="recognition-grid"
@@ -359,7 +357,7 @@ export function HomePage() {
 
         <section className="branches-section">
           <div className="section-intro compact">
-            <div><p className="eyebrow">Hệ thống chi nhánh</p><h2>Tìm phòng khám gần bạn.</h2></div>
+            <div><h2>Tìm phòng khám gần bạn.</h2></div>
             <p>Chọn một cơ sở để xem vị trí, địa chỉ và trạng thái hoạt động trực tiếp trên bản đồ.</p>
           </div>
 
@@ -515,7 +513,7 @@ export function HomePage() {
         )}
 
         <section className="support-banner">
-          <div><p className="eyebrow light">DentaVie luôn sẵn sàng</p><h2>Bạn cần tư vấn về dịch vụ nha khoa?</h2><p>Liên hệ với đội ngũ chăm sóc khách hàng hoặc xem cơ sở gần bạn.</p></div>
+          <div><h2>Bạn cần tư vấn về dịch vụ nha khoa?</h2><p>Gọi hotline hoặc chọn chi nhánh gần bạn để được hỗ trợ.</p></div>
           <div className="support-actions"><a href="tel:19002102">Gọi 1900 2102</a><a href="#chi-nhanh">Xem chi nhánh</a></div>
         </section>
       </main>
@@ -524,7 +522,7 @@ export function HomePage() {
         <div className="footer-main">
           <div className="footer-brand"><img src="/branding/dentavie-logo-horizontal-white.png" alt="DentaVie" /><p>Chăm sóc nụ cười bằng sự rõ ràng, thuận tiện và tôn trọng.</p></div>
           <div><strong>Liên hệ</strong><a href="tel:19002102">Hotline: 1900 2102</a><a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a><span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span></div>
-          <div><strong>Khám phá</strong><a href="#dich-vu">Dịch vụ</a><a href="#ly-do">Về DentaVie</a><a href="#chi-nhanh">Chi nhánh</a><Link to="/chinh-sach-bao-mat">Chính sách bảo mật</Link><Link to="/dieu-khoan-su-dung">Điều khoản sử dụng</Link></div>
+          <div><strong>Khám phá</strong><a href="#dich-vu">Dịch vụ</a><Link to="/ve-dentavie">Về DentaVie</Link><a href="#chi-nhanh">Chi nhánh</a><Link to="/chinh-sach-bao-mat">Chính sách bảo mật</Link><Link to="/dieu-khoan-su-dung">Điều khoản sử dụng</Link></div>
         </div>
         <div className="footer-bottom"><span>© 2026 DentaVie</span><span>Thời gian hiển thị theo Asia/Ho_Chi_Minh</span></div>
       </footer>

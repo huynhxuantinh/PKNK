@@ -65,7 +65,6 @@ export function AccountSecurityPage() {
             <label>Mật khẩu hiện tại<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
             <label>Mật khẩu mới<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
             <label>Xác nhận mật khẩu mới<input type="password" autoComplete="new-password" value={newPasswordConfirm} onChange={(event) => setNewPasswordConfirm(event.target.value)} required /></label>
-            <small>Mật khẩu nên dài, khó đoán và không trùng thông tin cá nhân.</small>
             {error && <p className="auth-page-error" role="alert">{error}</p>}
             <div className="security-actions"><button type="submit" disabled={busy}>{busy ? 'Đang cập nhật…' : 'Đổi mật khẩu'}</button><Link to="/">Hủy</Link></div>
           </form>

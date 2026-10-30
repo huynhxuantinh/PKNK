@@ -332,7 +332,6 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     return (
       <section className="booking-success" aria-live="polite">
         <div className="booking-success-lead">
-          <div className="booking-success-mark" aria-hidden="true">✓</div>
           <p className="eyebrow">Đặt lịch thành công</p>
           <h2>Hẹn gặp bạn<br />tại {selection.branch?.name || 'DentaVie'}.</h2>
           <p className="booking-success-copy">Lịch hẹn đã được ghi nhận. DentaVie sẽ chuẩn bị sẵn sàng để đón bạn.</p>
@@ -382,7 +381,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         <div className="booking-context-grid">
           <section className="flow-section booking-panel booking-panel-branch">
           <div className="section-heading">
-            <div><p className="booking-section-index">01 · Điểm đến</p><h2>{initialBranchId ? 'Chi nhánh đã chọn' : 'Chọn chi nhánh'}</h2></div>
+            <div><h2>{initialBranchId ? 'Chi nhánh đã chọn' : 'Chọn chi nhánh'}</h2></div>
             {!initialBranchId && <form
               className="search-form"
               onSubmit={(event) => {
@@ -423,7 +422,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
           <section className={`flow-section booking-panel booking-panel-contact ${!selection.branch ? 'disabled-section' : ''}`}>
           <div className="section-heading">
-            <div><p className="booking-section-index">02 · Người đặt</p><h2>Thông tin liên hệ</h2></div>
+            <div><h2>Thông tin liên hệ</h2></div>
             {user && !isEditingContact && <button className="booking-profile-link" type="button" onClick={() => { setContactDraft(contact); setIsEditingContact(true) }}>Chỉnh sửa</button>}
           </div>
           {!isAuthenticated ? <EmptyState label="Vui lòng đăng nhập để tiếp tục đặt lịch." /> : patientLoading ? <LoadingState label="Đang tải thông tin người đặt…" /> : (
@@ -449,7 +448,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         </div>
 
         <section className={`flow-section booking-panel ${!selection.branch ? 'disabled-section' : ''}`}>
-          <div className="section-heading"><div><p className="booking-section-index">03 · Nhu cầu khám</p><h2>Chọn dịch vụ</h2></div></div>
+          <div className="section-heading"><div><h2>Chọn dịch vụ</h2></div></div>
           {!selection.branch ? <EmptyState label="Hãy chọn chi nhánh trước." /> : servicesLoading ? <LoadingState label="Đang tải dịch vụ…" /> : services.length === 0 ? <EmptyState label="Chi nhánh chưa có dịch vụ khả dụng." /> : (
             <div className="service-list">
               {services.map((service) => (
@@ -476,7 +475,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
         <section className={`flow-section booking-panel ${!selection.service ? 'disabled-section' : ''}`}>
           <div className="section-heading">
-            <div><p className="booking-section-index">04 · Thời gian</p><h2>Chọn ngày và giờ</h2></div>
+            <div><h2>Chọn ngày và giờ</h2></div>
             <label className="date-field">Ngày khám<input type="date" min={dateInputValue()} max={dateInputValue(90)} value={selection.date} onChange={(event) => dispatch({ type: 'select_date', date: event.target.value })} disabled={!selection.service} /></label>
           </div>
           {!selection.service ? <EmptyState label="Hãy chọn dịch vụ trước." /> : slotsLoading ? <LoadingState label="Đang kiểm tra lịch trống…" /> : slots.length === 0 ? <EmptyState label="Ngày này chưa còn khung giờ phù hợp. Hãy chọn ngày khác." /> : (
@@ -493,7 +492,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
         <section className={`flow-section booking-panel ${!selection.slot ? 'disabled-section' : ''}`}>
           <div className="section-heading">
-            <div><p className="booking-section-index">05 · Đồng hành cùng bạn</p><h2>Chọn bác sĩ</h2></div>
+            <div><h2>Chọn bác sĩ</h2></div>
           </div>
           {!selection.slot ? <EmptyState label="Hãy chọn ngày và khung giờ trước." /> : dentistsLoading ? <LoadingState label="Đang tải bác sĩ phù hợp…" /> : availableDentists.length === 0 ? <EmptyState label="Không còn bác sĩ phù hợp trong khung giờ này. Hãy chọn giờ khác." /> : (
             <div className="dentist-choice-grid">
@@ -519,10 +518,6 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       </div>
 
       <aside className="booking-summary booking-summary--refined">
-        <div className="booking-summary-top">
-          <p className="eyebrow">Lịch hẹn của bạn</p>
-          <span aria-hidden="true">DV</span>
-        </div>
         <h2>Tóm tắt lịch hẹn</h2>
         <dl>
           <div><dt>Người đặt</dt><dd>{contact.name || 'Chưa đăng nhập'}{contact.phone ? <small className="summary-subvalue">{contact.phone}</small> : null}</dd></div>

@@ -1,12 +1,19 @@
 import type { User } from '../types/api'
 import { hasActiveRole } from './roles'
 
+function hasUnsafeReturnPathCharacter(value: string) {
+  return Array.from(value).some((character) => {
+    const code = character.charCodeAt(0)
+    return character === '\\' || code <= 0x1f || (code >= 0x7f && code <= 0x9f)
+  })
+}
+
 export function safeReturnPath(value: string | null | undefined, fallback = '/') {
   if (
     !value
     || !value.startsWith('/')
     || value.startsWith('//')
-    || /[\\\u0000-\u001F\u007F-\u009F]/u.test(value)
+    || hasUnsafeReturnPathCharacter(value)
   ) return fallback
   return value
 }

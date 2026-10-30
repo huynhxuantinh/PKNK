@@ -44,6 +44,13 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value))
 }
 
+function formatSlotTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 function RecordsLayout({
   title,
   description,
@@ -210,7 +217,8 @@ export function PatientAppointmentsPage() {
         <>
           <div className="patient-record-list">
             {appointments.map((appointment) => (
-            <article className="patient-record-card appointment-record" key={appointment.public_code}>
+            <div className="appointment-record-stack" key={appointment.public_code}>
+            <article className="patient-record-card appointment-record">
               <time dateTime={appointment.starts_at}>
                 <strong>{new Intl.DateTimeFormat('vi-VN', { day: '2-digit' }).format(new Date(appointment.starts_at))}</strong>
                 <span>{new Intl.DateTimeFormat('vi-VN', { month: 'short' }).format(new Date(appointment.starts_at))}</span>
@@ -229,34 +237,54 @@ export function PatientAppointmentsPage() {
                   <div><dt>Địa chỉ</dt><dd>{appointment.branch_address}</dd></div>
                   {appointment.patient_note && <div><dt>Ghi chú</dt><dd>{appointment.patient_note}</dd></div>}
                 </dl>
-                {appointment.can_cancel && (
+                {(appointment.can_cancel || appointment.can_reschedule) && (
                   <div className="appointment-record-actions">
-                    <button type="button" disabled={cancellingCode === appointment.public_code} onClick={() => { setCancellingAppointment(appointment); setCancelReason('') }}>
-                      {cancellingCode === appointment.public_code ? 'Đang hủy...' : 'Hủy lịch'}
-                    </button>
+                    {appointment.can_cancel && (
+                      <button type="button" disabled={cancellingCode === appointment.public_code} onClick={() => { setCancellingAppointment(appointment); setCancelReason('') }}>
+                        {cancellingCode === appointment.public_code ? 'Đang hủy...' : 'Hủy lịch'}
+                      </button>
+                    )}
+                    {appointment.can_reschedule && (
+                      <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError('') }}>Đổi lịch</button>
+                    )}
                   </div>
                 )}
                 {!appointment.can_cancel && ['PENDING', 'CONFIRMED'].includes(appointment.status) && (
                   <p className="appointment-action-note">Đã qua thời hạn hủy trực tuyến. Vui lòng liên hệ chi nhánh để được hỗ trợ.</p>
                 )}
-                {appointment.can_reschedule && (
-                  <div className="appointment-record-actions">
-                    <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError('') }}>Đổi lịch</button>
-                  </div>
-                )}
               </div>
             </article>
+            {rescheduling?.public_code === appointment.public_code && (
+              <section className="reschedule-panel" aria-label="Đổi lịch hẹn">
+                <header className="reschedule-panel-header">
+                  <div>
+                    <span>Đổi lịch hẹn</span>
+                    <strong>{rescheduling.service_name_snapshot}</strong>
+                  </div>
+                  <button className="reschedule-close" type="button" onClick={() => setRescheduling(null)}>Đóng</button>
+                </header>
+                <div className="reschedule-controls">
+                  <label>Chọn ngày<input type="date" value={rescheduleDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
+                  <button type="button" disabled={!rescheduleDate} onClick={findRescheduleSlots}>Xem giờ trống</button>
+                </div>
+                {rescheduleError && <p className="patient-record-error">{rescheduleError}</p>}
+                {slotOptions && (slotOptions.length ? (
+                  <div className="reschedule-availability">
+                    <p>Chọn một khung giờ phù hợp</p>
+                    <div className="reschedule-slots">
+                      {slotOptions.map((slot) => (
+                        <button type="button" key={slot.starts_at} aria-label={`Đổi lịch sang ${formatDateTime(slot.starts_at)}`} onClick={() => rescheduleAppointment(slot)}>
+                          {formatSlotTime(slot.starts_at)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : <p className="reschedule-empty">Không còn giờ trống trong ngày này.</p>)}
+              </section>
+            )}
+            </div>
             ))}
           </div>
-          {rescheduling && (
-            <section className="reschedule-panel" aria-label="Đổi lịch hẹn">
-              <div><strong>Đổi lịch: {rescheduling.service_name_snapshot}</strong><button type="button" onClick={() => setRescheduling(null)}>Đóng</button></div>
-              <label>Chọn ngày<input type="date" value={rescheduleDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
-              <button type="button" disabled={!rescheduleDate} onClick={findRescheduleSlots}>Tìm giờ trống</button>
-              {rescheduleError && <p className="patient-record-error">{rescheduleError}</p>}
-              {slotOptions && (slotOptions.length ? <div className="reschedule-slots">{slotOptions.map((slot) => <button type="button" key={slot.starts_at} onClick={() => rescheduleAppointment(slot)}>{formatDateTime(slot.starts_at)}</button>)}</div> : <p>Không còn giờ trống trong ngày này.</p>)}
-            </section>
-          )}
           {cancellingAppointment && (
             <div className="appointment-modal-backdrop" role="presentation">
               <form className="appointment-modal" onSubmit={(event) => { event.preventDefault(); void cancelAppointment() }}>

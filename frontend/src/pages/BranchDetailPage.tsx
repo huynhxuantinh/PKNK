@@ -288,7 +288,7 @@ export function BranchDetailPage() {
         </Link>
         <nav className="main-nav" aria-label="Điều hướng chi tiết chi nhánh">
           <Link to="/bang-gia">Bảng giá</Link>
-          <Link to="/#ly-do">Về DentaVie</Link>
+          <Link to="/ve-dentavie">Về DentaVie</Link>
           <Link to="/#chi-nhanh">Chi nhánh</Link>
           <Link to="/#lien-he">Liên hệ</Link>
         </nav>
@@ -311,7 +311,7 @@ export function BranchDetailPage() {
       <div className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`} role="dialog" aria-label="Menu di động">
         <nav className="mobile-nav-links">
           <Link to="/bang-gia" onClick={() => setMobileMenuOpen(false)}>Bảng giá</Link>
-          <Link to="/#ly-do" onClick={() => setMobileMenuOpen(false)}>Về DentaVie</Link>
+          <Link to="/ve-dentavie" onClick={() => setMobileMenuOpen(false)}>Về DentaVie</Link>
           <Link to="/#chi-nhanh" onClick={() => setMobileMenuOpen(false)}>Hệ thống chi nhánh</Link>
           <Link to="/#lien-he" onClick={() => setMobileMenuOpen(false)}>Thông tin liên hệ</Link>
         </nav>
@@ -426,7 +426,6 @@ export function BranchDetailPage() {
         <section className="clinic-detail-grid">
           {/* Services */}
           <article className="clinic-info-card clinic-services-card">
-            <p className="eyebrow">Dịch vụ điều trị</p>
             <h2>Dịch vụ tại cơ sở ({branch.services.length})</h2>
             <div className={`clinic-service-list ${branch.services.length > 6 ? 'is-scrollable' : ''}`}>
               {branch.services.map((service) => (
@@ -450,7 +449,6 @@ export function BranchDetailPage() {
 
           {/* Operating Hours */}
           <article className="clinic-info-card clinic-hours-card">
-            <p className="eyebrow">Thời gian hoạt động</p>
             <h2>Giờ làm việc</h2>
             <div className="clinic-hours-list">
               {branch.opening_hours.map((item) => (
@@ -474,7 +472,6 @@ export function BranchDetailPage() {
         {/* Location & Interactive Route Map Section */}
         <section className="clinic-location-section" id="vi-tri-chi-nhanh">
           <div className="clinic-location-card">
-            <p className="eyebrow">Bản đồ</p>
             <h2>Vị trí phòng khám</h2>
             <p className="clinic-location-summary">Xem vị trí và đường đi thuận tiện.</p>
 
@@ -601,7 +598,6 @@ export function BranchDetailPage() {
         {branch.dentists.length > 0 && (
           <section className="clinic-dentists-section">
             <div className="section-heading-centered">
-              <p className="eyebrow">Đội ngũ bác sĩ</p>
               <h2>Bác sĩ tại chi nhánh</h2>
               <p>Bác sĩ phụ trách tại cơ sở.</p>
             </div>
@@ -642,7 +638,7 @@ export function BranchDetailPage() {
           <div>
             <strong>Khám phá</strong>
             <Link to="/#dich-vu">Dịch vụ</Link>
-            <Link to="/#ly-do">Về DentaVie</Link>
+            <Link to="/ve-dentavie">Về DentaVie</Link>
             <Link to="/#chi-nhanh">Chi nhánh</Link>
           </div>
         </div>

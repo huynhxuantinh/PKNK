@@ -32,12 +32,10 @@ export function BookingPage() {
       <main className="booking-page-main">
         <div className="booking-hero">
           <div>
-            <p className="eyebrow">Đặt lịch trực tuyến</p>
             <h1>Một lịch hẹn rõ ràng,<br />một nụ cười an tâm.</h1>
             <p>Chọn dịch vụ, thời gian và bác sĩ phù hợp. Chỉ mất vài phút để hoàn tất.</p>
           </div>
           <div className="booking-hero-note" aria-label="Thông tin hỗ trợ đặt lịch">
-            <span>01</span>
             <div>
               <strong>{initialBranchId ? 'Chi nhánh đã được chọn sẵn' : 'Chọn chi nhánh phù hợp'}</strong>
               <p>{initialBranchId ? 'Bạn chỉ cần chọn dịch vụ, bác sĩ và giờ khám.' : 'Giờ mở cửa và bác sĩ của từng chi nhánh hiển thị ngay bên dưới.'}</p>

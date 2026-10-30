@@ -1,8 +1,13 @@
 import type { FormEvent } from 'react'
 
 import type { OrganizationBranch } from '../../api/organization'
+import {
+  coordinateWarning,
+  parseCoordinates,
+  type BranchFormState,
+} from '../../features/organization/organizationValidation'
 import type { AdministrativeOption } from '../../types/api'
-import type { BranchFormState } from '../../features/organization/organizationValidation'
+import { LocationPicker } from './LocationPicker'
 
 interface OrganizationBranchModalProps {
   branch: OrganizationBranch | null
@@ -31,6 +36,12 @@ export function OrganizationBranchModal({
   onClose,
   onSubmit,
 }: OrganizationBranchModalProps) {
+  const coordinates = parseCoordinates(form.latitude, form.longitude)
+  const locationWarning = coordinateWarning(form.latitude, form.longitude)
+  const provinceName = provinces.find((province) => province.code === form.provinceCode)?.full_name
+  const wardName = wards.find((ward) => ward.code === form.wardCode)?.full_name
+  const searchQuery = [form.addressLine, wardName, provinceName].filter(Boolean).join(', ')
+
   function submit(event: FormEvent) {
     event.preventDefault()
     onSubmit()
@@ -52,13 +63,9 @@ export function OrganizationBranchModal({
         <header>
           <div>
             <span className="branch-report-eyebrow">CHI NHÁNH</span>
-            <h2 id="organization-branch-modal-title">
-              {branch ? 'Sửa chi nhánh' : 'Thêm chi nhánh'}
-            </h2>
+            <h2 id="organization-branch-modal-title">{branch ? 'Sửa chi nhánh' : 'Thêm chi nhánh'}</h2>
           </div>
-          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>
-            Đóng
-          </button>
+          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>Đóng</button>
         </header>
 
         {error && <div className="dentist-error" role="alert">{error}</div>}
@@ -66,47 +73,26 @@ export function OrganizationBranchModal({
         <form className="organization-form-grid" onSubmit={submit}>
           <label>
             Mã chi nhánh
-            <input
-              required
-              value={form.code}
-              onChange={(event) => onChange({ code: event.target.value })}
-            />
+            <input required value={form.code} onChange={(event) => onChange({ code: event.target.value })} />
           </label>
           <label>
             Tên chi nhánh
-            <input
-              required
-              value={form.name}
-              onChange={(event) => onChange({ name: event.target.value })}
-            />
+            <input required value={form.name} onChange={(event) => onChange({ name: event.target.value })} />
           </label>
           <label>
             Điện thoại
-            <input
-              value={form.phone}
-              onChange={(event) => onChange({ phone: event.target.value })}
-            />
+            <input value={form.phone} onChange={(event) => onChange({ phone: event.target.value })} />
           </label>
           <label>
             Email
-            <input
-              type="email"
-              value={form.email}
-              onChange={(event) => onChange({ email: event.target.value })}
-            />
+            <input type="email" value={form.email} onChange={(event) => onChange({ email: event.target.value })} />
           </label>
           <label>
             Tỉnh/thành
-            <select
-              required
-              value={form.provinceCode}
-              onChange={(event) => onProvinceChange(event.target.value)}
-            >
+            <select required value={form.provinceCode} onChange={(event) => onProvinceChange(event.target.value)}>
               <option value="">Chọn tỉnh/thành</option>
               {provinces.map((province) => (
-                <option key={province.code} value={province.code}>
-                  {province.full_name}
-                </option>
+                <option key={province.code} value={province.code}>{province.full_name}</option>
               ))}
             </select>
           </label>
@@ -118,50 +104,60 @@ export function OrganizationBranchModal({
               disabled={!form.provinceCode || loadingWards}
               onChange={(event) => onChange({ wardCode: event.target.value })}
             >
-              <option value="">
-                {loadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'}
-              </option>
+              <option value="">{loadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'}</option>
               {wards.map((ward) => (
-                <option key={ward.code} value={ward.code}>
-                  {ward.full_name}
-                </option>
+                <option key={ward.code} value={ward.code}>{ward.full_name}</option>
               ))}
             </select>
           </label>
           <label className="organization-span-2">
             Địa chỉ
-            <input
-              required
-              value={form.addressLine}
-              onChange={(event) => onChange({ addressLine: event.target.value })}
-            />
+            <input required value={form.addressLine} onChange={(event) => onChange({ addressLine: event.target.value })} />
           </label>
-          <label>
-            Vĩ độ
-            <input
-              type="number"
-              step="any"
-              min="-90"
-              max="90"
-              value={form.latitude}
-              onChange={(event) => onChange({ latitude: event.target.value })}
+
+          <section className="organization-location-field organization-span-2">
+            <div className="organization-location-heading">
+              <strong>Vị trí trên bản đồ</strong>
+              <p>Kéo ghim, bấm lên bản đồ, tìm địa chỉ hoặc nhập tọa độ.</p>
+            </div>
+            <LocationPicker
+              value={coordinates}
+              disabled={busy}
+              defaultSearchQuery={searchQuery}
+              onChange={(latitude, longitude) => {
+                onChange({
+                  latitude: latitude === null ? '' : latitude.toFixed(6),
+                  longitude: longitude === null ? '' : longitude.toFixed(6),
+                })
+              }}
             />
-          </label>
-          <label>
-            Kinh độ
-            <input
-              type="number"
-              step="any"
-              min="-180"
-              max="180"
-              value={form.longitude}
-              onChange={(event) => onChange({ longitude: event.target.value })}
-            />
-          </label>
-          <p className="organization-hint organization-span-2">
-            Nhập cả vĩ độ và kinh độ. Có thể lấy tọa độ bằng cách chuột phải vào vị trí
-            trên Google Maps và sao chép cặp số hiển thị.
-          </p>
+            <div className="organization-coordinate-grid">
+              <label>
+                Vĩ độ
+                <input
+                  type="number"
+                  step="any"
+                  min="-90"
+                  max="90"
+                  value={form.latitude}
+                  onChange={(event) => onChange({ latitude: event.target.value })}
+                />
+              </label>
+              <label>
+                Kinh độ
+                <input
+                  type="number"
+                  step="any"
+                  min="-180"
+                  max="180"
+                  value={form.longitude}
+                  onChange={(event) => onChange({ longitude: event.target.value })}
+                />
+              </label>
+            </div>
+            {locationWarning && <p className="organization-warning" role="status">{locationWarning}</p>}
+          </section>
+
           <label className="organization-checkbox organization-span-2">
             <input
               type="checkbox"
@@ -172,12 +168,8 @@ export function OrganizationBranchModal({
           </label>
 
           <div className="organization-modal-actions organization-span-2">
-            <button type="button" className="button-secondary" disabled={busy} onClick={onClose}>
-              Hủy
-            </button>
-            <button type="submit" disabled={busy}>
-              {busy ? 'Đang lưu...' : branch ? 'Lưu thay đổi' : 'Tạo chi nhánh'}
-            </button>
+            <button type="button" className="button-secondary" disabled={busy} onClick={onClose}>Hủy</button>
+            <button type="submit" disabled={busy}>{busy ? 'Đang lưu...' : branch ? 'Lưu thay đổi' : 'Tạo chi nhánh'}</button>
           </div>
         </form>
       </section>

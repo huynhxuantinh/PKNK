@@ -73,7 +73,7 @@ export function BranchManagementPage() {
   const [loaded, setLoaded] = useState(organizationIds.length === 0)
   const [branch, setBranch] = useState<BranchDetail | null>(null)
   const [date, setDate] = useState(() => hcmDate(new Date()))
-  const [days, setDays] = useState<1 | 7>(1)
+  const [days, setDays] = useState<1 | 7>(7)
   const [dentistId, setDentistId] = useState<number>()
   const [status, setStatus] = useState<ManagementAppointmentStatus | ''>('')
   const [items, setItems] = useState<ManagementAppointment[] | null>(null)
@@ -316,7 +316,7 @@ export function BranchManagementPage() {
                 onChange={(event) => setDays(Number(event.target.value) as 1 | 7)}
               >
                 <option value={1}>Theo ngày</option>
-                <option value={7}>Theo tuần</option>
+                <option value={7}>7 ngày tới</option>
               </select>
             </label>
             <label>

@@ -34,6 +34,33 @@ export interface DentistFormState {
   biography: string
 }
 
+export interface ParsedCoordinates {
+  lat: number
+  lng: number
+}
+
+export function roundCoordinate(value: number) {
+  return Number(value.toFixed(6))
+}
+
+export function parseCoordinates(latitude: string, longitude: string): ParsedCoordinates | null {
+  if (!latitude.trim() || !longitude.trim()) return null
+  const lat = Number(latitude)
+  const lng = Number(longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return { lat: roundCoordinate(lat), lng: roundCoordinate(lng) }
+}
+
+export function isOutsideVietnam(latitude: number, longitude: number) {
+  return latitude < 8 || latitude > 24 || longitude < 102 || longitude > 110
+}
+
+export function coordinateWarning(latitude: string, longitude: string) {
+  const coordinates = parseCoordinates(latitude, longitude)
+  if (!coordinates || !isOutsideVietnam(coordinates.lat, coordinates.lng)) return ''
+  return 'Vị trí nằm ngoài Việt Nam, kiểm tra xem có đảo vĩ độ và kinh độ không.'
+}
+
 export function emptyBranchForm(): BranchFormState {
   return {
     code: '',
