@@ -245,7 +245,8 @@ export function DentistExaminationPage() {
   if (!isAuthenticated) return <Navigate to={`/dang-nhap?returnTo=${encodeURIComponent(`/bac-si/kham/${publicCode}`)}`} replace />
   if (!isDentist) return <Navigate to="/" replace />
 
-  const contactName = appointment?.contact_name_snapshot || appointment?.patient_name || 'Đang tải'
+  const patientName = appointment?.patient_name || 'Đang tải'
+  const contactName = appointment?.contact_name_snapshot || patientName
   const contactPhone = appointment?.contact_phone_snapshot || appointment?.patient_phone || 'Chưa cập nhật'
   const isFinalized = encounter?.status === 'FINALIZED'
   const isReadOnly = isFinalized || appointment?.status === 'COMPLETED'
@@ -265,8 +266,8 @@ export function DentistExaminationPage() {
         {!appointment || !encounter ? <div className="examination-loading">Đang mở bệnh án...</div> : (
           <>
             <section className="examination-patient">
-              <div><p className="eyebrow">{isReadOnly ? 'Lượt khám đã hoàn tất' : 'Lượt khám đang diễn ra'}</p><h1>{contactName}</h1><p>{appointment.service_name_snapshot} · {appointment.branch_name}</p></div>
-              <dl><div><dt>Số điện thoại</dt><dd>{contactPhone}</dd></div><div><dt>Email</dt><dd>{appointment.contact_email_snapshot || 'Chưa cập nhật'}</dd></div><div><dt>Giờ hẹn</dt><dd>{new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(appointment.starts_at))}</dd></div></dl>
+              <div><p className="eyebrow">{isReadOnly ? 'Lượt khám đã hoàn tất' : 'Lượt khám đang diễn ra'}</p><h1>{patientName}</h1><p>{appointment.service_name_snapshot} · {appointment.branch_name}</p></div>
+              <dl><div><dt>Người liên hệ</dt><dd>{contactName}</dd></div><div><dt>Điện thoại liên hệ</dt><dd>{contactPhone}</dd></div><div><dt>Email liên hệ</dt><dd>{appointment.contact_email_snapshot || 'Chưa cập nhật'}</dd></div><div><dt>Giờ hẹn</dt><dd>{new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(appointment.starts_at))}</dd></div></dl>
             </section>
             <section className="examination-layout">
               <div className="examination-form-card">

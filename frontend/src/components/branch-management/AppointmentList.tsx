@@ -33,6 +33,8 @@ export function AppointmentList({
     <div className="branch-management-list">
       {items.map((item) => {
         const isBusy = busyCode === item.public_code
+        const bookingContactName = item.contact_name_snapshot || item.patient_name
+        const bookingContactPhone = item.contact_phone_snapshot || item.patient_phone
 
         return (
           <article key={item.public_code} className="branch-management-appointment">
@@ -47,10 +49,15 @@ export function AppointmentList({
               </span>
               <h3>{item.patient_name}</h3>
               <p>{item.service_name_snapshot} · {item.dentist_name}</p>
-              <small>
-                {item.patient_phone || 'Chưa có số điện thoại'}
-                {item.cancel_reason ? ` · ${item.cancel_reason}` : ''}
-              </small>
+              <div className="branch-management-contact-details">
+                <small><strong>Hồ sơ bệnh nhân:</strong> {item.patient_phone || 'Chưa có số điện thoại'}</small>
+                <small>
+                  <strong>Liên hệ đặt lịch:</strong> {bookingContactName} · {bookingContactPhone || 'Chưa có số điện thoại'}
+                  {item.contact_email_snapshot ? ` · ${item.contact_email_snapshot}` : ''}
+                </small>
+                {item.patient_note && <small><strong>Ghi chú:</strong> {item.patient_note}</small>}
+                {item.cancel_reason && <small><strong>Lý do hủy:</strong> {item.cancel_reason}</small>}
+              </div>
             </div>
 
             <div className="branch-management-actions">

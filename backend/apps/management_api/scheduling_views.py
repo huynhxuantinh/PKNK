@@ -29,6 +29,7 @@ from .scheduling_services import (
     ensure_dentist_assigned,
     ensure_shift_change_safe,
     ensure_time_off_safe,
+    lock_schedule_dentists,
 )
 from .views import BRANCH_MANAGERS, ORG_ADMIN, ManagementAPIView
 
@@ -70,7 +71,9 @@ class BranchWorkShiftListCreateAPIView(ManagementAPIView):
         branch = self.branch(branch_id)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        dentist = serializer.validated_data["dentist"]
+        dentist = lock_schedule_dentists(serializer.validated_data["dentist"])[
+            serializer.validated_data["dentist"].pk
+        ]
         try:
             ensure_dentist_assigned(dentist=dentist, branch=branch)
         except DjangoValidationError as error:
@@ -103,7 +106,10 @@ class WorkShiftDetailAPIView(ManagementAPIView):
         ).get(pk=found.pk)
         serializer = self.serializer_class(shift, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        dentist = serializer.validated_data.get("dentist", shift.dentist)
+        dentist = lock_schedule_dentists(
+            shift.dentist,
+            serializer.validated_data.get("dentist", shift.dentist),
+        )[serializer.validated_data.get("dentist", shift.dentist).pk]
         try:
             ensure_dentist_assigned(dentist=dentist, branch=shift.branch)
             ensure_shift_change_safe(shift=shift, proposed=serializer.validated_data)
@@ -139,7 +145,7 @@ class BranchTimeOffListCreateAPIView(ManagementAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        dentist = data["dentist"]
+        dentist = lock_schedule_dentists(data["dentist"])[data["dentist"].pk]
         all_branches = data.pop("applies_to_all_branches", False)
         if all_branches and not organization_ids_for(request.user, ORG_ADMIN).filter(
             organization_id=branch.organization_id
@@ -181,17 +187,24 @@ class TimeOffDetailAPIView(ManagementAPIView):
     @transaction.atomic
     def patch(self, request, time_off_id):
         found = self.object(time_off_id)
-        item = TimeOff.objects.select_for_update().select_related(
+        item = TimeOff.objects.select_for_update(of=("self",)).select_related(
             "branch__organization", "dentist__organization", "dentist__user"
         ).get(pk=found.pk)
         serializer = self.serializer_class(item, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        dentist = data.get("dentist", item.dentist)
+        dentist = lock_schedule_dentists(
+            item.dentist,
+            data.get("dentist", item.dentist),
+        )[data.get("dentist", item.dentist).pk]
         starts_at = data.get("starts_at", item.starts_at)
         ends_at = data.get("ends_at", item.ends_at)
         all_branches = data.pop("applies_to_all_branches", item.branch_id is None)
         organization = item.branch.organization if item.branch_id else item.dentist.organization
+        if dentist.organization_id != organization.pk:
+            raise ValidationError(
+                {"dentist_id": "Nha sĩ phải thuộc cùng tổ chức với lịch nghỉ này."}
+            )
         if all_branches and not organization_ids_for(request.user, ORG_ADMIN).filter(
             organization_id=organization.pk
         ).exists():

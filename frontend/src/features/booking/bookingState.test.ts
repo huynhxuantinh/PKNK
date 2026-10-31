@@ -1,7 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Branch, BranchDentist, BranchService, Slot } from '../../types/api'
-import { bookingSelectionReducer, dateInputValue, type BookingSelection } from './bookingState'
+import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
+import {
+  bookingSelectionReducer,
+  clearBookingHold,
+  dateInputValue,
+  restoreBookingHold,
+  storeBookingHold,
+  type BookingSelection,
+} from './bookingState'
 
 const branch = { id_branch: 1, name: 'Quận 1' } as Branch
 const nextBranch = { id_branch: 2, name: 'Quận 3' } as Branch
@@ -17,7 +24,26 @@ const selected: BookingSelection = {
   dentist,
 }
 
+const heldAppointment = {
+  public_code: 'APT-HELD-001',
+  status: 'HELD',
+  expires_at: '2026-10-10T10:00:00+07:00',
+} as Appointment
+
+const sessionEntries = new Map<string, string>()
+const sessionStorageMock = {
+  get length() { return sessionEntries.size },
+  clear: () => sessionEntries.clear(),
+  getItem: (key: string) => sessionEntries.get(key) ?? null,
+  key: (index: number) => Array.from(sessionEntries.keys())[index] ?? null,
+  removeItem: (key: string) => sessionEntries.delete(key),
+  setItem: (key: string, value: string) => sessionEntries.set(key, value),
+}
+vi.stubGlobal('sessionStorage', sessionStorageMock)
+
 describe('bookingSelectionReducer', () => {
+  beforeEach(() => sessionStorageMock.clear())
+
   it('dùng ngày tại Thành phố Hồ Chí Minh, không theo múi giờ trình duyệt', () => {
     const moment = new Date('2026-10-23T18:00:00.000Z')
 
@@ -90,5 +116,20 @@ describe('bookingSelectionReducer', () => {
     expect(result.service).toBeNull()
     expect(result.slot).toBeNull()
     expect(result.dentist).toBeNull()
+  })
+
+  it('khôi phục chỗ đang giữ đúng tài khoản khi trang được tải lại', () => {
+    storeBookingHold(12, heldAppointment)
+
+    expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toEqual(heldAppointment)
+    expect(restoreBookingHold(13, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
+  })
+
+  it('xóa chỗ giữ đã hết hạn thay vì khôi phục lại', () => {
+    storeBookingHold(12, heldAppointment)
+
+    expect(restoreBookingHold(12, new Date('2026-10-10T10:00:00+07:00').getTime())).toBeNull()
+    expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
+    clearBookingHold(12)
   })
 })

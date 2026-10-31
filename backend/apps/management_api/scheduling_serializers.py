@@ -85,7 +85,9 @@ class CalendarAppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = (
             "public_code", "branch_id", "branch_service_id", "service_name_snapshot",
-            "patient_name", "patient_phone", "dentist_id", "dentist_name",
+            "patient_name", "patient_phone", "contact_name_snapshot",
+            "contact_phone_snapshot", "contact_email_snapshot", "patient_note",
+            "dentist_id", "dentist_name",
             "chair_id", "chair_name", "starts_at", "ends_at", "occupied_until",
             "status", "confirmed_at", "checked_in_at", "cancelled_at", "no_show_at",
             "cancel_reason", "rescheduled_from_code", "created_at", "updated_at",

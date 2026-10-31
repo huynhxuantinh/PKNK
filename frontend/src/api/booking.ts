@@ -78,6 +78,19 @@ export function listSlots(
   return apiRequest<SlotResponse>(`/scheduling/slots/?${params}`, { signal })
 }
 
+export function listPatientRescheduleSlots(
+  publicCode: string,
+  date: string,
+  signal?: AbortSignal,
+) {
+  const params = new URLSearchParams({ date })
+  return apiRequest<SlotResponse>(
+    `/patients/me/appointments/${publicCode}/reschedule-slots/?${params}`,
+    { signal },
+    { auth: true },
+  )
+}
+
 export function createAppointmentHold(
   branchServiceId: number,
   startsAt: string,

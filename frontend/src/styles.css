@@ -1943,6 +1943,7 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .record-status { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; background: #e6f5f8; color: var(--primary-dark); font-size: 11px; font-weight: 800; letter-spacing: .01em; text-transform: uppercase; }
 .status-confirmed, .status-completed { background: #e7f7f1; color: #08745c; }
 .status-cancelled, .status-no_show { background: #fff0ef; color: #ae3f37; }
+.status-overdue { background: #fff5df; color: #9a6410; }
 .record-branch { margin: 7px 0 17px; color: var(--primary-dark); font-size: 13px; font-weight: 750; }
 .record-meta { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 24px; }
 .record-meta div { min-width: 0; }
@@ -1955,6 +1956,10 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .appointment-record-actions button + button { border-color: #9fd8e4; color: var(--primary-dark); }
 .appointment-record-actions button + button:hover:not(:disabled) { border-color: var(--primary); background: #effbfe; }
 .appointment-action-note { margin: 18px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.appointment-overdue-note { margin: 12px 0 0; color: #8b621c; font-size: 12px; line-height: 1.5; }
+.branch-management-contact-details { display: grid; gap: 3px; margin-top: 7px; }
+.branch-management-contact-details small { color: #658095; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.branch-management-contact-details strong { color: #355e78; }
 .appointment-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(8, 29, 44, .42); }
 .appointment-modal { display: grid; gap: 14px; width: min(100%, 440px); padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 20px 60px rgba(8, 29, 44, .22); }
 .appointment-modal h2, .appointment-modal p { margin: 0; }.appointment-modal p { color: var(--muted); font-size: 13px; }
@@ -2452,7 +2457,7 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .examination-back { color: #08738b; font-size: 11px; font-weight: 750; text-decoration: none; }
 .examination-patient { margin-top: 19px; padding: 27px 30px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; border-radius: 18px; background: linear-gradient(135deg, #123d50, #0d6479); color: #fff; }
 .examination-patient .eyebrow { color: #9de0e7; }.examination-patient h1 { margin: 10px 0 0; font-size: 30px; letter-spacing: -.04em; }.examination-patient > div > p:last-child { margin: 9px 0 0; color: #c3e2e7; font-size: 12px; }
-.examination-patient dl { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 18px; align-content: center; }.examination-patient dt { color: #9fcbd2; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }.examination-patient dd { max-width: 180px; margin: 6px 0 0; overflow-wrap: anywhere; color: #fff; font-size: 11px; font-weight: 650; }
+.examination-patient dl { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 18px; align-content: center; }.examination-patient dt { color: #d1eef2; font-size: 11px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }.examination-patient dd { max-width: 180px; margin: 6px 0 0; overflow-wrap: anywhere; color: #fff; font-size: 12px; font-weight: 650; }
 .examination-layout { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 285px; gap: 18px; align-items: start; }.examination-form-card, .examination-summary { padding: 27px; border: 1px solid #d8e8eb; border-radius: 17px; background: #fff; box-shadow: 0 15px 34px rgba(17,74,85,.05); }.examination-form-card header { margin-bottom: 22px; padding-bottom: 18px; display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid #dce9eb; }.examination-form-card h2, .examination-summary h2 { margin: 7px 0 0; color: #123d50; font-size: 21px; letter-spacing: -.03em; }.examination-form-card header > span { height: max-content; padding: 7px 9px; border-radius: 999px; background: #e9f5f6; color: #08738b; font-size: 9px; font-weight: 850; text-transform: uppercase; }
 .examination-form-card label { margin-top: 16px; display: grid; gap: 7px; color: #34525f; font-size: 11px; font-weight: 750; }.examination-form-card label b { color: #c94b43; }.examination-form-card textarea { width: 100%; min-height: 82px; padding: 11px 12px; resize: vertical; border: 1px solid #cfe1e5; border-radius: 9px; background: #fbfeff; color: #173d4d; font-size: 12px; line-height: 1.55; }.examination-form-card textarea:focus { border-color: #1595af; outline: 0; box-shadow: 0 0 0 3px rgba(21,149,175,.1); }.examination-form-card textarea:disabled { background: #f4f7f8; color: #6a8089; }
 .examination-readonly-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }.examination-readonly-field { padding: 14px 15px; border: 1px solid #dce9eb; border-radius: 10px; background: #f8fcfd; }.examination-readonly-field:nth-child(3), .examination-readonly-field:nth-child(4), .examination-readonly-field:nth-child(5) { grid-column: 1 / -1; }.examination-readonly-field > span { color: #6c858f; font-size: 9px; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; }.examination-readonly-field > p { margin: 7px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #173f50; font-size: 12px; line-height: 1.65; }
@@ -3060,3 +3065,5 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
   .organization-row-actions { justify-content: flex-start; }
   .organization-report-section > header { align-items: flex-start; flex-direction: column; }
 }
+/* Alerts managers after the live appointment refresh finds new pending bookings. */
+.branch-management-pending-notice{margin:1rem 0;padding:.8rem 1rem;border:1px solid #a8dfe7;border-radius:10px;background:#effbfd;color:#087c9d;font-weight:700}

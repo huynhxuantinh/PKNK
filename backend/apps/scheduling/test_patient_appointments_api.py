@@ -156,10 +156,15 @@ class PatientAppointmentApiTests(APITestCase):
         history_response = self.client.get(url, {"scope": "HISTORY"})
 
         self.assertEqual(upcoming_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(upcoming_response.data["meta"]["count"], 3)
+        self.assertEqual(upcoming_response.data["meta"]["count"], 4)
         self.assertEqual(
             {item["public_code"] for item in upcoming_response.data["data"]},
-            {upcoming.public_code, checked_in.public_code, in_progress.public_code},
+            {
+                upcoming.public_code,
+                "PATIENT-STALE-UPCOMING",
+                checked_in.public_code,
+                in_progress.public_code,
+            },
         )
         self.assertEqual(history_response.data["meta"]["count"], 1)
         self.assertEqual(history_response.data["data"][0]["public_code"], completed.public_code)
@@ -272,6 +277,25 @@ class PatientAppointmentApiTests(APITestCase):
             list(notification.deliveries.values_list("channel", flat=True)),
             [NotificationDelivery.Channel.IN_APP],
         )
+
+    def test_reschedule_slots_exclude_the_patient_original_appointment(self):
+        original = self.appointment(
+            "PATIENT-RESCHEDULE-SLOTS",
+            starts_at=self.at(9),
+        )
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.get(
+            reverse(
+                "patients:appointment-reschedule-slots",
+                kwargs={"public_code": original.public_code},
+            ),
+            {"date": self.target_date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        starts_at = {item["starts_at"] for item in response.data["data"]}
+        self.assertIn(self.at(9), starts_at)
 
     def test_patient_cannot_reschedule_after_cutoff(self):
         original = self.appointment(

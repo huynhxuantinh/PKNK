@@ -1,6 +1,56 @@
-import type { Branch, BranchDentist, BranchService, Slot } from '../../types/api'
+import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
 
 export const BOOKING_DRAFT_STORAGE_KEY = 'pknk_booking_draft'
+const BOOKING_HOLD_STORAGE_PREFIX = 'pknk_booking_hold:'
+
+function bookingHoldStorageKey(userId: number) {
+  return `${BOOKING_HOLD_STORAGE_PREFIX}${userId}`
+}
+
+export function storeBookingHold(userId: number, appointment: Appointment) {
+  try {
+    sessionStorage.setItem(bookingHoldStorageKey(userId), JSON.stringify(appointment))
+  } catch {
+    // Session storage may be unavailable; the in-memory booking flow still works.
+  }
+}
+
+export function restoreBookingHold(userId: number, now = Date.now()): Appointment | null {
+  const key = bookingHoldStorageKey(userId)
+  try {
+    const stored = sessionStorage.getItem(key)
+    if (!stored) return null
+    const appointment = JSON.parse(stored) as Appointment
+    const expiresAt = appointment.expires_at ? new Date(appointment.expires_at).getTime() : NaN
+    if (appointment.status !== 'HELD' || !Number.isFinite(expiresAt) || expiresAt <= now) {
+      sessionStorage.removeItem(key)
+      return null
+    }
+    return appointment
+  } catch {
+    sessionStorage.removeItem(key)
+    return null
+  }
+}
+
+export function clearBookingHold(userId: number) {
+  try {
+    sessionStorage.removeItem(bookingHoldStorageKey(userId))
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
+
+export function clearBookingHoldCaches() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index)
+      if (key?.startsWith(BOOKING_HOLD_STORAGE_PREFIX)) sessionStorage.removeItem(key)
+    }
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
 
 export interface BookingSelection {
   branch: Branch | null

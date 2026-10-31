@@ -10,6 +10,7 @@ import {
 
 import { AUTH_EXPIRED_EVENT, apiRequest, getStoredTokens, storeTokens } from '../api/client'
 import { clearClinicalDraftCaches } from '../features/dentist/clinicalDraft'
+import { clearBookingHoldCaches } from '../features/booking/bookingState'
 import type { LoginResponse, TokenPair, User } from '../types/api'
 
 const USER_STORAGE_KEY = 'pknk_user'
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const onFocus = () => { void synchronizeUser() }
     const clearExpiredSession = () => {
       clearClinicalDraftCaches()
+      clearBookingHoldCaches()
       persistUser(null)
     }
     const syncAcrossTabs = (event: StorageEvent) => {
@@ -145,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Local logout must still succeed if the user is offline or the token already expired.
     } finally {
       clearClinicalDraftCaches()
+      clearBookingHoldCaches()
       storeTokens(null)
       localStorage.removeItem(USER_STORAGE_KEY)
       setUser(null)

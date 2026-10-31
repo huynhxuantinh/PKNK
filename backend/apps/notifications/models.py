@@ -7,6 +7,7 @@ class Notification(models.Model):
         INVOICE_ISSUED = "INVOICE_ISSUED", "Hóa đơn đã phát hành"
         INVOICE_PAID = "INVOICE_PAID", "Hóa đơn đã thanh toán"
         APPOINTMENT_BOOKED = "APPOINTMENT_BOOKED", "Lịch hẹn đã đặt"
+        APPOINTMENT_PENDING_REVIEW = "APPOINTMENT_PENDING_REVIEW", "Lịch hẹn chờ xác nhận"
         APPOINTMENT_CONFIRMED = "APPOINTMENT_CONFIRMED", "Lịch hẹn đã xác nhận"
         APPOINTMENT_CANCELLED = "APPOINTMENT_CANCELLED", "Lịch hẹn đã hủy"
         APPOINTMENT_RESCHEDULED = "APPOINTMENT_RESCHEDULED", "Lịch hẹn đã dời"
@@ -40,6 +41,7 @@ class Notification(models.Model):
                     "INVOICE_ISSUED",
                     "INVOICE_PAID",
                     "APPOINTMENT_BOOKED",
+                    "APPOINTMENT_PENDING_REVIEW",
                     "APPOINTMENT_CONFIRMED",
                     "APPOINTMENT_CANCELLED",
                     "APPOINTMENT_RESCHEDULED",

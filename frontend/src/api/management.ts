@@ -9,6 +9,10 @@ export interface ManagementAppointment {
   service_name_snapshot: string
   patient_name: string
   patient_phone: string | null
+  contact_name_snapshot: string | null
+  contact_phone_snapshot: string | null
+  contact_email_snapshot: string | null
+  patient_note: string
   dentist_name: string
   dentist_id: number
   chair_name: string | null
@@ -77,13 +81,24 @@ function nextHcmDate(date: string) {
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`
 }
 
-export function listBranchAppointments(branchId: number, date: string, status?: ManagementAppointmentStatus, dentistId?: number, days = 1) {
+export function listBranchAppointments(
+  branchId: number,
+  date: string,
+  status?: ManagementAppointmentStatus,
+  dentistId?: number,
+  days = 1,
+  signal?: AbortSignal,
+) {
   let endDate = date
   for (let index = 0; index < days; index += 1) endDate = nextHcmDate(endDate)
   const params = new URLSearchParams({ date_from: `${date}T00:00:00+07:00`, date_to: `${endDate}T00:00:00+07:00` })
   if (status) params.set('status', status)
   if (dentistId) params.set('dentist_id', String(dentistId))
-  return apiRequest<ManagementAppointmentsResponse>(`/management/branches/${branchId}/appointments/?${params}`, {}, { auth: true })
+  return apiRequest<ManagementAppointmentsResponse>(
+    `/management/branches/${branchId}/appointments/?${params}`,
+    { signal },
+    { auth: true },
+  )
 }
 
 export function listManagedOrganizationBranches(organizationId: number) {

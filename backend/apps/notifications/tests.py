@@ -214,6 +214,28 @@ class AppointmentWebNotificationTests(APITestCase):
         self.assert_web_only(booked)
         self.assert_web_only(confirmed)
 
+    def test_pending_booking_notifies_branch_manager_when_auto_confirm_is_disabled(self):
+        self.organization.auto_confirm = False
+        self.organization.save(update_fields=["auto_confirm"])
+        held = self.appointment(
+            "APT-WEB-PENDING-REVIEW",
+            starts_at=timezone.now() + timedelta(hours=30),
+            appointment_status=Appointment.Status.HELD,
+        )
+
+        AppointmentService.confirm_hold(
+            appointment_id=held.pk,
+            patient_user=self.patient_user,
+        )
+
+        manager_notification = Notification.objects.get(
+            type=Notification.Type.APPOINTMENT_PENDING_REVIEW,
+            recipient=self.admin,
+            resource_id=str(held.pk),
+        )
+        self.assertTrue(manager_notification.payload["requires_confirmation"])
+        self.assert_web_only(manager_notification)
+
     def test_reminders_are_web_only_and_idempotent(self):
         now = timezone.now()
         tomorrow = self.appointment(

@@ -1,5 +1,5 @@
 import uuid
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -38,6 +38,16 @@ def ensure_dentist_assigned(*, dentist, branch):
         raise DjangoValidationError(
             {"dentist_id": "Nha sĩ không hoạt động hoặc chưa được gán vào chi nhánh."}
         )
+
+
+def lock_schedule_dentists(*dentists):
+    """Serialize schedule edits with appointment holds for these dentists."""
+    dentist_ids = sorted({dentist.pk for dentist in dentists if dentist is not None})
+    locked = Dentist.objects.select_for_update().filter(pk__in=dentist_ids).order_by("pk")
+    locked_by_id = {dentist.pk: dentist for dentist in locked}
+    if len(locked_by_id) != len(dentist_ids):
+        raise DjangoValidationError({"dentist_id": "Nha sĩ không tồn tại."})
+    return locked_by_id
 
 
 def active_appointments():
@@ -177,7 +187,9 @@ class RescheduleService:
                     "The patient rescheduling cutoff has passed."
                 )
 
-        requested_dentist = None
+        # A reschedule keeps the originally selected dentist unless the caller
+        # explicitly chooses another eligible dentist.
+        requested_dentist = original.dentist
         if dentist_id:
             requested_dentist = Dentist.objects.filter(
                 pk=dentist_id,
@@ -190,6 +202,15 @@ class RescheduleService:
         target_date = starts_at.astimezone(
             ZoneInfo(original.branch.organization.timezone)
         ).date()
+        local_now = timezone.now().astimezone(
+            ZoneInfo(original.branch.organization.timezone)
+        )
+        if target_date > local_now.date() + timedelta(
+            days=AvailabilityService.MAX_BOOKING_ADVANCE_DAYS
+        ):
+            raise DjangoValidationError(
+                {"starts_at": "Chỉ được dời lịch trong 90 ngày tới."}
+            )
         options = AvailabilityService.list_slots(
             branch_service=original.branch_service,
             target_date=target_date,
@@ -200,9 +221,34 @@ class RescheduleService:
         if selected is None:
             raise ManagementConflict("Khung giờ mới không còn trống.")
 
-        selected_dentist_id = dentist_id or selected.dentist_ids[0]
+        selected_dentist_id = requested_dentist.pk
         if selected_dentist_id not in selected.dentist_ids:
             raise ManagementConflict("Nha sĩ không còn trống trong khung giờ mới.")
+
+        local_timezone = ZoneInfo(original.branch.organization.timezone)
+        day_starts_at = datetime.combine(
+            selected.starts_at.astimezone(local_timezone).date(),
+            time.min,
+            tzinfo=local_timezone,
+        )
+        next_day_starts_at = day_starts_at + timedelta(days=1)
+        has_active_appointment_that_day = (
+            active_appointments()
+            .select_for_update()
+            .filter(
+                patient_profile=original.patient_profile,
+                starts_at__gte=day_starts_at,
+                starts_at__lt=next_day_starts_at,
+            )
+            .exclude(pk=original.pk)
+            .exists()
+        )
+        if has_active_appointment_that_day:
+            raise ManagementConflict(
+                "Bệnh nhân đã có một lịch hẹn còn hiệu lực trong ngày này. "
+                "Vui lòng chọn ngày khác hoặc hủy lịch hiện có."
+            )
+
         selected_chair_id = selected.chair_ids[0]
         dentist = Dentist.objects.select_for_update().get(pk=selected_dentist_id)
         chair = Chair.objects.select_for_update().get(pk=selected_chair_id)
@@ -226,8 +272,16 @@ class RescheduleService:
                     chair=chair,
                     service_name_snapshot=original.service_name_snapshot,
                     service_price_snapshot=original.service_price_snapshot,
-                    duration_minutes=original.duration_minutes,
-                    buffer_minutes=original.buffer_minutes,
+                    contact_name_snapshot=original.contact_name_snapshot,
+                    contact_phone_snapshot=original.contact_phone_snapshot,
+                    contact_email_snapshot=original.contact_email_snapshot,
+                    patient_note=original.patient_note,
+                    duration_minutes=int(
+                        (selected.ends_at - selected.starts_at).total_seconds() / 60
+                    ),
+                    buffer_minutes=int(
+                        (selected.occupied_until - selected.ends_at).total_seconds() / 60
+                    ),
                     starts_at=selected.starts_at,
                     ends_at=selected.ends_at,
                     occupied_until=selected.occupied_until,

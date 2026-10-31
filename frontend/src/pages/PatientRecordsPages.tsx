@@ -3,7 +3,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { createPayosPayment } from '../api/billing'
 import { apiRequest, downloadAuthenticatedFile } from '../api/client'
-import { listSlots } from '../api/booking'
+import { listPatientRescheduleSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
@@ -49,6 +49,13 @@ function formatSlotTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function isOverdueUnprocessedAppointment(appointment: PatientAppointment) {
+  return (
+    ['PENDING', 'CONFIRMED'].includes(appointment.status)
+    && new Date(appointment.starts_at).getTime() < Date.now()
+  )
 }
 
 function RecordsLayout({
@@ -107,6 +114,7 @@ export function PatientAppointmentsPage() {
   const [rescheduleDate, setRescheduleDate] = useState('')
   const [slotOptions, setSlotOptions] = useState<Slot[] | null>(null)
   const [rescheduleError, setRescheduleError] = useState('')
+  const [rescheduleIdempotencyKey, setRescheduleIdempotencyKey] = useState('')
 
   const loadAppointments = useCallback(async () => {
     if (!isAuthenticated) return
@@ -140,7 +148,10 @@ export function PatientAppointmentsPage() {
     setRescheduleError('')
     setSlotOptions(null)
     try {
-      const response = await listSlots(rescheduling.branch_service_id, rescheduleDate)
+      const response = await listPatientRescheduleSlots(
+        rescheduling.public_code,
+        rescheduleDate,
+      )
       setSlotOptions(response.data)
     } catch (reason) {
       setRescheduleError(reason instanceof Error ? reason.message : 'Không thể tìm giờ trống.')
@@ -148,16 +159,17 @@ export function PatientAppointmentsPage() {
   }
 
   async function rescheduleAppointment(slot: Slot) {
-    if (!rescheduling) return
+    if (!rescheduling || !rescheduleIdempotencyKey) return
     setRescheduleError('')
     try {
       await apiRequest<{ data: PatientAppointment }>(
         `/patients/me/appointments/${rescheduling.public_code}/reschedule/`,
-        { method: 'POST', body: JSON.stringify({ starts_at: slot.starts_at, reason: 'Người bệnh chủ động đổi lịch.', idempotency_key: `patient-${crypto.randomUUID()}` }) },
+        { method: 'POST', body: JSON.stringify({ starts_at: slot.starts_at, reason: 'Người bệnh chủ động đổi lịch.', idempotency_key: rescheduleIdempotencyKey }) },
         { auth: true },
       )
       setRescheduling(null)
       setSlotOptions(null)
+      setRescheduleIdempotencyKey('')
       setNotice('Đã tạo lịch hẹn mới theo thời gian bạn chọn.')
       await loadAppointments()
     } catch (reason) {
@@ -198,19 +210,19 @@ export function PatientAppointmentsPage() {
   return (
     <RecordsLayout
       title="Lịch đã đặt"
-      description={scope === 'UPCOMING' ? 'Theo dõi các lịch khám sắp tới của bạn.' : 'Xem các lịch đã hoàn thành, đã hủy hoặc không đến.'}
+      description={scope === 'UPCOMING' ? 'Theo dõi lịch sắp tới và các lịch đã quá giờ nhưng chưa xử lý.' : 'Xem các lịch đã hoàn thành, đã hủy hoặc không đến.'}
       path="/lich-hen"
     >
       {notice && <p className="patient-record-notice" role="status">{notice}</p>}
       <div className="patient-record-tabs" role="tablist" aria-label="Loại lịch hẹn">
-        <button type="button" role="tab" aria-selected={scope === 'UPCOMING'} className={scope === 'UPCOMING' ? 'is-active' : ''} onClick={() => changeScope('UPCOMING')}>Lịch sắp tới</button>
+        <button type="button" role="tab" aria-selected={scope === 'UPCOMING'} className={scope === 'UPCOMING' ? 'is-active' : ''} onClick={() => changeScope('UPCOMING')}>Lịch cần theo dõi</button>
         <button type="button" role="tab" aria-selected={scope === 'HISTORY'} className={scope === 'HISTORY' ? 'is-active' : ''} onClick={() => changeScope('HISTORY')}>Lịch sử lịch hẹn</button>
       </div>
       {error ? <RecordState>{error}</RecordState> : appointments === null ? (
         <RecordState>Đang tải lịch hẹn...</RecordState>
       ) : appointments.length === 0 ? (
         <RecordState>
-          <strong>{scope === 'UPCOMING' ? 'Bạn chưa có lịch khám sắp tới.' : 'Chưa có lịch sử lịch hẹn.'}</strong>
+          <strong>{scope === 'UPCOMING' ? 'Bạn chưa có lịch hẹn cần theo dõi.' : 'Chưa có lịch sử lịch hẹn.'}</strong>
           {scope === 'UPCOMING' && <Link className="button button-primary" to="/dat-lich">Đặt lịch khám</Link>}
         </RecordState>
       ) : (
@@ -226,8 +238,8 @@ export function PatientAppointmentsPage() {
               <div className="patient-record-content">
                 <div className="patient-record-title-row">
                   <h2>{appointment.service_name_snapshot}</h2>
-                  <span className={`record-status status-${appointment.status.toLowerCase()}`}>
-                    {appointmentStatus[appointment.status]}
+                  <span className={`record-status ${isOverdueUnprocessedAppointment(appointment) ? 'status-overdue' : `status-${appointment.status.toLowerCase()}`} `}>
+                    {isOverdueUnprocessedAppointment(appointment) ? 'Quá hạn / chưa xử lý' : appointmentStatus[appointment.status]}
                   </span>
                 </div>
                 <p className="record-branch">{appointment.branch_name}</p>
@@ -245,12 +257,15 @@ export function PatientAppointmentsPage() {
                       </button>
                     )}
                     {appointment.can_reschedule && (
-                      <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError('') }}>Đổi lịch</button>
+                      <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError(''); setRescheduleIdempotencyKey(`patient-${crypto.randomUUID()}`) }}>Đổi lịch</button>
                     )}
                   </div>
                 )}
                 {!appointment.can_cancel && ['PENDING', 'CONFIRMED'].includes(appointment.status) && (
                   <p className="appointment-action-note">Đã qua thời hạn hủy trực tuyến. Vui lòng liên hệ chi nhánh để được hỗ trợ.</p>
+                )}
+                {isOverdueUnprocessedAppointment(appointment) && (
+                  <p className="appointment-overdue-note">Lịch hẹn đã qua giờ và đang chờ phòng khám xử lý.</p>
                 )}
               </div>
             </article>
@@ -261,7 +276,7 @@ export function PatientAppointmentsPage() {
                     <span>Đổi lịch hẹn</span>
                     <strong>{rescheduling.service_name_snapshot}</strong>
                   </div>
-                  <button className="reschedule-close" type="button" onClick={() => setRescheduling(null)}>Đóng</button>
+                  <button className="reschedule-close" type="button" onClick={() => { setRescheduling(null); setRescheduleIdempotencyKey('') }}>Đóng</button>
                 </header>
                 <div className="reschedule-controls">
                   <label>Chọn ngày<input type="date" value={rescheduleDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setRescheduleDate(event.target.value)} /></label>

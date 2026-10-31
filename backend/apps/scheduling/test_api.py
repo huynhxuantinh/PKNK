@@ -21,6 +21,8 @@ from apps.locations.models import (
 )
 from apps.organizations.models import Membership, Organization
 
+from .booking import BookingService
+from .exceptions import BookingValidationError
 from .models import Appointment, WorkShift
 
 
@@ -150,6 +152,49 @@ class SchedulingApiTests(APITestCase):
             response.data["data"][0]["starts_at"],
             self.start_at().isoformat(),
         )
+
+    def test_inactive_organization_has_no_slots_and_rejects_new_hold(self):
+        self.organization.is_active = False
+        self.organization.save(update_fields=["is_active"])
+
+        slots = self.client.get(
+            reverse("scheduling:slot-list"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "date": self.target_date.isoformat(),
+            },
+        )
+        self.client.force_authenticate(self.patient_user)
+        hold = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "starts_at": self.start_at().isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(slots.status_code, status.HTTP_200_OK)
+        self.assertEqual(slots.data["data"], [])
+        self.assertEqual(hold.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(hold.data["error"]["code"], "organization_inactive")
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_create_hold_rejects_dates_beyond_booking_window(self):
+        starts_at = datetime.combine(
+            timezone.localdate() + timedelta(days=91),
+            time(9),
+            tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"),
+        )
+
+        with self.assertRaisesRegex(BookingValidationError, "90 ngày"):
+            BookingService.create_hold(
+                patient_user=self.patient_user,
+                branch_service=self.branch_service,
+                starts_at=starts_at,
+            )
+
+        self.assertFalse(Appointment.objects.exists())
 
     def test_create_hold_requires_authentication(self):
         response = self.client.post(

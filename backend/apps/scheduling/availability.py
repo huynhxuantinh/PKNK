@@ -23,6 +23,7 @@ class SlotOption:
 
 class AvailabilityService:
     SLOT_STEP_MINUTES = 15
+    MAX_BOOKING_ADVANCE_DAYS = 90
 
     @staticmethod
     def effective_duration(branch_service):
@@ -57,7 +58,12 @@ class AvailabilityService:
 
         if target_date < local_now.date():
             return []
-        if not branch.is_active or not service.is_active or not branch_service.is_active:
+        if (
+            not organization.is_active
+            or not branch.is_active
+            or not service.is_active
+            or not branch_service.is_active
+        ):
             return []
 
         opening = BranchOpeningHour.objects.filter(

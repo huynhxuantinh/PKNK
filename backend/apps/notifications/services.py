@@ -1,5 +1,7 @@
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
+
+from apps.organizations.models import Membership
 
 from .models import Notification, NotificationDelivery
 
@@ -17,6 +19,10 @@ class NotificationService:
         Notification.Type.APPOINTMENT_BOOKED: (
             "Đặt lịch thành công",
             "Lịch hẹn của bạn đã được ghi nhận. Mở chi tiết lịch hẹn để kiểm tra.",
+        ),
+        Notification.Type.APPOINTMENT_PENDING_REVIEW: (
+            "Có lịch hẹn mới chờ xác nhận",
+            "Một lịch hẹn mới tại chi nhánh đang chờ quản lý xác nhận.",
         ),
         Notification.Type.APPOINTMENT_CONFIRMED: (
             "Lịch hẹn đã được xác nhận",
@@ -91,7 +97,7 @@ class NotificationService:
         }.get((from_status, to_status))
         if event_type is None:
             return None
-        return cls._publish_in_app(
+        notification = cls._publish_in_app(
             recipient=appointment.patient_profile.user,
             event_type=event_type,
             event_key=f"scheduling:appointment:{appointment.pk}:{event_type}",
@@ -99,6 +105,46 @@ class NotificationService:
             resource_type="Appointment",
             resource_id=appointment.pk,
         )
+        if (from_status, to_status) == ("HELD", "PENDING"):
+            cls.publish_pending_appointment_for_managers(appointment=appointment)
+        return notification
+
+    @classmethod
+    def publish_pending_appointment_for_managers(cls, *, appointment):
+        """Notify staff who can confirm a newly pending appointment."""
+        managers = Membership.objects.filter(
+            organization_id=appointment.branch.organization_id,
+            is_active=True,
+            user__is_active=True,
+        ).filter(
+            models.Q(
+                role=Membership.Role.BRANCH_ADMIN,
+                branch_id=appointment.branch_id,
+            )
+            | models.Q(
+                role=Membership.Role.ORGANIZATION_ADMIN,
+                branch__isnull=True,
+            )
+        ).select_related("user")
+
+        payload = cls._appointment_payload(appointment)
+        payload["requires_confirmation"] = True
+        notifications = []
+        for membership in managers:
+            notifications.append(
+                cls._publish_in_app(
+                    recipient=membership.user,
+                    event_type=Notification.Type.APPOINTMENT_PENDING_REVIEW,
+                    event_key=(
+                        f"scheduling:appointment:{appointment.pk}:"
+                        f"{Notification.Type.APPOINTMENT_PENDING_REVIEW}:user:{membership.user_id}"
+                    ),
+                    payload=payload,
+                    resource_type="Appointment",
+                    resource_id=appointment.pk,
+                )
+            )
+        return notifications
 
     @classmethod
     def publish_appointment_rescheduled(cls, *, original, successor):

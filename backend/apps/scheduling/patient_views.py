@@ -1,7 +1,6 @@
 from math import ceil
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -17,12 +16,14 @@ from apps.audit.services import AuditService
 from apps.management_api.exceptions import ManagementConflict
 from apps.management_api.scheduling_services import RescheduleService
 
+from .availability import AvailabilityService
 from .exceptions import SchedulingError
 from .models import Appointment, AppointmentStatusHistory
 from .serializers import (
     PatientAppointmentCancellationSerializer,
     PatientAppointmentListQuerySerializer,
     PatientAppointmentRescheduleSerializer,
+    PatientRescheduleSlotQuerySerializer,
     PatientAppointmentSerializer,
 )
 from .services import AppointmentService
@@ -74,15 +75,6 @@ class PatientAppointmentListAPIView(PatientAppointmentBaseAPIView):
         is_upcoming = data["scope"] == "UPCOMING"
         statuses = UPCOMING_STATUSES if is_upcoming else HISTORY_STATUSES
         appointments = self.queryset().filter(status__in=statuses)
-        if is_upcoming:
-            # Check-in and in-progress appointments remain actionable after start time.
-            appointments = appointments.filter(
-                Q(starts_at__gte=timezone.now())
-                | Q(status__in=[
-                    Appointment.Status.CHECKED_IN,
-                    Appointment.Status.IN_PROGRESS,
-                ])
-            )
         if data.get("status"):
             appointments = appointments.filter(status=data["status"])
         ordering = "starts_at" if data["scope"] == "UPCOMING" else "-starts_at"
@@ -186,3 +178,48 @@ class PatientAppointmentRescheduleAPIView(PatientAppointmentBaseAPIView):
             {"data": PatientAppointmentSerializer(successor).data},
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+
+class PatientAppointmentRescheduleSlotsAPIView(PatientAppointmentBaseAPIView):
+    permission_classes = [IsAuthenticated, IsPatientOnly, IsEmailVerified]
+    serializer_class = PatientRescheduleSlotQuerySerializer
+
+    @extend_schema(
+        parameters=[PatientRescheduleSlotQuerySerializer],
+        responses={200: dict},
+    )
+    def get(self, request, public_code):
+        query = self.serializer_class(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        appointment = self.appointment(public_code)
+        if appointment.status not in {
+            Appointment.Status.PENDING,
+            Appointment.Status.CONFIRMED,
+        }:
+            return error_response(
+                SchedulingError(
+                    "Chỉ được xem giờ đổi lịch cho lịch chờ xác nhận hoặc đã xác nhận.",
+                    code="appointment_reschedule_conflict",
+                ),
+                status.HTTP_409_CONFLICT,
+            )
+
+        AppointmentService.expire_due_holds(branch_id=appointment.branch_id)
+        slots = AvailabilityService.list_slots(
+            branch_service=appointment.branch_service,
+            target_date=query.validated_data["date"],
+            dentist=appointment.dentist,
+            exclude_appointment_id=appointment.pk,
+        )
+        return Response({
+            "data": [
+                {
+                    "starts_at": item.starts_at,
+                    "ends_at": item.ends_at,
+                    "available_dentist_ids": item.dentist_ids,
+                    "available_dentist_count": len(item.dentist_ids),
+                    "available_chair_count": len(item.chair_ids),
+                }
+                for item in slots
+            ],
+        })

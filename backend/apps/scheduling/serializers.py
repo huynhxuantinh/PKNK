@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
+from .availability import AvailabilityService
 from .models import Appointment
 
 
@@ -15,7 +16,19 @@ class SlotQuerySerializer(serializers.Serializer):
         today = timezone.localdate()
         if value < today:
             raise serializers.ValidationError("Ngày tìm kiếm không được ở quá khứ.")
-        if value > today + timedelta(days=90):
+        if value > today + timedelta(days=AvailabilityService.MAX_BOOKING_ADVANCE_DAYS):
+            raise serializers.ValidationError("Chỉ được tìm lịch trong 90 ngày tới.")
+        return value
+
+
+class PatientRescheduleSlotQuerySerializer(serializers.Serializer):
+    date = serializers.DateField()
+
+    def validate_date(self, value):
+        today = timezone.localdate()
+        if value < today:
+            raise serializers.ValidationError("Ngày tìm kiếm không được ở quá khứ.")
+        if value > today + timedelta(days=AvailabilityService.MAX_BOOKING_ADVANCE_DAYS):
             raise serializers.ValidationError("Chỉ được tìm lịch trong 90 ngày tới.")
         return value
 

@@ -17,8 +17,11 @@ import type { Appointment, Branch, BranchDentist, BranchService, PatientProfileR
 import {
   bookingSelectionReducer,
   BOOKING_DRAFT_STORAGE_KEY,
+  clearBookingHold,
   dateInputValue,
   initialBookingSelection,
+  restoreBookingHold,
+  storeBookingHold,
 } from './bookingState'
 
 const currency = new Intl.NumberFormat('vi-VN', {
@@ -82,6 +85,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const [contactDraft, setContactDraft] = useState(contact)
   const [patientNote, setPatientNote] = useState('')
   const initialBranchApplied = useRef(false)
+  const restoredHoldUserId = useRef<number | null>(null)
   const holdMinutes = heldAppointment?.held_at && heldAppointment.expires_at
     ? Math.max(1, Math.round((new Date(heldAppointment.expires_at).getTime() - new Date(heldAppointment.held_at).getTime()) / 60_000))
     : null
@@ -93,6 +97,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     }
     sessionStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(selection))
   }, [selection])
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || isStaff || restoredHoldUserId.current === user.id_user) return
+    restoredHoldUserId.current = user.id_user
+    const restoredHold = restoreBookingHold(user.id_user)
+    if (restoredHold) setHeldAppointment(restoredHold)
+  }, [isAuthenticated, isStaff, user])
 
   useEffect(() => {
     if (!isAuthenticated || isStaff) {
@@ -207,16 +218,26 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     ? branches.filter((branch) => branch.id_branch === initialBranchId)
     : branches
 
+  function rememberHeldAppointment(held: Appointment) {
+    setHeldAppointment(held)
+    if (user) storeBookingHold(user.id_user, held)
+  }
+
+  function forgetHeldAppointment() {
+    setHeldAppointment(null)
+    if (user) clearBookingHold(user.id_user)
+  }
+
   async function confirmHeld(held: Appointment) {
     const response = await confirmAppointment(held.public_code)
     setAppointment(response.data)
-    setHeldAppointment(null)
+    forgetHeldAppointment()
   }
 
   async function releaseHeldAppointment() {
     if (!heldAppointment) return
     const releasedCode = heldAppointment.public_code
-    setHeldAppointment(null)
+    forgetHeldAppointment()
     try {
       await cancelAppointmentHold(releasedCode)
     } catch {
@@ -265,13 +286,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         },
       )
       createdHold = hold.data
-      setHeldAppointment(hold.data)
+      rememberHeldAppointment(hold.data)
       await confirmHeld(hold.data)
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout()
       const message = reason instanceof Error ? reason.message : 'Không thể đặt lịch.'
       if (createdHold && holdIsNoLongerUsable(reason)) {
-        setHeldAppointment(null)
+        forgetHeldAppointment()
         await cancelAppointmentHold(createdHold.public_code).catch(() => undefined)
         if (selection.service && selection.date) {
           const response = await listSlots(
@@ -428,7 +449,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           {!isAuthenticated ? <EmptyState label="Vui lòng đăng nhập để tiếp tục đặt lịch." /> : patientLoading ? <LoadingState label="Đang tải thông tin người đặt…" /> : (
             isEditingContact ? (
               <form className="booking-contact-editor" onSubmit={saveContact}>
-                <label>Họ và tên<input value={contactDraft.name} onChange={(event) => setContactDraft({ ...contactDraft, name: event.target.value })} required /></label>
+                <label>Tên người liên hệ<input value={contactDraft.name} onChange={(event) => setContactDraft({ ...contactDraft, name: event.target.value })} required /></label>
                 <label>Số điện thoại<input type="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" value={contactDraft.phone} onChange={(event) => setContactDraft({ ...contactDraft, phone: event.target.value.replace(/[\s-]/g, '') })} required /></label>
                 <label>Email<input type="email" value={contactDraft.email} onChange={(event) => setContactDraft({ ...contactDraft, email: event.target.value })} required /></label>
                 <div className="booking-contact-actions">
@@ -438,7 +459,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
               </form>
             ) : (
               <div className="booking-patient-card">
-                <div><span>Họ và tên</span><strong>{contact.name || 'Chưa cập nhật'}</strong></div>
+                <div><span>Người liên hệ</span><strong>{contact.name || 'Chưa cập nhật'}</strong></div>
                 <div><span>Số điện thoại</span><strong>{contact.phone || 'Chưa cập nhật'}</strong></div>
                 <div><span>Email</span><strong>{contact.email || 'Chưa cập nhật'}</strong></div>
               </div>

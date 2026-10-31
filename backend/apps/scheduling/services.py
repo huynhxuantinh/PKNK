@@ -82,6 +82,8 @@ ALLOWED_ACTORS = {
 
 
 class AppointmentService:
+    CHECK_IN_EARLY_MINUTES = 30
+
     @classmethod
     def expire_due_holds(cls, *, now=None, branch_id=None):
         now = now or timezone.now()
@@ -201,6 +203,22 @@ class AppointmentService:
             )
             if occurred_at < appointment.starts_at + grace:
                 raise ValidationError("Chưa hết thời gian ân hạn để đánh dấu không đến.")
+
+        if to_status == Appointment.Status.CHECKED_IN:
+            check_in_opens_at = appointment.starts_at - timedelta(
+                minutes=AppointmentService.CHECK_IN_EARLY_MINUTES
+            )
+            check_in_closes_at = appointment.starts_at + timedelta(
+                minutes=appointment.branch.organization.no_show_grace_minutes
+            )
+            if occurred_at < check_in_opens_at:
+                raise ValidationError(
+                    "Chỉ có thể check-in trong vòng 30 phút trước giờ hẹn."
+                )
+            if occurred_at > check_in_closes_at:
+                raise ValidationError(
+                    "Đã quá thời gian check-in. Vui lòng xử lý theo quy trình không đến."
+                )
 
     @classmethod
     @transaction.atomic

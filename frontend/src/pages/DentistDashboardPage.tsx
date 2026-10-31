@@ -31,11 +31,13 @@ const statusLabel: Record<DentistAppointmentStatus, string> = {
   NO_SHOW: 'Không đến',
 }
 
+const SCHEDULE_REFRESH_MS = 30_000
+
 function appointmentInitials(name: string) {
   return name.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
 }
 
-function bookingContactName(appointment: DentistAppointment) {
+function appointmentContactName(appointment: DentistAppointment) {
   return appointment.contact_name_snapshot || appointment.patient_name
 }
 
@@ -66,17 +68,43 @@ export function DentistDashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) return
     let active = true
+    let loading = false
     const { start, end } = scheduleRange(scheduleView, selectedDate)
-    setAppointments(null)
-    setError('')
-    listDentistSchedule(start, end)
-      .then((response) => {
-        if (active) setAppointments(response.data)
-      })
-      .catch((reason) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Không thể tải lịch khám.')
-      })
-    return () => { active = false }
+
+    const loadSchedule = async (showLoading = false) => {
+      if (loading) return
+      loading = true
+      if (showLoading) {
+        setAppointments(null)
+        setError('')
+      }
+      try {
+        const response = await listDentistSchedule(start, end)
+        if (!active) return
+        setAppointments(response.data)
+        setError('')
+      } catch (reason) {
+        if (active && showLoading) {
+          setError(reason instanceof Error ? reason.message : 'Không thể tải lịch khám.')
+        }
+      } finally {
+        loading = false
+      }
+    }
+
+    void loadSchedule(true)
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadSchedule()
+    }, SCHEDULE_REFRESH_MS)
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadSchedule()
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
   }, [isAuthenticated, scheduleView, selectedDate])
 
   useEffect(() => {
@@ -281,15 +309,15 @@ export function DentistDashboardPage() {
               {filteredAppointments.map((appointment) => (
                 <article className="dentist-appointment" key={appointment.public_code}>
                   <time dateTime={appointment.starts_at}><strong>{formatHcmTime(appointment.starts_at)}</strong><span>{formatHcmDay(appointment.starts_at)}</span></time>
-                  <div className="dentist-patient-initials" aria-hidden="true">{appointmentInitials(bookingContactName(appointment))}</div>
+                  <div className="dentist-patient-initials" aria-hidden="true">{appointmentInitials(appointment.patient_name)}</div>
                   <div className="dentist-appointment-main">
                     <span className="dentist-appointment-branch">{appointment.branch_name}</span>
                     <div className="dentist-appointment-title">
-                      <h3>{bookingContactName(appointment)}</h3>
+                      <h3>{appointment.patient_name}</h3>
                       <span className={`dentist-status is-${appointment.status.toLowerCase()}`}>{statusLabel[appointment.status]}</span>
                     </div>
                     <p>{appointment.service_name_snapshot}</p>
-                    <small>Người đặt: {bookingContactPhone(appointment) || 'Chưa có số điện thoại'}{appointment.contact_email_snapshot ? ` · ${appointment.contact_email_snapshot}` : ''}</small>
+                    <small>Liên hệ: {appointmentContactName(appointment)} · {bookingContactPhone(appointment) || 'Chưa có số điện thoại'}{appointment.contact_email_snapshot ? ` · ${appointment.contact_email_snapshot}` : ''}</small>
                     {appointment.patient_note && <p className="dentist-appointment-note"><strong>Ghi chú:</strong> {appointment.patient_note}</p>}
                   </div>
                   <div className="dentist-appointment-action">

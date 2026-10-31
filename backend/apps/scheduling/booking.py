@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.accounts.models import Dentist, PatientProfile
 from apps.audit.services import AuditService
 from apps.locations.models import Chair
-from apps.organizations.models import Membership
+from apps.organizations.models import Membership, Organization
 
 from .availability import AvailabilityService
 from .exceptions import BookingValidationError, SlotUnavailableError
@@ -71,7 +71,14 @@ class BookingService:
                 code="active_hold_limit_reached",
             )
 
-        organization = branch_service.branch.organization
+        organization = Organization.objects.select_for_update().get(
+            pk=branch_service.branch.organization_id
+        )
+        if not organization.is_active:
+            raise SlotUnavailableError(
+                "Chuỗi phòng khám hiện đang tạm ngừng hoạt động.",
+                code="organization_inactive",
+            )
         membership, _ = Membership.objects.get_or_create(
             user=patient_user,
             organization=organization,
@@ -87,6 +94,13 @@ class BookingService:
 
         local_timezone = ZoneInfo(organization.timezone)
         target_date = starts_at.astimezone(local_timezone).date()
+        if target_date > timezone.now().astimezone(local_timezone).date() + timedelta(
+            days=AvailabilityService.MAX_BOOKING_ADVANCE_DAYS
+        ):
+            raise BookingValidationError(
+                "Chỉ được đặt lịch trong 90 ngày tới.",
+                code="booking_window_exceeded",
+            )
         day_starts_at = datetime.combine(target_date, time.min, tzinfo=local_timezone)
         next_day_starts_at = day_starts_at + timedelta(days=1)
         has_active_appointment_that_day = Appointment.objects.filter(
@@ -130,6 +144,26 @@ class BookingService:
                             pk=dentist_id,
                             is_active=True,
                         )
+                        # Schedule editors lock the same dentist row. Recheck after
+                        # obtaining that lock so a just-saved leave/shift change
+                        # cannot be bypassed by slots calculated before the wait.
+                        current_options = AvailabilityService.list_slots(
+                            branch_service=branch_service,
+                            target_date=target_date,
+                            dentist=dentist,
+                        )
+                        current_option = next(
+                            (
+                                option
+                                for option in current_options
+                                if option.starts_at == starts_at
+                                and dentist.pk in option.dentist_ids
+                                and chair_id in option.chair_ids
+                            ),
+                            None,
+                        )
+                        if current_option is None:
+                            continue
                         chair = Chair.objects.select_for_update().get(
                             pk=chair_id,
                             is_active=True,
@@ -149,9 +183,9 @@ class BookingService:
                             patient_note=patient_note.strip(),
                             duration_minutes=duration_minutes,
                             buffer_minutes=buffer_minutes,
-                            starts_at=selected_option.starts_at,
-                            ends_at=selected_option.ends_at,
-                            occupied_until=selected_option.occupied_until,
+                            starts_at=current_option.starts_at,
+                            ends_at=current_option.ends_at,
+                            occupied_until=current_option.occupied_until,
                             status=Appointment.Status.HELD,
                             held_at=held_at,
                             expires_at=expires_at,

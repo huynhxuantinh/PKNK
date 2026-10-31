@@ -12,6 +12,7 @@ from apps.scheduling.patient_views import (
     PatientAppointmentDetailAPIView,
     PatientAppointmentListAPIView,
     PatientAppointmentRescheduleAPIView,
+    PatientAppointmentRescheduleSlotsAPIView,
 )
 
 
@@ -29,4 +30,5 @@ urlpatterns = [
     path("me/appointments/<str:public_code>/", PatientAppointmentDetailAPIView.as_view(), name="appointment-detail"),
     path("me/appointments/<str:public_code>/cancel/", PatientAppointmentCancelAPIView.as_view(), name="appointment-cancel"),
     path("me/appointments/<str:public_code>/reschedule/", PatientAppointmentRescheduleAPIView.as_view(), name="appointment-reschedule"),
+    path("me/appointments/<str:public_code>/reschedule-slots/", PatientAppointmentRescheduleSlotsAPIView.as_view(), name="appointment-reschedule-slots"),
 ]

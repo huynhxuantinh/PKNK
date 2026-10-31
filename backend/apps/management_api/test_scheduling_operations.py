@@ -54,6 +54,14 @@ class BranchSchedulingManagementTests(APITestCase):
         cls.unassigned_dentist = Dentist.objects.create(
             user=unassigned_user, organization=cls.organization
         )
+        foreign_dentist_user = cls.make_user("foreign-dentist@example.com", "Foreign Dentist")
+        cls.foreign_dentist = Dentist.objects.create(
+            user=foreign_dentist_user, organization=cls.foreign_org
+        )
+        Membership.objects.create(
+            user=foreign_dentist_user, organization=cls.foreign_org,
+            branch=cls.foreign_branch, role=Membership.Role.DENTIST,
+        )
 
         patient_user = cls.make_user("patient-schedule-manage@example.com", "Patient")
         patient_user.phone = "0901234567"
@@ -214,8 +222,38 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(TimeOff.objects.exists())
 
+    def test_org_wide_time_off_cannot_move_to_dentist_in_another_organization(self):
+        time_off = TimeOff.objects.create(
+            dentist=self.dentist,
+            branch=None,
+            starts_at=self.at(12),
+            ends_at=self.at(13),
+            reason="Organization leave",
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:time-off-detail", kwargs={"time_off_id": time_off.pk}),
+            {"dentist_id": self.foreign_dentist.pk},
+            format="json",
+        )
+
+        time_off.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(time_off.dentist_id, self.dentist.pk)
+
     def test_calendar_is_scoped_to_assigned_branch(self):
         appointment = self.create_appointment("APT-CALENDAR")
+        appointment.contact_name_snapshot = "Người liên hệ đặt lịch"
+        appointment.contact_phone_snapshot = "0909988776"
+        appointment.contact_email_snapshot = "contact@example.com"
+        appointment.patient_note = "Đau răng số 7"
+        appointment.save(update_fields=[
+            "contact_name_snapshot",
+            "contact_phone_snapshot",
+            "contact_email_snapshot",
+            "patient_note",
+        ])
         self.client.force_authenticate(self.branch_admin)
         response = self.client.get(
             reverse("management:branch-appointments", kwargs={"branch_id": self.branch.pk}),
@@ -228,10 +266,19 @@ class BranchSchedulingManagementTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"][0]["public_code"], appointment.public_code)
+        self.assertEqual(response.data["data"][0]["patient_name"], self.patient.user.full_name)
+        self.assertEqual(response.data["data"][0]["contact_name_snapshot"], appointment.contact_name_snapshot)
+        self.assertEqual(response.data["data"][0]["contact_phone_snapshot"], appointment.contact_phone_snapshot)
+        self.assertEqual(response.data["data"][0]["contact_email_snapshot"], appointment.contact_email_snapshot)
+        self.assertEqual(response.data["data"][0]["patient_note"], appointment.patient_note)
         self.assertEqual(cross.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_confirm_then_check_in_writes_history_and_audit(self):
-        appointment = self.create_appointment("APT-FLOW", status=Appointment.Status.PENDING)
+        appointment = self.create_appointment(
+            "APT-FLOW",
+            status=Appointment.Status.PENDING,
+            starts_at=timezone.now() + timedelta(minutes=10),
+        )
         self.client.force_authenticate(self.branch_admin)
         confirm = self.client.post(reverse("management:appointment-confirm", kwargs={"public_code": appointment.public_code}))
         check_in = self.client.post(reverse("management:appointment-check-in", kwargs={"public_code": appointment.public_code}))
@@ -242,6 +289,24 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(appointment.status, Appointment.Status.CHECKED_IN)
         self.assertEqual(appointment.status_histories.count(), 2)
         self.assertEqual(AuditEvent.objects.filter(resource_id=str(appointment.pk), action="APPOINTMENT_STATUS_CHANGED").count(), 2)
+
+    def test_check_in_is_rejected_before_check_in_window(self):
+        appointment = self.create_appointment(
+            "APT-CHECK-IN-TOO-EARLY",
+            starts_at=timezone.now() + timedelta(hours=2),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:appointment-check-in",
+                kwargs={"public_code": appointment.public_code},
+            )
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
 
     def test_cancel_requires_reason_and_allows_checked_in(self):
         appointment = self.create_appointment("APT-CANCEL-CHECKED", status=Appointment.Status.CHECKED_IN)
@@ -268,6 +333,17 @@ class BranchSchedulingManagementTests(APITestCase):
     def test_reschedule_creates_successor_and_is_idempotent(self):
         self.create_shift()
         original = self.create_appointment("APT-RESCHEDULE", starts_at=self.at(9))
+        original.contact_name_snapshot = "Người liên hệ riêng"
+        original.contact_phone_snapshot = "0909123456"
+        original.contact_email_snapshot = "contact@example.com"
+        original.patient_note = "Đau răng số 7, cần được tư vấn sớm."
+        original.save(update_fields=[
+            "contact_name_snapshot", "contact_phone_snapshot",
+            "contact_email_snapshot", "patient_note",
+        ])
+        self.branch_service.duration_minutes = 45
+        self.branch_service.buffer_minutes = 5
+        self.branch_service.save(update_fields=["duration_minutes", "buffer_minutes"])
         self.client.force_authenticate(self.branch_admin)
         url = reverse("management:appointment-reschedule", kwargs={"public_code": original.public_code})
         payload = {
@@ -284,6 +360,121 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(first.data["data"]["public_code"], second.data["data"]["public_code"])
         self.assertEqual(original.status, Appointment.Status.CANCELLED)
         self.assertEqual(Appointment.objects.filter(rescheduled_from=original).count(), 1)
+        successor = Appointment.objects.get(rescheduled_from=original)
+        self.assertEqual(successor.contact_name_snapshot, original.contact_name_snapshot)
+        self.assertEqual(successor.contact_phone_snapshot, original.contact_phone_snapshot)
+        self.assertEqual(successor.contact_email_snapshot, original.contact_email_snapshot)
+        self.assertEqual(successor.patient_note, original.patient_note)
+        self.assertEqual(successor.duration_minutes, 45)
+        self.assertEqual(successor.buffer_minutes, 5)
+        self.assertEqual(successor.ends_at, self.at(10, 45))
+        self.assertEqual(successor.occupied_until, self.at(10, 50))
+
+    def test_reschedule_keeps_original_dentist_when_no_replacement_is_requested(self):
+        alternate_user = self.make_user("alternate-dentist@example.com", "Alternate Dentist")
+        alternate_dentist = Dentist.objects.create(
+            user=alternate_user,
+            organization=self.organization,
+        )
+        Membership.objects.create(
+            user=alternate_user,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.DENTIST,
+        )
+        DentistService.objects.create(dentist=alternate_dentist, service=self.service)
+        WorkShift.objects.create(
+            dentist=alternate_dentist,
+            branch=self.branch,
+            weekday=self.target_date.isoweekday(),
+            start_time=time(8),
+            end_time=time(17),
+            valid_from=self.target_date,
+        )
+        original = self.create_appointment("APT-KEEP-DENTIST", starts_at=self.at(9))
+        original.dentist = alternate_dentist
+        original.save(update_fields=["dentist"])
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:appointment-reschedule",
+                kwargs={"public_code": original.public_code},
+            ),
+            {
+                "starts_at": self.at(10).isoformat(),
+                "reason": "Patient requested another time",
+                "idempotency_key": "reschedule-keep-dentist-001",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        successor = Appointment.objects.get(rescheduled_from=original)
+        self.assertEqual(successor.dentist_id, alternate_dentist.pk)
+
+    def test_reschedule_rejects_second_active_appointment_on_target_day(self):
+        self.create_shift()
+        original_starts_at = datetime.combine(
+            self.target_date - timedelta(days=1),
+            time(9),
+            tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"),
+        )
+        original = self.create_appointment(
+            "APT-RESCHEDULE-DAILY-LIMIT",
+            starts_at=original_starts_at,
+        )
+        existing = self.create_appointment(
+            "APT-EXISTING-ON-TARGET-DAY",
+            starts_at=self.at(14),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:appointment-reschedule",
+                kwargs={"public_code": original.public_code},
+            ),
+            {
+                "starts_at": self.at(10).isoformat(),
+                "reason": "Patient requested another day",
+                "idempotency_key": "reschedule-daily-limit-001",
+            },
+            format="json",
+        )
+
+        original.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(original.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(rescheduled_from=original).exists())
+        self.assertEqual(existing.status, Appointment.Status.CONFIRMED)
+
+    def test_reschedule_rejects_dates_beyond_booking_window(self):
+        original = self.create_appointment("APT-RESCHEDULE-TOO-FAR", starts_at=self.at(9))
+        too_far = datetime.combine(
+            timezone.localdate() + timedelta(days=91),
+            time(10),
+            tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:appointment-reschedule",
+                kwargs={"public_code": original.public_code},
+            ),
+            {
+                "starts_at": too_far.isoformat(),
+                "reason": "Patient requested another date",
+                "idempotency_key": "reschedule-booking-window-001",
+            },
+            format="json",
+        )
+
+        original.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(original.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(rescheduled_from=original).exists())
 
     def test_slot_engine_blocks_dentist_busy_at_other_branch(self):
         self.create_shift()

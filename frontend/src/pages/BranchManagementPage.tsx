@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import {
   cancelManagedAppointment,
@@ -33,6 +33,8 @@ import { Seo } from '../seo/Seo'
 import type { BranchDetail, Slot } from '../types/api'
 
 type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
+
+const BRANCH_APPOINTMENT_REFRESH_MS = 30_000
 
 export function BranchManagementPage() {
   const { isAuthenticated, user } = useAuth()
@@ -78,6 +80,7 @@ export function BranchManagementPage() {
   const [status, setStatus] = useState<ManagementAppointmentStatus | ''>('')
   const [items, setItems] = useState<ManagementAppointment[] | null>(null)
   const [error, setError] = useState('')
+  const [pendingNotice, setPendingNotice] = useState('')
   const [busy, setBusy] = useState('')
   const [cancelling, setCancelling] = useState<ManagementAppointment | null>(null)
   const [moving, setMoving] = useState<ManagementAppointment | null>(null)
@@ -95,6 +98,7 @@ export function BranchManagementPage() {
     loaded,
   })
   const isManager = canAccessArea(user, 'MANAGEMENT')
+  const knownPendingCodes = useRef(new Set<string>())
 
   useEffect(() => {
     let active = true
@@ -135,22 +139,82 @@ export function BranchManagementPage() {
 
   useEffect(() => {
     if (!branchId) return
-    getBranchDetail(branchId)
-      .then((response) => setBranch(response.data))
+    const controller = new AbortController()
+    getBranchDetail(branchId, controller.signal)
+      .then((response) => {
+        if (!controller.signal.aborted) setBranch(response.data)
+      })
       .catch((caughtError) =>
-        setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải chi nhánh.'),
+        !controller.signal.aborted && setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải chi nhánh.'),
       )
+    return () => controller.abort()
   }, [branchId])
 
   useEffect(() => {
     if (!branchId) return
-    setItems(null)
-    setError('')
-    listBranchAppointments(branchId, date, status || undefined, dentistId, days)
-      .then((response) => setItems(response.data))
-      .catch((caughtError) =>
-        setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải lịch hẹn.'),
-      )
+    const controller = new AbortController()
+    let loading = false
+    let initialLoad = true
+
+    const loadAppointments = async (showLoading: boolean) => {
+      if (loading || controller.signal.aborted) return
+      loading = true
+      if (showLoading) {
+        setItems(null)
+        setError('')
+        setPendingNotice('')
+        knownPendingCodes.current.clear()
+      }
+      try {
+        const response = await listBranchAppointments(
+          branchId,
+          date,
+          status || undefined,
+          dentistId,
+          days,
+          controller.signal,
+        )
+        if (controller.signal.aborted) return
+        const pendingCodes = response.data
+          .filter((item) => item.status === 'PENDING')
+          .map((item) => item.public_code)
+        if (!initialLoad && pendingCodes.length) {
+          const newPendingCount = pendingCodes.filter(
+            (code) => !knownPendingCodes.current.has(code),
+          ).length
+          if (newPendingCount) {
+            setPendingNotice(
+              `${newPendingCount} lịch hẹn mới đang chờ xác nhận.`,
+            )
+          }
+        }
+        knownPendingCodes.current = new Set(pendingCodes)
+        initialLoad = false
+        setItems(response.data)
+      } catch (caughtError) {
+        if (!controller.signal.aborted && showLoading) {
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : 'Không thể tải lịch hẹn.',
+          )
+        }
+      } finally {
+        loading = false
+      }
+    }
+
+    void loadAppointments(true)
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void loadAppointments(false)
+    }
+    const intervalId = window.setInterval(refresh, BRANCH_APPOINTMENT_REFRESH_MS)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', refresh)
+      controller.abort()
+    }
   }, [branchId, date, days, dentistId, status])
 
   function replaceAppointment(next: ManagementAppointment) {
@@ -295,6 +359,11 @@ export function BranchManagementPage() {
         {branchId && <ManagementSectionNav branchId={branchId} active="appointments" />}
 
         {error && <ManagementErrorBanner message={error} />}
+        {pendingNotice && (
+          <p className="branch-management-pending-notice" role="status">
+            {pendingNotice}
+          </p>
+        )}
 
         <section className="branch-management-schedule">
           <header>
