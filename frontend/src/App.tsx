@@ -27,6 +27,7 @@ import { AccountSecurityPage } from './pages/AccountSecurityPage'
 import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireRole } from './auth/RequireRole'
+import { AdminShell } from './components/admin/AdminShell'
 
 const router = createBrowserRouter(createRoutesFromElements(
   <Route>
@@ -54,18 +55,22 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/bac-si/kham/:publicCode" element={<DentistExaminationPage />} />
     </Route>
     <Route element={<RequireRole area="MANAGEMENT" />}>
-      <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
-      <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
-      <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
-      <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
-      <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
+      <Route element={<AdminShell area="branch" />}>
+        <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
+        <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
+        <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
+        <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
+        <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
+      </Route>
     </Route>
     <Route element={<RequireRole area="ORGANIZATION" />}>
-      <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
-      <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
-      <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
-      <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
-      <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+      <Route element={<AdminShell area="organization" />}>
+        <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
+        <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
+        <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
+        <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
+        <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+      </Route>
     </Route>
     <Route path="/dang-nhap" element={<LoginPage />} />
     <Route path="/dang-ky" element={<RegisterPage />} />
