@@ -91,13 +91,39 @@ export function dateInputValue(offsetDays = 0, now = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+function isValidDraftDate(value: unknown) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    return false
+  }
+  return value >= dateInputValue() && value <= dateInputValue(90)
+}
+
+function isStoredBranch(value: unknown): value is Branch {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && Number.isInteger((value as Branch).id_branch)
+      && (value as Branch).id_branch > 0,
+  )
+}
+
 export function initialBookingSelection(): BookingSelection {
-  if (typeof window !== 'undefined') {
+  if (typeof sessionStorage !== 'undefined') {
     try {
       const stored = sessionStorage.getItem(BOOKING_DRAFT_STORAGE_KEY)
       if (stored) {
         const draft = JSON.parse(stored) as BookingSelection
-        if (draft.branch && typeof draft.date === 'string') return draft
+        if (isStoredBranch(draft.branch)) {
+          return {
+            branch: draft.branch,
+            service: null,
+            date: isValidDraftDate(draft.date) ? draft.date : dateInputValue(1),
+            slot: null,
+            dentist: null,
+          }
+        }
       }
     } catch {
       sessionStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY)

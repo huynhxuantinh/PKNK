@@ -8,11 +8,11 @@ interface RescheduleAppointmentModalProps {
   dentists: BranchDentist[]
   busy: boolean
   onClose: () => void
-  onFindSlots: (date: string, dentistId?: number) => Promise<Slot[]>
+  onFindSlots: (date: string, dentistId: number) => Promise<Slot[]>
   onConfirm: (
     slot: Slot,
     reason: string,
-    dentistId: number | undefined,
+    dentistId: number,
     idempotencyKey: string,
   ) => Promise<void>
 }
@@ -59,7 +59,7 @@ export function RescheduleAppointmentModal({
   onConfirm,
 }: RescheduleAppointmentModalProps) {
   const [date, setDate] = useState(() => hcmDate(new Date(appointment.starts_at)))
-  const [dentistId, setDentistId] = useState<number | undefined>(appointment.dentist_id)
+  const [dentistId, setDentistId] = useState<number>(appointment.dentist_id)
   const [reason, setReason] = useState('')
   const [slots, setSlots] = useState<Slot[] | null>(null)
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -100,11 +100,10 @@ export function RescheduleAppointmentModal({
           <select
             value={dentistId || ''}
             onChange={(event) => {
-              setDentistId(event.target.value ? Number(event.target.value) : undefined)
+              setDentistId(Number(event.target.value))
               setSlots(null)
             }}
           >
-            <option value="">Tự chọn nha sĩ trống</option>
             {dentists.map((dentist) => (
               <option key={dentist.id_dentist} value={dentist.id_dentist}>
                 {dentist.full_name}

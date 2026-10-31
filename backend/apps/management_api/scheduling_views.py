@@ -284,7 +284,9 @@ class AppointmentRescheduleSlotsAPIView(ManagementAPIView):
         query = RescheduleSlotQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
-        dentist = None
+        # Keep the originally assigned dentist unless management explicitly
+        # selects a replacement; this mirrors RescheduleService.reschedule.
+        dentist = appointment.dentist
         if data.get("dentist_id"):
             dentist = get_object_or_404(
                 appointment.branch.organization.dentists.filter(is_active=True),

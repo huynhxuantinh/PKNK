@@ -449,6 +449,10 @@ class SchedulingApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"]["status"], Appointment.Status.CONFIRMED)
+        self.assertEqual(response.data["data"]["branch_name"], self.branch.name)
+        self.assertEqual(
+            response.data["data"]["branch_address"], self.branch.address_line
+        )
 
         retry_response = self.client.post(
             reverse(

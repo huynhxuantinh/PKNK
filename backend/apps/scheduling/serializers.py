@@ -54,6 +54,8 @@ class AppointmentHoldCreateSerializer(serializers.Serializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     id_branch = serializers.IntegerField(source="branch_id", read_only=True)
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
+    branch_address = serializers.CharField(source="branch.address_line", read_only=True)
     id_branch_service = serializers.IntegerField(
         source="branch_service_id",
         read_only=True,
@@ -69,6 +71,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "public_code",
             "status",
             "id_branch",
+            "branch_name",
+            "branch_address",
             "id_branch_service",
             "id_dentist",
             "dentist_name",

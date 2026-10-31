@@ -156,7 +156,7 @@ class NotificationService:
                 "previous_starts_at": original.starts_at.isoformat(),
             }
         )
-        return cls._publish_in_app(
+        notification = cls._publish_in_app(
             recipient=successor.patient_profile.user,
             event_type=Notification.Type.APPOINTMENT_RESCHEDULED,
             event_key=(
@@ -167,6 +167,9 @@ class NotificationService:
             resource_type="Appointment",
             resource_id=successor.pk,
         )
+        if successor.status == "PENDING":
+            cls.publish_pending_appointment_for_managers(appointment=successor)
+        return notification
 
     @classmethod
     def publish_appointment_reminder(cls, *, appointment, event_type):

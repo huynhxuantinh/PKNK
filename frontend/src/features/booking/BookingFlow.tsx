@@ -85,6 +85,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const [contactDraft, setContactDraft] = useState(contact)
   const [patientNote, setPatientNote] = useState('')
   const initialBranchApplied = useRef(false)
+  const restoredDraftBranchId = useRef(selection.branch?.id_branch ?? null)
   const restoredHoldUserId = useRef<number | null>(null)
   const holdMinutes = heldAppointment?.held_at && heldAppointment.expires_at
     ? Math.max(1, Math.round((new Date(heldAppointment.expires_at).getTime() - new Date(heldAppointment.held_at).getTime()) / 60_000))
@@ -135,6 +136,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     listBranches(branchQuery, controller.signal)
       .then((response) => {
         setBranches(response.data)
+        if (!initialBranchId && restoredDraftBranchId.current !== null) {
+          const restoredBranch = response.data.find(
+            (branch) => branch.id_branch === restoredDraftBranchId.current,
+          )
+          restoredDraftBranchId.current = null
+          if (restoredBranch) dispatch({ type: 'select_branch', branch: restoredBranch })
+          else dispatch({ type: 'reset' })
+        }
         if (!initialBranchApplied.current && initialBranchId) {
           initialBranchApplied.current = true
           const initialBranch = response.data.find((branch) => branch.id_branch === initialBranchId)
@@ -354,7 +363,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       <section className="booking-success" aria-live="polite">
         <div className="booking-success-lead">
           <p className="eyebrow">Đặt lịch thành công</p>
-          <h2>Hẹn gặp bạn<br />tại {selection.branch?.name || 'DentaVie'}.</h2>
+          <h2>Hẹn gặp bạn<br />tại {appointment.branch_name || 'DentaVie'}.</h2>
           <p className="booking-success-copy">Lịch hẹn đã được ghi nhận. DentaVie sẽ chuẩn bị sẵn sàng để đón bạn.</p>
           <div className="booking-success-code">
             <span>Mã lịch hẹn</span>
@@ -386,7 +395,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             <div><dt>Thời gian</dt><dd>{fullDateTime.format(new Date(appointment.starts_at))}</dd></div>
             <div><dt>Nha sĩ</dt><dd>{appointment.dentist_name}</dd></div>
             <div><dt>Người đặt</dt><dd>{appointment.contact_name_snapshot || contact.name}</dd></div>
-            {selection.branch && <div><dt>Chi nhánh</dt><dd>{selection.branch.full_address}</dd></div>}
+            <div><dt>Chi nhánh</dt><dd>{appointment.branch_address}</dd></div>
             {appointment.patient_note && <div className="booking-success-note"><dt>Ghi chú</dt><dd>{appointment.patient_note}</dd></div>}
           </dl>
         </div>

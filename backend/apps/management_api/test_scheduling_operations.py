@@ -413,6 +413,48 @@ class BranchSchedulingManagementTests(APITestCase):
         successor = Appointment.objects.get(rescheduled_from=original)
         self.assertEqual(successor.dentist_id, alternate_dentist.pk)
 
+    def test_reschedule_slots_default_to_the_original_dentist(self):
+        self.create_shift()
+        alternate_user = self.make_user("slots-dentist@example.com", "Slots Dentist")
+        alternate_dentist = Dentist.objects.create(
+            user=alternate_user,
+            organization=self.organization,
+        )
+        Membership.objects.create(
+            user=alternate_user,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.DENTIST,
+        )
+        DentistService.objects.create(dentist=alternate_dentist, service=self.service)
+        WorkShift.objects.create(
+            dentist=alternate_dentist,
+            branch=self.branch,
+            weekday=self.target_date.isoweekday(),
+            start_time=time(8),
+            end_time=time(17),
+            valid_from=self.target_date,
+        )
+        original = self.create_appointment("APT-RESCHEDULE-SLOTS", starts_at=self.at(9))
+        original.dentist = alternate_dentist
+        original.save(update_fields=["dentist"])
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.get(
+            reverse(
+                "management:appointment-reschedule-slots",
+                kwargs={"public_code": original.public_code},
+            ),
+            {"date": self.target_date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["data"])
+        self.assertEqual(
+            {tuple(item["available_dentist_ids"]) for item in response.data["data"]},
+            {(alternate_dentist.pk,)},
+        )
+
     def test_reschedule_rejects_second_active_appointment_on_target_day(self):
         self.create_shift()
         original_starts_at = datetime.combine(

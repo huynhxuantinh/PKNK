@@ -169,6 +169,27 @@ class PatientAppointmentApiTests(APITestCase):
         self.assertEqual(history_response.data["meta"]["count"], 1)
         self.assertEqual(history_response.data["data"][0]["public_code"], completed.public_code)
 
+    def test_upcoming_appointments_are_paginated_before_overdue_unprocessed_ones(self):
+        future = self.appointment("PATIENT-FUTURE-FIRST", starts_at=self.at(9))
+        self.appointment(
+            "PATIENT-OVERDUE-ONE",
+            starts_at=timezone.now() - timedelta(days=3),
+        )
+        self.appointment(
+            "PATIENT-OVERDUE-TWO",
+            starts_at=timezone.now() - timedelta(days=2),
+        )
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.get(
+            reverse("patients:appointments"),
+            {"scope": "UPCOMING", "page": 1, "page_size": 1},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["meta"]["count"], 3)
+        self.assertEqual(response.data["data"][0]["public_code"], future.public_code)
+
     def test_detail_is_owner_scoped_and_audited(self):
         own = self.appointment("PATIENT-DETAIL", starts_at=self.at(9))
         other = self.appointment(

@@ -1,6 +1,7 @@
 from math import ceil
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Case, IntegerField, Value, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -77,8 +78,18 @@ class PatientAppointmentListAPIView(PatientAppointmentBaseAPIView):
         appointments = self.queryset().filter(status__in=statuses)
         if data.get("status"):
             appointments = appointments.filter(status=data["status"])
-        ordering = "starts_at" if data["scope"] == "UPCOMING" else "-starts_at"
-        appointments = appointments.order_by(ordering, "public_code")
+        if is_upcoming:
+            # Keep overdue, unresolved appointments visible without allowing a large
+            # backlog to push genuinely upcoming appointments onto later pages.
+            appointments = appointments.annotate(
+                upcoming_priority=Case(
+                    When(starts_at__gte=timezone.now(), then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                )
+            ).order_by("upcoming_priority", "starts_at", "public_code")
+        else:
+            appointments = appointments.order_by("-starts_at", "public_code")
         total = appointments.count()
         offset = (data["page"] - 1) * data["page_size"]
         items = appointments[offset:offset + data["page_size"]]

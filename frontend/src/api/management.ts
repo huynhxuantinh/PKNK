@@ -1,7 +1,16 @@
 import { apiRequest } from './client'
 import type { Slot, TokenPair, User } from '../types/api'
 
-export type ManagementAppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+export type ManagementAppointmentStatus =
+  | 'HELD'
+  | 'EXPIRED'
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'CHECKED_IN'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW'
 
 export interface ManagementAppointment {
   public_code: string

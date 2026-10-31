@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext'
 import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
 import { ClinicalImageLightbox } from '../components/clinical/ClinicalImageLightbox'
 import { PatientInvoiceActions } from '../components/billing/PatientInvoiceActions'
+import { dateInputValue } from '../features/booking/bookingState'
 import { Seo } from '../seo/Seo'
 import type {
   ClinicalAttachment,
@@ -279,7 +280,7 @@ export function PatientAppointmentsPage() {
                   <button className="reschedule-close" type="button" onClick={() => { setRescheduling(null); setRescheduleIdempotencyKey('') }}>Đóng</button>
                 </header>
                 <div className="reschedule-controls">
-                  <label>Chọn ngày<input type="date" value={rescheduleDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
+                  <label>Chọn ngày<input type="date" value={rescheduleDate} min={dateInputValue()} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
                   <button type="button" disabled={!rescheduleDate} onClick={findRescheduleSlots}>Xem giờ trống</button>
                 </div>
                 {rescheduleError && <p className="patient-record-error">{rescheduleError}</p>}

@@ -1,6 +1,8 @@
 import type { ManagementAppointmentStatus } from '../../api/management'
 
 export const appointmentStatusLabels: Record<ManagementAppointmentStatus, string> = {
+  HELD: 'Đang giữ chỗ',
+  EXPIRED: 'Đã hết hạn giữ chỗ',
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
   CHECKED_IN: 'Đã check-in',

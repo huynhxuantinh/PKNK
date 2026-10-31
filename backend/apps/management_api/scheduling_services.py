@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.accounts.models import Dentist
+from apps.accounts.models import Dentist, PatientProfile
 from apps.audit.services import AuditService
 from apps.locations.models import Chair
 from apps.notifications.services import NotificationService
@@ -153,6 +153,12 @@ class RescheduleService:
         request=None,
     ):
         AppointmentService.expire_due_holds(branch_id=appointment.branch_id)
+        # Match BookingService's first resource lock. This serializes all
+        # booking and reschedule attempts for the same patient, including the
+        # case where there is no target-day appointment row to lock yet.
+        patient_profile = PatientProfile.objects.select_for_update().get(
+            pk=appointment.patient_profile_id
+        )
         existing = Appointment.objects.filter(
             reschedule_idempotency_key=idempotency_key
         ).first()
@@ -162,7 +168,7 @@ class RescheduleService:
             return existing, False
 
         original = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related(
                 "branch__organization", "branch_service__service",
                 "patient_profile", "dentist", "chair",
@@ -236,7 +242,7 @@ class RescheduleService:
             active_appointments()
             .select_for_update()
             .filter(
-                patient_profile=original.patient_profile,
+                patient_profile=patient_profile,
                 starts_at__gte=day_starts_at,
                 starts_at__lt=next_day_starts_at,
             )
@@ -251,6 +257,27 @@ class RescheduleService:
 
         selected_chair_id = selected.chair_ids[0]
         dentist = Dentist.objects.select_for_update().get(pk=selected_dentist_id)
+        # Work-shift and time-off edits lock the same dentist row. Re-evaluate
+        # availability after obtaining it so a schedule update committed while
+        # waiting cannot be bypassed by the earlier slot snapshot.
+        current_options = AvailabilityService.list_slots(
+            branch_service=original.branch_service,
+            target_date=target_date,
+            dentist=dentist,
+            exclude_appointment_id=original.pk,
+        )
+        current_selected = next(
+            (
+                option
+                for option in current_options
+                if option.starts_at == starts_at
+                and dentist.pk in option.dentist_ids
+                and selected_chair_id in option.chair_ids
+            ),
+            None,
+        )
+        if current_selected is None:
+            raise ManagementConflict("Khung giờ mới không còn trống.")
         chair = Chair.objects.select_for_update().get(pk=selected_chair_id)
         AppointmentService.transition_status(
             appointment_id=original.pk,
@@ -265,7 +292,7 @@ class RescheduleService:
             with transaction.atomic():
                 successor = Appointment.objects.create(
                     public_code=f"APT-{uuid.uuid4().hex[:20].upper()}",
-                    patient_profile=original.patient_profile,
+                    patient_profile=patient_profile,
                     branch=original.branch,
                     branch_service=original.branch_service,
                     dentist=dentist,
@@ -277,14 +304,20 @@ class RescheduleService:
                     contact_email_snapshot=original.contact_email_snapshot,
                     patient_note=original.patient_note,
                     duration_minutes=int(
-                        (selected.ends_at - selected.starts_at).total_seconds() / 60
+                        (
+                            current_selected.ends_at - current_selected.starts_at
+                        ).total_seconds()
+                        / 60
                     ),
                     buffer_minutes=int(
-                        (selected.occupied_until - selected.ends_at).total_seconds() / 60
+                        (
+                            current_selected.occupied_until - current_selected.ends_at
+                        ).total_seconds()
+                        / 60
                     ),
-                    starts_at=selected.starts_at,
-                    ends_at=selected.ends_at,
-                    occupied_until=selected.occupied_until,
+                    starts_at=current_selected.starts_at,
+                    ends_at=current_selected.ends_at,
+                    occupied_until=current_selected.occupied_until,
                     status=original.status,
                     confirmed_at=(
                         timezone.now()

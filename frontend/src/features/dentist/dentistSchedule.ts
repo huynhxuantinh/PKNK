@@ -17,6 +17,7 @@ const UPCOMING_STATUSES = new Set<DentistAppointmentStatus>([
 
 const HISTORY_STATUSES = new Set<DentistAppointmentStatus>([
   'COMPLETED',
+  'CANCELLED',
   'NO_SHOW',
 ])
 

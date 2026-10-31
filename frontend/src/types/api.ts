@@ -175,6 +175,8 @@ export interface Appointment {
   public_code: string
   status: 'HELD' | 'PENDING' | 'CONFIRMED'
   id_branch: number
+  branch_name: string
+  branch_address: string
   id_branch_service: number
   id_dentist: number
   dentist_name: string

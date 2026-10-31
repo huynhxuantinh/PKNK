@@ -292,6 +292,7 @@ export function DentistDashboardPage() {
                   <option value="IN_PROGRESS">Đang khám</option>
                 </> : <>
                   <option value="COMPLETED">Đã hoàn tất</option>
+                  <option value="CANCELLED">Đã hủy</option>
                   <option value="NO_SHOW">Không đến</option>
                 </>}
               </select>

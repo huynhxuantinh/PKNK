@@ -17,6 +17,7 @@ from apps.scheduling.models import Appointment, AppointmentStatusHistory
 from apps.scheduling.services import AppointmentService
 
 from .models import Notification, NotificationDelivery
+from .services import NotificationService
 from .tasks import publish_due_appointment_reminders
 
 
@@ -232,6 +233,43 @@ class AppointmentWebNotificationTests(APITestCase):
             type=Notification.Type.APPOINTMENT_PENDING_REVIEW,
             recipient=self.admin,
             resource_id=str(held.pk),
+        )
+        self.assertTrue(manager_notification.payload["requires_confirmation"])
+        self.assert_web_only(manager_notification)
+
+    def test_rescheduled_pending_appointment_notifies_manager_idempotently(self):
+        original = self.appointment(
+            "APT-RESCHEDULE-PENDING-OLD",
+            starts_at=timezone.now() + timedelta(hours=30),
+            appointment_status=Appointment.Status.PENDING,
+        )
+        successor = self.appointment(
+            "APT-RESCHEDULE-PENDING-NEW",
+            starts_at=timezone.now() + timedelta(hours=32),
+            appointment_status=Appointment.Status.PENDING,
+        )
+
+        NotificationService.publish_appointment_rescheduled(
+            original=original,
+            successor=successor,
+        )
+        NotificationService.publish_appointment_rescheduled(
+            original=original,
+            successor=successor,
+        )
+
+        self.assertEqual(
+            Notification.objects.filter(
+                type=Notification.Type.APPOINTMENT_RESCHEDULED,
+                recipient=self.patient_user,
+                resource_id=str(successor.pk),
+            ).count(),
+            1,
+        )
+        manager_notification = Notification.objects.get(
+            type=Notification.Type.APPOINTMENT_PENDING_REVIEW,
+            recipient=self.admin,
+            resource_id=str(successor.pk),
         )
         self.assertTrue(manager_notification.payload["requires_confirmation"])
         self.assert_web_only(manager_notification)

@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
 import {
+  BOOKING_DRAFT_STORAGE_KEY,
   bookingSelectionReducer,
   clearBookingHold,
   dateInputValue,
+  initialBookingSelection,
   restoreBookingHold,
   storeBookingHold,
   type BookingSelection,
@@ -116,6 +118,22 @@ describe('bookingSelectionReducer', () => {
     expect(result.service).toBeNull()
     expect(result.slot).toBeNull()
     expect(result.dentist).toBeNull()
+  })
+
+  it('khôi phục bản nháp chỉ giữ chi nhánh và ngày hợp lệ, bỏ slot và bác sĩ cũ', () => {
+    const date = dateInputValue(1)
+    sessionStorageMock.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify({
+      ...selected,
+      date,
+    }))
+
+    expect(initialBookingSelection()).toEqual({
+      branch,
+      service: null,
+      date,
+      slot: null,
+      dentist: null,
+    })
   })
 
   it('khôi phục chỗ đang giữ đúng tài khoản khi trang được tải lại', () => {
