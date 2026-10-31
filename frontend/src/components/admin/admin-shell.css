@@ -1,0 +1,52 @@
+.admin-shell{--admin-bg:#f6f8fb;--admin-border:#e6ebf1;--admin-ink:#172938;min-height:100vh;background:var(--admin-bg);color:var(--admin-ink);display:grid;grid-template-columns:258px minmax(0,1fr);font-family:Inter,"Montserrat Variable",Arial,sans-serif}
+.admin-shell *{box-sizing:border-box}
+.admin-shell-sidebar{background:#fff;border-right:1px solid var(--admin-border);height:100vh;position:sticky;top:0;display:flex;flex-direction:column;z-index:61;overflow-y:auto;padding:24px 15px}
+.admin-shell-brand{display:flex;align-items:center;gap:11px;padding:4px 12px 24px;text-decoration:none;color:#143349}
+.admin-shell-brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#0a87a9,#30b8bd);color:white;display:grid;place-items:center;font-family:Georgia,serif;font-size:28px;font-weight:800}
+.admin-shell-brand-copy{display:flex;flex-direction:column;gap:1px}
+.admin-shell-brand-copy strong{font-size:19px;letter-spacing:-.06em;font-weight:850}
+.admin-shell-brand-copy small{font-size:10px;color:#8193a2;letter-spacing:.06em}
+.admin-shell-workspace{display:grid;gap:5px;padding:17px 14px;margin-bottom:25px;border-radius:13px;background:#f2f8fa;border:1px solid #e0eff1;min-width:0}
+.admin-shell-workspace-label,.admin-shell-nav-caption{font-size:10px;font-weight:800;color:#96a2ae;letter-spacing:.1em}
+.admin-shell-workspace strong{font-size:13px;color:#16394b}
+.admin-shell-workspace small{font-size:11px;color:#708797;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.admin-shell-nav{display:grid;gap:5px}
+.admin-shell-nav-caption{padding:0 15px;margin-bottom:9px}
+.admin-shell-nav-item{display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:10px;text-decoration:none;color:#5c7280;font-size:13px;font-weight:650;transition:background .15s,color .15s}
+.admin-shell-nav-item>span{flex:1}
+.admin-shell-nav-item>svg:last-child{opacity:0}
+.admin-shell-nav-item:hover{background:#f1f7f8;color:#0c7993}
+.admin-shell-nav-item.is-active{background:#e9f6f8;color:#087f9d;font-weight:800}
+.admin-shell-nav-item.is-active>svg:last-child{opacity:1}
+.admin-shell-sidebar-bottom{display:grid;gap:8px;margin-top:auto;padding:16px 4px 2px}
+.admin-shell-switch,.admin-shell-website{display:flex;align-items:center;gap:10px;text-decoration:none;color:#546978;font-size:12px;font-weight:700;padding:12px;border-radius:9px}
+.admin-shell-switch{background:#f0f8f9;color:#127a91}
+.admin-shell-switch span{flex:1}
+.admin-shell-website:hover,.admin-shell-switch:hover{background:#e3f2f5}
+.admin-shell-version{padding:10px 12px;color:#a5afb7;font-size:10px}
+.admin-shell-workarea{min-width:0}
+.admin-shell-topbar{height:86px;border-bottom:1px solid var(--admin-border);background:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 34px}
+.admin-shell-topbar-heading{display:flex;align-items:center;gap:14px;min-width:0}
+.admin-shell-breadcrumb{font-size:11px;color:#8b9dab;font-weight:550}
+.admin-shell-breadcrumb span{padding:0 7px;color:#c8d1da}
+.admin-shell-topbar h1{margin:4px 0 0;font-size:19px;letter-spacing:-.04em;line-height:1.2;color:#17364a}
+.admin-shell-topbar-actions{display:flex;align-items:center;gap:19px;min-width:0}
+.admin-shell-scope{display:grid;gap:4px;min-width:150px}
+.admin-shell-scope span{font-size:10px;color:#8193a2}
+.admin-shell-scope select{min-width:165px;max-width:240px;border:1px solid #dce7ee;border-radius:9px;padding:8px 9px;background:#fff;color:#244759;font-size:12px;font-weight:650}
+.admin-shell-scope-label{font-size:12px;color:#527083;font-weight:650;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-shell-account{border-left:1px solid var(--admin-border);padding-left:17px;min-width:0}
+.admin-shell-content{padding:25px 28px 44px;max-width:1760px;margin:auto;min-width:0}
+.admin-shell-alert{border:1px solid #f1c4c4;background:#fff2f2;color:#ad3030;border-radius:10px;padding:12px 16px;margin-bottom:15px}
+.admin-shell-state{border:1px solid var(--admin-border);background:#fff;padding:36px;border-radius:14px;color:#657987;text-align:center}
+.admin-shell-mobile-toggle{display:none;background:transparent;border:0;padding:8px;color:#234459}
+.admin-shell-backdrop{display:none}
+.admin-shell-content .branch-management-page,.admin-shell-content .organization-management-page{min-height:0;background:transparent!important;padding:0}
+.admin-shell-content .branch-management-main{max-width:none;padding:0;margin:0}
+.admin-shell-content .branch-management-page>.dentist-header,.admin-shell-content .branch-management-page>.staff-schedule-back,.admin-shell-content .branch-management-page>.branch-management-main>.management-section-nav,.admin-shell-content .management-section-nav,.admin-shell-content .branch-management-main>.staff-schedule-back,.admin-shell-content .branch-management-main>.branch-management-hero,.admin-shell-content .organization-management-hero{display:none}
+.admin-shell-content .branch-management-page>main{max-width:none;padding:0;margin:0}
+.admin-shell-content .branch-management-page>main>.branch-management-main{padding:0}
+.admin-shell-content .branch-management-schedule,.admin-shell-content .branch-report-daily{box-shadow:0 3px 15px #153b4f08}
+@media(max-width:1150px){.admin-shell{grid-template-columns:224px minmax(0,1fr)}.admin-shell-topbar{padding:0 20px}.admin-shell-content{padding:22px 18px}.admin-shell-sidebar{padding:20px 10px}}
+@media(max-width:850px){.admin-shell{display:block}.admin-shell-sidebar{position:fixed;inset:0 auto 0 0;width:270px;transform:translateX(-100%);transition:transform .2s ease;box-shadow:8px 0 30px #062a3a20}.admin-shell-sidebar.is-open{transform:translateX(0)}.admin-shell-backdrop{display:block;position:fixed;inset:0;background:#09263880;border:0;z-index:60}.admin-shell-mobile-toggle{display:inline-flex}.admin-shell-topbar{height:auto;min-height:76px;padding:12px 17px}.admin-shell-topbar-actions{gap:8px}.admin-shell-scope-label{display:none}}
+@media(max-width:560px){.admin-shell-content{padding:14px 11px}.admin-shell-topbar h1{font-size:16px}.admin-shell-scope{min-width:0}.admin-shell-scope select{min-width:0;max-width:123px;width:123px}.admin-shell-account{padding-left:8px}.admin-shell-breadcrumb{font-size:10px}}
