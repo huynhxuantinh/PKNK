@@ -24,10 +24,15 @@ const branchItems: NavigationItem[] = [
 
 const organizationItems: NavigationItem[] = [
   { label: 'Tổng quan', path: '/quan-ly-to-chuc', icon: 'overview' },
+  { label: 'Lịch hẹn', path: '/quan-ly-to-chuc/lich-hen', icon: 'calendar' },
+  { label: 'Ca làm & nghỉ', path: '/quan-ly-to-chuc/ca-lam', icon: 'schedule' },
+  { label: 'Tài chính', path: '/quan-ly-to-chuc/tai-chinh', icon: 'invoice' },
+  { label: 'Báo cáo', path: '/quan-ly-to-chuc/bao-cao', icon: 'reports' },
   { label: 'Chi nhánh', path: '/quan-ly-to-chuc/chi-nhanh', icon: 'branches' },
   { label: 'Nhân sự', path: '/quan-ly-to-chuc/nhan-su', icon: 'staff' },
   { label: 'Dịch vụ', path: '/quan-ly-to-chuc/dich-vu', icon: 'services' },
   { label: 'Nhật ký', path: '/quan-ly-to-chuc/nhat-ky', icon: 'audit' },
+  { label: 'Cấu hình', path: '/quan-ly-to-chuc/cau-hinh', icon: 'settings' },
 ]
 
 function SidebarIcon({ name }: { name: NavigationIcon }) {
@@ -63,6 +68,14 @@ export function AdminShell() {
   const query = organizationArea ? organizationScope.organizationId : branchScope.branchId
   const queryName = organizationArea ? 'to-chuc' : 'chi-nhanh'
   const canSwitchArea = canSwitchAdminArea(user)
+  const scopeOptions = organizationArea ? organizationScope.options : branchScope.branches
+  const scopeDisabled = organizationArea ? !organizationScope.options.length : branchScope.loading || !branchScope.branches.length
+
+  function selectScope(id: number) {
+    if (organizationArea) organizationScope.selectOrganization(id)
+    else branchScope.selectBranch(id)
+    setMenuOpen(false)
+  }
 
   function destination(path: string) {
     return query ? `${path}?${queryName}=${query}` : path
@@ -107,6 +120,19 @@ export function AdminShell() {
             </NavLink>
           ))}
         </nav>
+        <label className="admin-mobile-scope-picker">
+          <span>{organizationArea ? 'Tổ chức đang quản lý' : 'Chi nhánh đang quản lý'}</span>
+          <select
+            value={query || ''}
+            disabled={scopeDisabled}
+            onChange={(event) => selectScope(Number(event.target.value))}
+          >
+            {scopeOptions.map((scope) => {
+              const id = 'id' in scope ? scope.id : scope.id_branch
+              return <option key={id} value={id}>{scope.name}</option>
+            })}
+          </select>
+        </label>
         {canSwitchArea && (
           <Link className="admin-area-switch" to={organizationArea ? '/quan-ly-chi-nhanh' : '/quan-ly-to-chuc'}>
             {organizationArea ? 'Quản lý chi nhánh' : 'Quản trị tổ chức'}
@@ -126,14 +152,10 @@ export function AdminShell() {
             <span>{organizationArea ? 'Tổ chức' : 'Chi nhánh'}</span>
             <select
               value={query || ''}
-              disabled={organizationArea ? !organizationScope.options.length : branchScope.loading || !branchScope.branches.length}
-              onChange={(event) => {
-                const id = Number(event.target.value)
-                if (organizationArea) organizationScope.selectOrganization(id)
-                else branchScope.selectBranch(id)
-              }}
+              disabled={scopeDisabled}
+              onChange={(event) => selectScope(Number(event.target.value))}
             >
-              {(organizationArea ? organizationScope.options : branchScope.branches).map((scope) => {
+              {scopeOptions.map((scope) => {
                 const id = 'id' in scope ? scope.id : scope.id_branch
                 return <option key={id} value={id}>{scope.name}</option>
               })}

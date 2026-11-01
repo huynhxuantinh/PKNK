@@ -16,11 +16,15 @@ function hcmIsoDate(date: Date) {
   }).format(date)
 }
 
-export function defaultOrganizationReportRange(now = new Date()) {
+export function organizationReportRange(days: number, now = new Date()) {
   return {
-    from: hcmIsoDate(new Date(now.getTime() - 29 * 86400000)),
+    from: hcmIsoDate(new Date(now.getTime() - Math.max(0, days - 1) * 86400000)),
     to: hcmIsoDate(now),
   }
+}
+
+export function defaultOrganizationReportRange(now = new Date()) {
+  return organizationReportRange(30, now)
 }
 
 export function inclusiveDayCount(from: string, to: string) {

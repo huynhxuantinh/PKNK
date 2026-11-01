@@ -20,10 +20,15 @@ import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
 import { PayosResultPage } from './pages/PayosResultPage'
 import { AcceptInvitationPage } from './pages/AcceptInvitationPage'
 import { OrganizationOverviewPage } from './pages/OrganizationOverviewPage'
+import { OrganizationAppointmentsPage } from './pages/OrganizationAppointmentsPage'
+import { OrganizationStaffSchedulePage } from './pages/OrganizationStaffSchedulePage'
+import { OrganizationFinancePage } from './pages/OrganizationFinancePage'
+import { OrganizationOperationsReportPage } from './pages/OrganizationOperationsReportPage'
 import { OrganizationBranchesPage } from './pages/OrganizationBranchesPage'
 import { OrganizationStaffPage } from './pages/OrganizationStaffPage'
 import { OrganizationServicesPage } from './pages/OrganizationServicesPage'
 import { OrganizationAuditPage } from './pages/OrganizationAuditPage'
+import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { AccountSecurityPage } from './pages/AccountSecurityPage'
 import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -68,10 +73,15 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route element={<RequireRole area="ORGANIZATION" />}>
       <Route element={<AdminShell />}>
         <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
+        <Route path="/quan-ly-to-chuc/lich-hen" element={<OrganizationAppointmentsPage />} />
+        <Route path="/quan-ly-to-chuc/ca-lam" element={<OrganizationStaffSchedulePage />} />
+        <Route path="/quan-ly-to-chuc/tai-chinh" element={<OrganizationFinancePage />} />
+        <Route path="/quan-ly-to-chuc/bao-cao" element={<OrganizationOperationsReportPage />} />
         <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
         <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
         <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
         <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+        <Route path="/quan-ly-to-chuc/cau-hinh" element={<OrganizationSettingsPage />} />
       </Route>
     </Route>
     <Route path="/dang-nhap" element={<LoginPage />} />

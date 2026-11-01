@@ -37,6 +37,7 @@ from .scheduling_views import (
     BranchTimeOffListCreateAPIView,
     BranchWorkShiftListCreateAPIView,
     ManagementAppointmentDetailAPIView,
+    OrganizationAppointmentListAPIView,
     TimeOffDetailAPIView,
     WorkShiftDetailAPIView,
 )
@@ -90,6 +91,7 @@ urlpatterns = [
     path("branches/<int:branch_id>/time-offs/", BranchTimeOffListCreateAPIView.as_view(), name="branch-time-offs"),
     path("time-offs/<int:time_off_id>/", TimeOffDetailAPIView.as_view(), name="time-off-detail"),
     path("branches/<int:branch_id>/appointments/", BranchAppointmentCalendarAPIView.as_view(), name="branch-appointments"),
+    path("organizations/<int:organization_id>/appointments/", OrganizationAppointmentListAPIView.as_view(), name="organization-appointments"),
     path("appointments/<str:public_code>/", ManagementAppointmentDetailAPIView.as_view(), name="appointment-detail"),
     path("appointments/<str:public_code>/confirm/", AppointmentConfirmManagementAPIView.as_view(), name="appointment-confirm"),
     path("appointments/<str:public_code>/check-in/", AppointmentCheckInAPIView.as_view(), name="appointment-check-in"),

@@ -80,6 +80,7 @@
 .admin-scope-picker { display: grid; gap: 1px; margin-left: auto; min-width: 180px; padding: 6px 10px; border: 1px solid #deeaee; border-radius: 9px; background: #fbfeff; color: var(--admin-muted); font-size: 9px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 .admin-scope-picker select { min-width: 160px; max-width: 230px; border: 0; background: transparent; color: var(--admin-navy-800); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0; outline: 0; text-transform: none; }
 .admin-scope-picker select:disabled { cursor: wait; opacity: .55; }
+.admin-mobile-scope-picker { display: none; }
 .admin-menu-toggle { display: none; border: 1px solid var(--admin-border-strong); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-teal-700); font-size: 18px; line-height: 1; padding: 7px 9px; }
 .admin-menu-toggle:focus-visible, .admin-sidebar a:focus-visible { outline: 3px solid rgba(17, 141, 168, .28); outline-offset: 3px; }
 .admin-shell-content > .branch-management-page { min-height: calc(100vh - 70px); }
@@ -137,6 +138,9 @@
   .admin-topbar { min-height: 62px; gap: 10px; }
   .admin-breadcrumb { font-size: 11px; }
   .admin-scope-picker { display: none; }
+  .admin-mobile-scope-picker { display: grid; gap: 5px; margin-top: 4px; padding: 12px 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: #f8fcfd; color: var(--admin-muted); font-size: 10px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+  .admin-mobile-scope-picker select { width: 100%; min-height: 38px; border: 1px solid var(--admin-border-strong); border-radius: var(--admin-radius-sm); background: #fff; color: var(--admin-navy-800); font: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+  .admin-mobile-scope-picker select:disabled { cursor: wait; opacity: .58; }
   .admin-topbar .auth-user-summary { max-width: 150px; }
   .admin-shell-content .branch-management-main { padding: 20px 12px 40px; }
 }

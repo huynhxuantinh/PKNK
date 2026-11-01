@@ -9,7 +9,9 @@ import {
   updateOrganizationBranch,
   type OrganizationBranch,
 } from '../api/organization'
+import { listManagedBranchDentists, listManagedBranchServices, listManagedChairs } from '../api/management'
 import { ConfirmationModal } from '../components/ConfirmationModal'
+import { AdminModal, DataTable, EmptyState, StatusBadge } from '../components/admin/ui'
 import { OrganizationBranchModal } from '../components/organization-management/OrganizationBranchModal'
 import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
 import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
@@ -27,6 +29,8 @@ export function OrganizationBranchesPage() {
   const [provinces, setProvinces] = useState<AdministrativeOption[]>([])
   const [wards, setWards] = useState<AdministrativeOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [loadingWards, setLoadingWards] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -36,11 +40,21 @@ export function OrganizationBranchesPage() {
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmingBranch, setConfirmingBranch] = useState<OrganizationBranch | null>(null)
+  const [selectedBranch, setSelectedBranch] = useState<OrganizationBranch | null>(null)
+  const [branchDetails, setBranchDetails] = useState({ dentists: 0, activeServices: 0, activeChairs: 0 })
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const wardControllerRef = useRef<AbortController | null>(null)
   const organizationName =
     scope.options.find((option) => option.id === scope.organizationId)?.name
     || 'Quản trị tổ chức'
+  const filteredBranches = branches.filter((branch) => {
+    const keyword = query.trim().toLocaleLowerCase('vi-VN')
+    const matchesKeyword = !keyword || [branch.name, branch.code, branch.address_line, branch.phone, branch.email].filter(Boolean).some((value) => String(value).toLocaleLowerCase('vi-VN').includes(keyword))
+    const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? branch.is_active : !branch.is_active)
+    return matchesKeyword && matchesStatus
+  })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -71,6 +85,28 @@ export function OrganizationBranchesPage() {
       })
     return () => controller.abort()
   }, [scope.organizationId, reloadKey])
+
+  useEffect(() => {
+    if (!selectedBranch) return
+    const controller = new AbortController()
+    setDetailsLoading(true)
+    setDetailsError('')
+    Promise.all([
+      listManagedBranchDentists(selectedBranch.id_branch, controller.signal),
+      listManagedBranchServices(selectedBranch.id_branch, controller.signal),
+      listManagedChairs(selectedBranch.id_branch, controller.signal),
+    ]).then(([dentists, services, chairs]) => {
+      if (controller.signal.aborted) return
+      setBranchDetails({
+        dentists: dentists.data.filter((dentist) => dentist.is_active).length,
+        activeServices: services.data.filter((service) => service.is_active).length,
+        activeChairs: chairs.data.filter((chair) => chair.is_active).length,
+      })
+    }).catch((caught) => {
+      if (!controller.signal.aborted) setDetailsError(caught instanceof Error ? caught.message : 'Không thể tải thông tin vận hành chi nhánh.')
+    }).finally(() => { if (!controller.signal.aborted) setDetailsLoading(false) })
+    return () => controller.abort()
+  }, [selectedBranch])
 
   function loadWards(provinceCode: string) {
     wardControllerRef.current?.abort()
@@ -169,12 +205,7 @@ export function OrganizationBranchesPage() {
 
   return (
     <OrganizationPageLayout
-      title="Chi nhánh"
-      path="/quan-ly-to-chuc/chi-nhanh"
-      active="branches"
       organizationId={scope.organizationId}
-      options={scope.options}
-      onSelectOrganization={scope.selectOrganization}
       heroKicker="Mạng lưới chi nhánh"
       heroTitle={organizationName}
       heroDescription="Quản lý danh mục, địa chỉ và trạng thái hoạt động của từng chi nhánh."
@@ -196,63 +227,34 @@ export function OrganizationBranchesPage() {
           <small>{branches.filter((branch) => branch.is_active).length} đang hoạt động</small>
         </header>
 
-        {loading ? (
-          <p role="status">Đang tải chi nhánh...</p>
-        ) : branches.length > 0 ? (
-          <div className="branch-report-table-wrap">
-            <table className="branch-report-table organization-report-table">
-              <thead>
-                <tr>
-                  <th>Chi nhánh</th>
-                  <th>Liên hệ</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.map((branch) => (
-                  <tr key={branch.id_branch}>
-                    <td>
-                      <strong>{branch.name}</strong>
-                      <small>{branch.code} · {branch.address_line}</small>
-                    </td>
-                    <td>
-                      {branch.phone || '—'}
-                      <small>{branch.email || 'Chưa có email'}</small>
-                    </td>
-                    <td>
-                      <span className={`organization-status ${branch.is_active ? 'is-active' : 'is-inactive'}`}>
-                        {branch.is_active ? 'Đang hoạt động' : 'Đã ngưng'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="organization-row-actions">
-                        <button type="button" onClick={() => openEdit(branch)}>Sửa</button>
-                        <button
-                          type="button"
-                          className={branch.is_active ? 'is-danger' : undefined}
-                          disabled={busy}
-                          onClick={() => {
-                            if (branch.is_active) setConfirmingBranch(branch)
-                            else void toggleActive(branch)
-                          }}
-                        >
-                          {branch.is_active ? 'Ngưng' : 'Kích hoạt'}
-                        </button>
-                        {branch.is_active && (
-                          <Link to={`/quan-ly-chi-nhanh?chi-nhanh=${branch.id_branch}`}>
-                            Vận hành chi nhánh
-                          </Link>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="branch-report-empty">Tổ chức chưa có chi nhánh.</p>
+        <div className="organization-branch-toolbar">
+          <label>
+            Tìm chi nhánh
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên, mã, địa chỉ hoặc liên hệ" />
+          </label>
+          <label>
+            Trạng thái
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="INACTIVE">Đã ngưng</option>
+            </select>
+          </label>
+          <small>{filteredBranches.length}/{branches.length} chi nhánh</small>
+        </div>
+
+        {loading ? <p role="status">Đang tải chi nhánh...</p> : (
+          <DataTable
+            rows={filteredBranches}
+            rowKey={(branch) => branch.id_branch}
+            empty={<EmptyState title={branches.length ? 'Không có chi nhánh phù hợp' : 'Tổ chức chưa có chi nhánh'} description={branches.length ? 'Hãy thử thay đổi từ khóa hoặc trạng thái lọc.' : 'Thêm chi nhánh đầu tiên để bắt đầu vận hành.'} />}
+            columns={[
+              { key: 'branch', header: 'Chi nhánh', cell: (branch) => <div className="organization-branch-cell"><strong>{branch.name}</strong><small>{branch.code} · {branch.address_line}</small></div> },
+              { key: 'contact', header: 'Liên hệ', cell: (branch) => <div className="organization-branch-cell"><strong>{branch.phone || '—'}</strong><small>{branch.email || 'Chưa có email'}</small></div> },
+              { key: 'status', header: 'Trạng thái', cell: (branch) => <StatusBadge tone={branch.is_active ? 'success' : 'neutral'}>{branch.is_active ? 'Đang hoạt động' : 'Đã ngưng'}</StatusBadge> },
+              { key: 'actions', header: 'Thao tác', className: 'organization-branch-actions-cell', cell: (branch) => <div className="organization-row-actions"><button type="button" onClick={() => setSelectedBranch(branch)}>Chi tiết</button><button type="button" onClick={() => openEdit(branch)}>Sửa</button><button type="button" className={branch.is_active ? 'is-danger' : undefined} disabled={busy} onClick={() => setConfirmingBranch(branch)}>{branch.is_active ? 'Ngưng' : 'Kích hoạt'}</button>{branch.is_active && <Link to={`/quan-ly-chi-nhanh?chi-nhanh=${branch.id_branch}`}>Vận hành</Link>}</div> },
+            ]}
+          />
         )}
       </section>
 
@@ -279,15 +281,24 @@ export function OrganizationBranchesPage() {
 
       {confirmingBranch && (
         <ConfirmationModal
-          title="Ngưng hoạt động chi nhánh"
-          description={`Chi nhánh ${confirmingBranch.name} sẽ không còn nhận lịch mới. Nếu còn lịch tương lai, hệ thống sẽ từ chối thao tác.`}
-          confirmLabel="Ngưng chi nhánh"
-          danger
+          title={confirmingBranch.is_active ? 'Ngưng hoạt động chi nhánh' : 'Kích hoạt chi nhánh'}
+          description={confirmingBranch.is_active ? `Chi nhánh ${confirmingBranch.name} sẽ không còn nhận lịch mới. Nếu còn lịch tương lai, hệ thống sẽ từ chối thao tác.` : `Kích hoạt ${confirmingBranch.name} để chi nhánh có thể nhận lịch mới.`}
+          confirmLabel={confirmingBranch.is_active ? 'Ngưng chi nhánh' : 'Kích hoạt chi nhánh'}
+          danger={confirmingBranch.is_active}
           busy={busy}
           onCancel={() => setConfirmingBranch(null)}
           onConfirm={() => void toggleActive(confirmingBranch)}
         />
       )}
+
+      {selectedBranch && <AdminModal open placement="end" className="organization-audit-drawer" title={selectedBranch.name} description={`${selectedBranch.code} · ${selectedBranch.is_active ? 'Đang hoạt động' : 'Đã ngưng hoạt động'}`} onClose={() => setSelectedBranch(null)}>
+        {detailsError && <div className="dentist-error" role="alert">{detailsError}</div>}
+        <div className="organization-audit-detail">
+          <dl><div><dt>Địa chỉ</dt><dd>{selectedBranch.address_line}</dd></div><div><dt>Điện thoại</dt><dd>{selectedBranch.phone || 'Chưa cập nhật'}</dd></div><div><dt>Email</dt><dd>{selectedBranch.email || 'Chưa cập nhật'}</dd></div></dl>
+          {detailsLoading ? <p role="status">Đang tải tình hình vận hành...</p> : <section className="organization-detail-kpis"><article><span>Nha sĩ hoạt động</span><strong>{branchDetails.dentists}</strong></article><article><span>Dịch vụ đang cung cấp</span><strong>{branchDetails.activeServices}</strong></article><article><span>Ghế / phòng sẵn sàng</span><strong>{branchDetails.activeChairs}</strong></article></section>}
+          <div className="organization-row-actions organization-detail-links"><Link to={`/quan-ly-chi-nhanh?chi-nhanh=${selectedBranch.id_branch}`}>Tổng quan</Link><Link to={`/quan-ly-chi-nhanh/lich-hen?chi-nhanh=${selectedBranch.id_branch}`}>Lịch hẹn</Link><Link to={`/quan-ly-chi-nhanh/hoa-don?chi-nhanh=${selectedBranch.id_branch}`}>Hóa đơn</Link><Link to={`/quan-ly-chi-nhanh/cau-hinh?chi-nhanh=${selectedBranch.id_branch}`}>Cấu hình</Link></div>
+        </div>
+      </AdminModal>}
     </OrganizationPageLayout>
   )
 }

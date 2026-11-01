@@ -19,7 +19,7 @@ from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization, StaffInvitation
 from apps.organizations.services import StaffInvitationService
-from apps.organizations.tasks import StaffInvitationEmailTask
+from apps.organizations.tasks import StaffInvitationEmailTask, send_staff_invitation_email
 from apps.scheduling.models import Appointment
 
 
@@ -1010,16 +1010,18 @@ class ManagementAPITests(APITestCase):
         free_branch = self.make_branch(self.org_a, "FREE5")
         invite_email = "new-branch-admin@example.com"
         self.client.force_authenticate(self.org_admin)
-        with self.captureOnCommitCallbacks(execute=True):
-            invite_response = self.client.post(
-                reverse("management:organization-memberships", kwargs={"organization_id": self.org_a.pk}),
-                {
-                    "email": invite_email,
-                    "role": Membership.Role.BRANCH_ADMIN,
-                    "branch_id": free_branch.pk,
-                },
-                format="json",
-            )
+        with patch("apps.management_api.views.send_staff_invitation_email.delay") as enqueue:
+            with self.captureOnCommitCallbacks(execute=True):
+                invite_response = self.client.post(
+                    reverse("management:organization-memberships", kwargs={"organization_id": self.org_a.pk}),
+                    {
+                        "email": invite_email,
+                        "role": Membership.Role.BRANCH_ADMIN,
+                        "branch_id": free_branch.pk,
+                    },
+                    format="json",
+                )
+        send_staff_invitation_email.apply(args=enqueue.call_args.args)
         invitation = StaffInvitation.objects.get(email=invite_email)
         invitation_email = mail.outbox[-1]
         raw_token = parse_qs(urlparse(invitation_email.body.splitlines()[-1]).query)["token"][0]

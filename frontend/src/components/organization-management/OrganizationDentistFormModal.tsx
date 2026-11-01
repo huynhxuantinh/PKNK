@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 
 import type { OrganizationDentist } from '../../api/organization'
 import type { DentistFormState } from '../../features/organization/organizationValidation'
+import { AdminModal } from '../admin/ui'
 
 interface OrganizationDentistFormModalProps {
   dentist: OrganizationDentist | null
@@ -28,29 +29,13 @@ export function OrganizationDentistFormModal({
   }
 
   return (
-    <div
-      className="branch-management-modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
-      }}
+    <AdminModal
+      open
+      title={dentist ? 'Sửa hồ sơ nha sĩ' : 'Thêm hồ sơ nha sĩ'}
+      description="Thông tin chuyên môn và quyền làm việc được quản lý tách riêng."
+      className="organization-modal"
+      onClose={() => { if (!busy) onClose() }}
     >
-      <section
-        className="branch-management-modal organization-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="organization-dentist-form-title"
-      >
-        <header>
-          <div>
-            <span className="branch-report-eyebrow">NHA SĨ</span>
-            <h2 id="organization-dentist-form-title">
-              {dentist ? 'Sửa hồ sơ nha sĩ' : 'Thêm hồ sơ nha sĩ'}
-            </h2>
-          </div>
-          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>
-            Đóng
-          </button>
-        </header>
 
         {!dentist && (
           <p className="organization-warning">
@@ -95,7 +80,6 @@ export function OrganizationDentistFormModal({
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </AdminModal>
   )
 }

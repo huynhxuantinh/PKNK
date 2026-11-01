@@ -67,6 +67,15 @@ class CalendarQuerySerializer(serializers.Serializer):
         return attrs
 
 
+class OrganizationAppointmentQuerySerializer(CalendarQuerySerializer):
+    """Filters and pagination for an organization-wide appointment view."""
+
+    branch_id = serializers.IntegerField(min_value=1, required=False)
+    query = serializers.CharField(max_length=100, required=False, allow_blank=True, trim_whitespace=True)
+    limit = serializers.IntegerField(min_value=1, max_value=100, required=False, default=25)
+    offset = serializers.IntegerField(min_value=0, required=False, default=0)
+
+
 class RescheduleSlotQuerySerializer(serializers.Serializer):
     date = serializers.DateField()
     dentist_id = serializers.IntegerField(min_value=1, required=False)

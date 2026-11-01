@@ -19,6 +19,7 @@ from .scheduling_serializers import (
     CalendarAppointmentSerializer,
     CalendarQuerySerializer,
     CancellationSerializer,
+    OrganizationAppointmentQuerySerializer,
     RescheduleSerializer,
     RescheduleSlotQuerySerializer,
     TimeOffManagementSerializer,
@@ -259,6 +260,62 @@ class BranchAppointmentCalendarAPIView(ManagementAPIView):
         )
         result = self.serializer_class(appointments, many=True).data
         return Response({"data": result, "meta": {"count": len(result)}})
+
+
+class OrganizationAppointmentListAPIView(ManagementAPIView):
+    """Paginated appointment list scoped to an organization administrator."""
+
+    serializer_class = CalendarAppointmentSerializer
+    throttle_scope = "management_scheduling"
+
+    @extend_schema(
+        parameters=[OrganizationAppointmentQuerySerializer],
+        responses={200: CalendarAppointmentSerializer(many=True)},
+    )
+    def get(self, request, organization_id):
+        organization = self.organization(organization_id)
+        query = OrganizationAppointmentQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        data = query.validated_data
+
+        appointments = Appointment.objects.filter(
+            branch__organization=organization,
+            starts_at__lt=data["date_to"],
+            occupied_until__gt=data["date_from"],
+        ).select_related(
+            "branch", "patient_profile__user", "dentist__user", "chair", "rescheduled_from"
+        )
+        if data.get("branch_id"):
+            appointments = appointments.filter(branch_id=data["branch_id"])
+        if data.get("status"):
+            appointments = appointments.filter(status=data["status"])
+        if data.get("dentist_id"):
+            appointments = appointments.filter(dentist_id=data["dentist_id"])
+        if data.get("query"):
+            keyword = data["query"]
+            appointments = appointments.filter(
+                Q(public_code__icontains=keyword)
+                | Q(patient_profile__user__full_name__icontains=keyword)
+                | Q(contact_name_snapshot__icontains=keyword)
+                | Q(contact_phone_snapshot__icontains=keyword)
+            )
+
+        appointments = appointments.order_by("starts_at", "pk")
+        total = appointments.count()
+        offset = data["offset"]
+        page = appointments[offset: offset + data["limit"]]
+        AuditService.record_read(
+            actor_user=request.user,
+            organization=organization,
+            action="ORGANIZATION_APPOINTMENT_LIST_VIEWED",
+            resource_type="OrganizationAppointmentList",
+            resource_id=organization.pk,
+            request=request,
+        )
+        return Response({
+            "data": self.serializer_class(page, many=True).data,
+            "meta": {"count": total, "limit": data["limit"], "offset": offset},
+        })
 
 
 class ManagementAppointmentDetailAPIView(ManagementAPIView):

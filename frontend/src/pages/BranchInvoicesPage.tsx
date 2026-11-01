@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { listBranchAppointments } from '../api/management'
@@ -51,20 +51,27 @@ export function BranchInvoicesPage() {
   const [voidReason, setVoidReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [scopeReady, setScopeReady] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const loadRequestId = useRef(0)
+  const selectedInvoiceRequestId = useRef(0)
+  const activeBranchId = useRef(branchId)
+  activeBranchId.current = branchId
+  const isCurrentBranch = () => activeBranchId.current === branchId
 
-  const loadInvoices = useCallback(async () => {
+  const loadInvoices = useCallback(async (signal?: AbortSignal) => {
     if (!branchId) return
+    const requestId = ++loadRequestId.current
     setLoading(true)
-    setItems([])
     try {
       const response = await listManagedInvoices(branchId, {
         status: status || undefined,
         appointmentCode: appliedAppointmentFilter || undefined,
         limit: INVOICE_PAGE_SIZE,
         offset,
-      })
+      }, signal)
+      if (signal?.aborted || branchId !== activeBranchId.current || requestId !== loadRequestId.current) return
       if (offset > 0 && response.data.length === 0) {
         setOffset(Math.max(0, offset - INVOICE_PAGE_SIZE))
         return
@@ -73,26 +80,67 @@ export function BranchInvoicesPage() {
       setInvoiceCount(response.meta.count)
       setError('')
     } catch (caught) {
+      if (signal?.aborted || branchId !== activeBranchId.current || requestId !== loadRequestId.current) return
       setInvoiceCount(0)
       setError(caught instanceof Error ? caught.message : 'Không thể tải hóa đơn.')
     }
-    finally { setLoading(false) }
+    finally {
+      if (!signal?.aborted && branchId === activeBranchId.current && requestId === loadRequestId.current) {
+        setLoading(false)
+        setScopeReady(true)
+      }
+    }
   }, [appliedAppointmentFilter, branchId, offset, status])
 
-  useEffect(() => { void loadInvoices() }, [loadInvoices])
-  useEffect(() => { setOffset(0) }, [branchId])
+  useEffect(() => {
+    loadRequestId.current += 1
+    selectedInvoiceRequestId.current += 1
+    setScopeReady(false)
+    setLoading(true)
+    setItems([])
+    setInvoiceCount(0)
+    setCompletedAppointments([])
+    setSelected(null)
+    setAppointmentCode('')
+    setShowCreate(false)
+    setShowVoid(false)
+    setShowPayment(false)
+    setShowDraftEditor(false)
+    setPaymentToVoid(null)
+    setPaymentError('')
+    setDraftEditorError('')
+    setVoidReason('')
+    setError('')
+    setNotice('')
+    setOffset(0)
+  }, [branchId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void loadInvoices(controller.signal)
+    return () => controller.abort()
+  }, [loadInvoices])
   useEffect(() => {
     if (!branchId) return
+    const controller = new AbortController()
     const from = hcmDate(new Date(Date.now() - 30 * 86400000))
-    listBranchAppointments(branchId, from, 'COMPLETED', undefined, 31)
-      .then((response) => setCompletedAppointments(response.data))
-      .catch(() => setCompletedAppointments([]))
+    listBranchAppointments(branchId, from, 'COMPLETED', undefined, 31, controller.signal)
+      .then((response) => { if (!controller.signal.aborted) setCompletedAppointments(response.data) })
+      .catch(() => { if (!controller.signal.aborted) setCompletedAppointments([]) })
+    return () => controller.abort()
   }, [branchId])
 
   async function selectInvoice(invoice: ManagedInvoice) {
+    if (!scopeReady) return
+    const requestId = ++selectedInvoiceRequestId.current
     setError('')
-    try { const response = await getManagedInvoice(invoice.id_invoice); setSelected(response.data) }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể tải chi tiết hóa đơn.') }
+    try {
+      const response = await getManagedInvoice(invoice.id_invoice)
+      if (requestId === selectedInvoiceRequestId.current) setSelected(response.data)
+    }
+    catch (caught) {
+      if (requestId === selectedInvoiceRequestId.current) setError(caught instanceof Error ? caught.message : 'Không thể tải chi tiết hóa đơn.')
+    }
   }
 
   function searchInvoices() {
@@ -107,7 +155,9 @@ export function BranchInvoicesPage() {
   }
 
   async function createInvoice(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError(''); setNotice('')
+    event.preventDefault()
+    if (!scopeReady) return
+    setBusy(true); setError(''); setNotice('')
     const code = appointmentCode.trim()
     try {
       const existing = await listManagedInvoices(branchId, {
@@ -119,73 +169,80 @@ export function BranchInvoicesPage() {
       }
       const replacementId = latestVoidedInvoiceId(existing.data)
       const response = await createManagedInvoice(branchId, code, replacementId)
+      if (!isCurrentBranch()) return
       setShowCreate(false); setAppointmentCode(''); setSelected(response.data); setNotice('Đã tạo hóa đơn nháp.'); await loadInvoices()
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể tạo hóa đơn.') }
+    } catch (caught) { if (!isCurrentBranch()) return; setError(caught instanceof Error ? caught.message : 'Không thể tạo hóa đơn.') }
     finally { setBusy(false) }
   }
 
   async function issueInvoice() {
-    if (!selected) return
+    if (!selected || !scopeReady) return
     setBusy(true); setError(''); setNotice('')
-    try { const response = await issueManagedInvoice(selected.id_invoice); setSelected(response.data); setNotice('Đã phát hành hóa đơn.'); await loadInvoices() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể phát hành hóa đơn.') }
+    try { const response = await issueManagedInvoice(selected.id_invoice); if (!isCurrentBranch()) return; setSelected(response.data); setNotice('Đã phát hành hóa đơn.'); await loadInvoices() }
+    catch (caught) { if (!isCurrentBranch()) return; setError(caught instanceof Error ? caught.message : 'Không thể phát hành hóa đơn.') }
     finally { setBusy(false) }
   }
 
   async function voidInvoice(event: FormEvent) {
     event.preventDefault()
-    if (!selected) return
+    if (!selected || !scopeReady) return
     setBusy(true); setError(''); setNotice('')
-    try { const response = await voidManagedInvoice(selected.id_invoice, voidReason.trim()); setSelected(response.data); setShowVoid(false); setVoidReason(''); setNotice('Đã hủy hóa đơn.'); await loadInvoices() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Không thể hủy hóa đơn.') }
+    try { const response = await voidManagedInvoice(selected.id_invoice, voidReason.trim()); if (!isCurrentBranch()) return; setSelected(response.data); setShowVoid(false); setVoidReason(''); setNotice('Đã hủy hóa đơn.'); await loadInvoices() }
+    catch (caught) { if (!isCurrentBranch()) return; setError(caught instanceof Error ? caught.message : 'Không thể hủy hóa đơn.') }
     finally { setBusy(false) }
   }
 
   function openPayment() {
+    if (!scopeReady) return
     setPaymentError('')
     setPaymentAttemptKey(crypto.randomUUID())
     setShowPayment(true)
   }
 
   async function recordPayment(data: ManagedPaymentInput) {
-    if (!selected) return
+    if (!selected || !scopeReady) return
     setBusy(true); setPaymentError(''); setNotice('')
     try {
       await postManagedPayment(selected.id_invoice, data)
       const refreshed = await getManagedInvoice(selected.id_invoice)
+      if (!isCurrentBranch()) return
       setSelected(refreshed.data); setShowPayment(false); setPaymentAttemptKey(''); setNotice('Đã ghi nhận thanh toán.'); await loadInvoices()
-    } catch (caught) { setPaymentError(caught instanceof Error ? caught.message : 'Không thể ghi nhận thanh toán.') }
+    } catch (caught) { if (!isCurrentBranch()) return; setPaymentError(caught instanceof Error ? caught.message : 'Không thể ghi nhận thanh toán.') }
     finally { setBusy(false) }
   }
 
   function openVoidPayment(payment: ManagedInvoicePayment) {
+    if (!scopeReady) return
     setPaymentError('')
     setPaymentToVoid(payment)
   }
 
   async function voidPayment(reason: string) {
-    if (!selected || !paymentToVoid) return
+    if (!selected || !paymentToVoid || !scopeReady) return
     setBusy(true); setPaymentError(''); setNotice('')
     try {
       await voidManagedPayment(paymentToVoid.id_payment, reason)
       const refreshed = await getManagedInvoice(selected.id_invoice)
+      if (!isCurrentBranch()) return
       setSelected(refreshed.data); setPaymentToVoid(null); setNotice('Đã hủy thanh toán.'); await loadInvoices()
-    } catch (caught) { setPaymentError(caught instanceof Error ? caught.message : 'Không thể hủy thanh toán.') }
+    } catch (caught) { if (!isCurrentBranch()) return; setPaymentError(caught instanceof Error ? caught.message : 'Không thể hủy thanh toán.') }
     finally { setBusy(false) }
   }
 
   function openDraftEditor() {
+    if (!scopeReady) return
     setDraftEditorError('')
     setShowDraftEditor(true)
   }
 
   async function updateDraft(data: ManagedInvoiceDraftInput) {
-    if (!selected) return
+    if (!selected || !scopeReady) return
     setBusy(true); setDraftEditorError(''); setNotice('')
     try {
       const response = await updateManagedInvoiceDraft(selected.id_invoice, data)
+      if (!isCurrentBranch()) return
       setSelected(response.data); setShowDraftEditor(false); setNotice('Đã cập nhật hóa đơn nháp.'); await loadInvoices()
-    } catch (caught) { setDraftEditorError(caught instanceof Error ? caught.message : 'Không thể cập nhật hóa đơn nháp.') }
+    } catch (caught) { if (!isCurrentBranch()) return; setDraftEditorError(caught instanceof Error ? caught.message : 'Không thể cập nhật hóa đơn nháp.') }
     finally { setBusy(false) }
   }
 
@@ -193,7 +250,7 @@ export function BranchInvoicesPage() {
   return <div className="branch-management-page invoice-management-page">
     <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
-    <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
+    <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
     {error && <div className="dentist-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
     <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />

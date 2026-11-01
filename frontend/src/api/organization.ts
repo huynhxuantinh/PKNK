@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type { AdministrativeOption } from '../types/api'
+import type { ManagementAppointment, ManagementAppointmentStatus } from './management'
 
 export type OrganizationAdminRole = 'ORGANIZATION_ADMIN' | 'BRANCH_ADMIN'
 export type OrganizationRole = OrganizationAdminRole | 'DENTIST' | 'PATIENT'
@@ -280,6 +281,22 @@ export interface AuditEventFilters {
   access_type?: 'READ' | 'WRITE' | ''
 }
 
+export interface OrganizationAppointmentFilters {
+  date_from: string
+  date_to: string
+  branch_id?: number
+  status?: ManagementAppointmentStatus
+  dentist_id?: number
+  query?: string
+  limit?: number
+  offset?: number
+}
+
+export interface OrganizationAppointmentPage {
+  data: ManagementAppointment[]
+  meta: { count: number; limit: number; offset: number }
+}
+
 const data = <T>(path: string, init: RequestInit = {}) =>
   apiRequest<{ data: T }>(path, init, { auth: true })
 
@@ -298,6 +315,28 @@ export function listOrganizationBranches(organizationId: number, signal?: AbortS
   return data<OrganizationBranch[]>(
     `/management/organizations/${organizationId}/branches/`,
     { signal },
+  )
+}
+
+export function listOrganizationAppointments(
+  organizationId: number,
+  filters: OrganizationAppointmentFilters,
+  signal?: AbortSignal,
+) {
+  const params = new URLSearchParams({
+    date_from: filters.date_from,
+    date_to: filters.date_to,
+    limit: String(filters.limit ?? 25),
+    offset: String(filters.offset ?? 0),
+  })
+  if (filters.branch_id) params.set('branch_id', String(filters.branch_id))
+  if (filters.status) params.set('status', filters.status)
+  if (filters.dentist_id) params.set('dentist_id', String(filters.dentist_id))
+  if (filters.query?.trim()) params.set('query', filters.query.trim())
+  return apiRequest<OrganizationAppointmentPage>(
+    `/management/organizations/${organizationId}/appointments/?${params}`,
+    { signal },
+    { auth: true },
   )
 }
 

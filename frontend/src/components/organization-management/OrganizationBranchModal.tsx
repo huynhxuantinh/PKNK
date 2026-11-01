@@ -7,6 +7,7 @@ import {
   type BranchFormState,
 } from '../../features/organization/organizationValidation'
 import type { AdministrativeOption } from '../../types/api'
+import { AdminModal } from '../admin/ui'
 import { LocationPicker } from './LocationPicker'
 
 interface OrganizationBranchModalProps {
@@ -48,27 +49,14 @@ export function OrganizationBranchModal({
   }
 
   return (
-    <div
-      className="branch-management-modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
-      }}
+    <AdminModal
+      open
+      title={branch ? 'Sửa chi nhánh' : 'Thêm chi nhánh'}
+      description="Cập nhật thông tin, địa chỉ và vị trí hiển thị của chi nhánh."
+      className="organization-modal"
+      onClose={() => { if (!busy) onClose() }}
     >
-      <section
-        className="branch-management-modal organization-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="organization-branch-modal-title"
-      >
-        <header>
-          <div>
-            <span className="branch-report-eyebrow">CHI NHÁNH</span>
-            <h2 id="organization-branch-modal-title">{branch ? 'Sửa chi nhánh' : 'Thêm chi nhánh'}</h2>
-          </div>
-          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>Đóng</button>
-        </header>
-
-        {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="dentist-error" role="alert">{error}</div>}
 
         <form className="organization-form-grid" onSubmit={submit}>
           <label>
@@ -172,7 +160,6 @@ export function OrganizationBranchModal({
             <button type="submit" disabled={busy}>{busy ? 'Đang lưu...' : branch ? 'Lưu thay đổi' : 'Tạo chi nhánh'}</button>
           </div>
         </form>
-      </section>
-    </div>
+    </AdminModal>
   )
 }

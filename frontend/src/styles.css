@@ -2149,9 +2149,10 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .invitation-loader { width: 30px; height: 30px; border: 3px solid #dbecef; border-top-color: var(--aurelia-blue); border-radius: 50%; animation: invitation-spin .8s linear infinite; }
 @keyframes invitation-spin { to { transform: rotate(360deg); } }
 .organization-management-page { background: linear-gradient(180deg, #eaf7f9 0, #f8fcfd 430px); }
-.organization-management-hero { position: relative; overflow: hidden; }
+.organization-management-hero { position: relative; overflow: hidden; align-items: center; padding: 1.5rem 1.75rem; }
 .organization-management-hero::after { content: ""; width: 270px; height: 270px; position: absolute; right: -80px; bottom: -170px; border: 1px solid rgba(255,255,255,.24); border-radius: 50%; box-shadow: 0 0 0 38px rgba(255,255,255,.05), 0 0 0 78px rgba(255,255,255,.035); }
 .organization-management-hero > * { position: relative; z-index: 1; }
+.organization-management-hero h1 { font-size: clamp(1.75rem, 3vw, 2.35rem); }
 .organization-eyebrow { color: #99e5ef; font-size: 10px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
 .organization-foundation { margin-top: 1.25rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #d6e8ec; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 18px 45px rgba(17,75,93,.07); }
 .organization-foundation article { min-height: 190px; padding: 1.45rem; display: grid; align-content: space-between; gap: 1rem; border-right: 1px solid #dcebed; }
@@ -2932,8 +2933,6 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 
 /* Organization administration */
 .organization-hero-tools { display: grid; gap: .85rem; justify-items: end; }
-.organization-hero-tools > label { display: grid; gap: .45rem; min-width: 230px; color: #d9f4f7; font-size: .78rem; font-weight: 700; }
-.organization-hero-tools select { padding: .75rem; border: 0; border-radius: 9px; color: #082d4a; }
 .organization-hero-button { padding: .8rem 1.2rem; border: 1px solid rgba(255,255,255,.45); border-radius: 9px; background: rgba(255,255,255,.12); color: #fff; font: inherit; font-size: .82rem; font-weight: 800; cursor: pointer; backdrop-filter: blur(4px); }
 .organization-hero-button:hover { background: rgba(255,255,255,.22); }
 .organization-hero-stat { color: #d9f4f7; font-size: .8rem; font-weight: 700; white-space: nowrap; }
@@ -2942,16 +2941,49 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .organization-date-range input { padding: .62rem .7rem; border: 0; border-radius: 8px; color: #082d4a; font: inherit; }
 .organization-date-range button { padding: .68rem .95rem; border: 1px solid rgba(255,255,255,.5); border-radius: 8px; background: #fff; color: #087c9d; font: inherit; font-size: .78rem; font-weight: 800; cursor: pointer; }
 .organization-date-range button:disabled { cursor: not-allowed; opacity: .6; }
+.organization-quick-ranges { display: flex; gap: .35rem; }
+.organization-date-range .organization-quick-ranges button { padding: .45rem .62rem; border-color: rgba(255,255,255,.34); background: rgba(255,255,255,.1); color: #e9fcff; }
+.organization-date-range .organization-quick-ranges button.is-active { border-color: #fff; background: #fff; color: #087c9d; }
+.organization-revenue-chart { min-height: 170px; display: flex; align-items: end; gap: 7px; margin: 1rem 0; padding: 16px 12px 8px; overflow-x: auto; border: 1px solid #dcebed; border-radius: 12px; background: linear-gradient(180deg,#fbfeff,#f4fafb); }
+.organization-revenue-chart__bar { min-width: 28px; height: 140px; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 6px; }
+.organization-revenue-chart__bar i { display: block; width: 100%; min-height: 4px; height: var(--revenue-height); border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg,#13a2bc,#087c9d); }
+.organization-revenue-chart__bar span { overflow: hidden; max-width: 42px; color: #78909a; font-size: 9px; line-height: 1.1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .organization-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.organization-network-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.organization-network-summary article { display: grid; gap: .35rem; padding: 1rem 1.15rem; border: 1px solid #d7e8ed; border-radius: 13px; background: linear-gradient(135deg,#fff,#f4fbfc); box-shadow: 0 8px 22px rgba(20,78,101,.045); }
+.organization-network-summary span { color: #638095; font-size: .7rem; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
+.organization-network-summary strong { color: #082d4a; font-size: 1.8rem; line-height: 1; }
+.organization-network-summary small { color: #708b9a; font-size: .74rem; }
+.organization-alerts { margin: 1rem 0; padding: 1.1rem 1.2rem; border: 1px solid #f0d3a2; border-radius: 13px; background: linear-gradient(135deg,#fffaf0,#fffcf7); }
+.organization-alerts > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.organization-alerts h2 { margin: .2rem 0 0; color: #624012; font-size: 1.15rem; }
+.organization-alerts > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-top: .9rem; }
+.organization-alerts article { padding: .75rem .85rem; border: 1px solid #f1dfbd; border-radius: 9px; background: rgba(255,255,255,.7); }
+.organization-alerts strong { color: #8b5714; font-size: .8rem; }
+.organization-alerts p { margin: .32rem 0 0; color: #856c46; font-size: .75rem; line-height: 1.45; }
+.organization-finance-kpi { display: grid; gap: .38rem; padding: 1.2rem; }
+.organization-finance-kpi span { color: #638095; font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.organization-finance-kpi strong { color: #082d4a; font-size: clamp(1.45rem, 3vw, 2rem); }
+.organization-finance-kpi small { color: #78909b; font-size: .74rem; }
 .organization-report-section { margin-top: 1rem; }
 .organization-report-section > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .organization-report-section > header h2 { margin: .25rem 0 0; font-size: 1.35rem; }
+.organization-report-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .45rem; }
+.organization-report-actions button { padding: .48rem .72rem; border: 1px solid #bddae2; border-radius: 8px; background: #fff; color: #087c9d; font: inherit; font-size: .74rem; font-weight: 800; cursor: pointer; }
+.organization-report-actions button:hover:not(:disabled) { border-color: #078fad; background: #effafd; }
+.organization-report-actions button:disabled { cursor: not-allowed; opacity: .5; }
 .organization-pending { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e0edf1; }
 .organization-pending > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .organization-pending > header h3 { margin: .25rem 0 0; font-size: 1.05rem; }
 .organization-report-table td small, .organization-report-table th small { display: block; margin-top: .2rem; color: #7c97a3; font-size: .72rem; font-weight: 600; }
 .organization-report-table td { vertical-align: top; }
 .organization-report-table td:last-child { color: #264f64; font-weight: 600; }
+.organization-table-note { display: block; margin-top: .28rem; color: #708b9a; font-size: .72rem; font-weight: 650; }
+.organization-detail-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin: 1rem 0; }
+.organization-detail-kpis article { display: grid; gap: .3rem; padding: .8rem; border: 1px solid #d9eaee; border-radius: 10px; background: #f7fbfc; }
+.organization-detail-kpis span { color: #6d8795; font-size: .68rem; font-weight: 800; line-height: 1.35; text-transform: uppercase; }
+.organization-detail-kpis strong { color: #082d4a; font-size: 1.35rem; }
+.organization-detail-links { justify-content: flex-start; padding-top: .8rem; border-top: 1px solid #e1edf0; }
 .organization-staff-table-wrap { max-width: 100%; overscroll-behavior-inline: contain; scrollbar-width: thin; scrollbar-color: #8fcbd6 #edf6f8; -webkit-overflow-scrolling: touch; }
 .organization-staff-table-wrap:focus-visible { outline: 2px solid #078fad; outline-offset: 3px; border-radius: 8px; }
 .organization-admin-table { min-width: 780px; }
@@ -2970,6 +3002,15 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 .organization-row-actions .is-danger { border-color: #ecc8c4; color: #b3423b; }
 .organization-row-actions .is-danger:hover { border-color: #d9a5a0; background: #fff5f4; }
 .organization-row-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.organization-branch-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.15rem 0; padding: .9rem 1rem; border: 1px solid #dcebed; border-radius: 12px; background: linear-gradient(135deg,#fbfeff,#f4fafb); }
+.organization-branch-toolbar label { display: grid; flex: 1 1 230px; gap: .35rem; color: #264f64; font-size: .72rem; font-weight: 800; }
+.organization-branch-toolbar label:nth-child(2) { flex-basis: 180px; max-width: 230px; }
+.organization-branch-toolbar input, .organization-branch-toolbar select { width: 100%; min-height: 38px; padding: .55rem .7rem; border: 1px solid #cbdfe7; border-radius: 8px; background: #fff; color: #082d4a; font: inherit; font-size: .8rem; }
+.organization-branch-toolbar small { margin: 0 0 .55rem auto; color: #638095; font-size: .74rem; font-weight: 700; white-space: nowrap; }
+.organization-branch-cell { display: grid; gap: .22rem; min-width: 150px; }
+.organization-branch-cell strong { color: #163c54; font-size: .84rem; }
+.organization-branch-cell small { color: #6d8795; font-size: .74rem; line-height: 1.42; }
+.organization-branch-actions-cell { min-width: 220px; }
 .organization-inline-link { padding: 0; border: 0; background: transparent; color: #087c9d; font: inherit; font-size: .74rem; font-weight: 800; text-decoration: none; cursor: pointer; }
 .organization-inline-link:hover { text-decoration: underline; }
 .organization-primary-button { padding: .65rem 1rem; border: 0; border-radius: 8px; background: #078fad; color: #fff; font: inherit; font-size: .78rem; font-weight: 800; cursor: pointer; }
@@ -3057,6 +3098,9 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
 
 @media (max-width: 980px) {
   .organization-report-grid { grid-template-columns: 1fr; }
+  .organization-network-summary { grid-template-columns: 1fr; }
+  .organization-alerts > div { grid-template-columns: 1fr; }
+  .organization-detail-kpis { grid-template-columns: 1fr; }
   .organization-settings-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .organization-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -3083,6 +3127,9 @@ a.clinic-detail-fact:hover strong { color: var(--aurelia-blue-dark); }
   .organization-filter-actions button { flex: 1; }
   .organization-tabs button { min-width: 0; flex: 1 1 100%; }
   .organization-row-actions { justify-content: flex-start; }
+  .organization-branch-toolbar { align-items: stretch; padding: .8rem; }
+  .organization-branch-toolbar label, .organization-branch-toolbar label:nth-child(2) { flex-basis: 100%; max-width: none; }
+  .organization-branch-toolbar small { margin: 0; }
   .organization-report-section > header { align-items: flex-start; flex-direction: column; }
 }
 /* Alerts managers after the live appointment refresh finds new pending bookings. */

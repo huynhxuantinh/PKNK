@@ -1,4 +1,4 @@
-import { createContext, type ButtonHTMLAttributes, type FormHTMLAttributes, type InputHTMLAttributes, type ReactNode, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, type ButtonHTMLAttributes, type FormHTMLAttributes, type InputHTMLAttributes, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import './ui.css'
 
@@ -41,9 +41,54 @@ export function DatePicker({ className = '', ...props }: InputHTMLAttributes<HTM
   return <input className={`admin-date-picker ${className}`.trim()} type="date" {...props} />
 }
 
-export function AdminModal({ open, title, description, children, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void }) {
+export function AdminModal({ open, title, description, children, onClose, className = '', placement = 'center' }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void; className?: string; placement?: 'center' | 'end' }) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!open) return
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const selector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const focusDialog = () => {
+      const focusable = dialogRef.current?.querySelector<HTMLElement>(selector)
+      ;(focusable || dialogRef.current)?.focus()
+    }
+    const frame = window.requestAnimationFrame(focusDialog)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>(selector)]
+      if (!focusable.length) {
+        event.preventDefault()
+        dialogRef.current.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKeyDown)
+      restoreFocusRef.current?.focus()
+    }
+  }, [open])
+
   if (!open) return null
-  return <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" aria-describedby={description ? 'admin-modal-description' : undefined} onKeyDown={(event) => event.key === 'Escape' && onClose()} tabIndex={-1}><header><div><h2 id="admin-modal-title">{title}</h2>{description && <p id="admin-modal-description">{description}</p>}</div><AdminButton tone="quiet" type="button" onClick={onClose} aria-label="Đóng">×</AdminButton></header><div className="admin-modal__body">{children}</div></section></div>
+  return <div className={`admin-modal-backdrop admin-modal-backdrop--${placement}`} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className={`admin-modal admin-modal--${placement} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" aria-describedby={description ? 'admin-modal-description' : undefined} tabIndex={-1}><header><div><h2 id="admin-modal-title">{title}</h2>{description && <p id="admin-modal-description">{description}</p>}</div><AdminButton tone="quiet" type="button" onClick={onClose} aria-label="Đóng">×</AdminButton></header><div className="admin-modal__body">{children}</div></section></div>
 }
 
 export type DataTableColumn<T> = { key: string; header: ReactNode; cell: (row: T) => ReactNode; className?: string }

@@ -42,6 +42,11 @@ export function BranchReportsPage() {
   );
   const [to, setTo] = useState(() => iso(new Date()));
   const [data, setData] = useState<BranchReportData | null>(null);
+  const [loadedRange, setLoadedRange] = useState<{
+    branchId: number;
+    from: string;
+    to: string;
+  } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const loadedBranchRef = useRef<number | null>(null);
@@ -55,12 +60,14 @@ export function BranchReportsPage() {
     if (rangeError) {
       setLoading(false);
       setData(null);
+      setLoadedRange(null);
       setError(rangeError);
       return;
     }
 
     setLoading(true);
     setData(null);
+    setLoadedRange(null);
     setError("");
 
     try {
@@ -76,8 +83,10 @@ export function BranchReportsPage() {
           appointments.data as unknown as BranchReportData["appointments"],
         chairs: chairs.data as unknown as BranchReportData["chairs"],
       });
+      setLoadedRange({ branchId, from, to });
     } catch (caught) {
       setData(null);
+      setLoadedRange(null);
       setError(
         caught instanceof Error ? caught.message : "Không thể tải báo cáo.",
       );
@@ -85,6 +94,12 @@ export function BranchReportsPage() {
       setLoading(false);
     }
   }, [branchId, from, to]);
+
+  const hasUnappliedDateRange =
+    !loadedRange ||
+    loadedRange.branchId !== branchId ||
+    loadedRange.from !== from ||
+    loadedRange.to !== to;
 
   useEffect(() => {
     if (branchId && loadedBranchRef.current !== branchId) {
@@ -125,7 +140,13 @@ export function BranchReportsPage() {
         </Link>
         <h1>Báo cáo chi nhánh</h1>
         <div className="branch-management-filters">
-          <button className="branch-report-print-button" type="button" disabled={!data || loading} onClick={() => data && printBranchReport({ branchName, from, to, data })}>
+          <button
+            className="branch-report-print-button"
+            type="button"
+            disabled={!data || loading || hasUnappliedDateRange}
+            title={hasUnappliedDateRange ? "Hãy xem báo cáo với khoảng ngày mới trước khi xuất PDF." : undefined}
+            onClick={() => data && loadedRange && printBranchReport({ branchName, from: loadedRange.from, to: loadedRange.to, data })}
+          >
             Xuất PDF
           </button>
           <label>

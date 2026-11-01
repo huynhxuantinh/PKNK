@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 
 import type { OrganizationService } from '../../api/organization'
 import type { ServiceFormState } from '../../features/organization/organizationValidation'
+import { AdminModal } from '../admin/ui'
 
 interface OrganizationServiceModalProps {
   service: OrganizationService | null
@@ -28,29 +29,13 @@ export function OrganizationServiceModal({
   }
 
   return (
-    <div
-      className="branch-management-modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
-      }}
+    <AdminModal
+      open
+      title={service ? 'Sửa dịch vụ' : 'Thêm dịch vụ'}
+      description="Đây là giá và thời lượng chuẩn của tổ chức; chi nhánh có thể cấu hình riêng."
+      className="organization-modal"
+      onClose={() => { if (!busy) onClose() }}
     >
-      <section
-        className="branch-management-modal organization-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="organization-service-modal-title"
-      >
-        <header>
-          <div>
-            <span className="branch-report-eyebrow">DỊCH VỤ</span>
-            <h2 id="organization-service-modal-title">
-              {service ? 'Sửa dịch vụ' : 'Thêm dịch vụ'}
-            </h2>
-          </div>
-          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>
-            Đóng
-          </button>
-        </header>
 
         {error && <div className="dentist-error" role="alert">{error}</div>}
 
@@ -129,7 +114,6 @@ export function OrganizationServiceModal({
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </AdminModal>
   )
 }

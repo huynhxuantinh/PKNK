@@ -8,6 +8,7 @@ import {
   type AuditEventFilters,
   type OrganizationBranch,
 } from '../api/organization'
+import { AdminModal, EmptyState, StatusBadge } from '../components/admin/ui'
 import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
 import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
 import {
@@ -34,7 +35,7 @@ export function OrganizationAuditPage() {
   const [data, setData] = useState<AuditEventPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
   const organizationName =
     scope.options.find((option) => option.id === scope.organizationId)?.name
     || 'Quản trị tổ chức'
@@ -65,7 +66,7 @@ export function OrganizationAuditPage() {
       .then((response) => {
         if (controller.signal.aborted) return
         setData(response)
-        setExpandedId(null)
+        setSelectedEvent(null)
       })
       .catch((caught) => {
         if (controller.signal.aborted) return
@@ -100,12 +101,7 @@ export function OrganizationAuditPage() {
 
   return (
     <OrganizationPageLayout
-      title="Nhật ký hoạt động"
-      path="/quan-ly-to-chuc/nhat-ky"
-      active="audit"
       organizationId={scope.organizationId}
-      options={scope.options}
-      onSelectOrganization={scope.selectOrganization}
       heroKicker="Truy vết thao tác"
       heroTitle={organizationName}
       heroDescription="Tra cứu các thao tác đọc và thay đổi dữ liệu trong tổ chức. Danh sách không tự động làm mới."
@@ -217,18 +213,13 @@ export function OrganizationAuditPage() {
                     key={event.id_audit_event}
                     event={event}
                     branchName={branchName(event.branch_id)}
-                    expanded={expandedId === event.id_audit_event}
-                    onToggle={() => setExpandedId(
-                      expandedId === event.id_audit_event ? null : event.id_audit_event,
-                    )}
+                    onView={() => setSelectedEvent(event)}
                   />
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="branch-report-empty">Không có sự kiện phù hợp với bộ lọc.</p>
-        )}
+        ) : <EmptyState title="Không có sự kiện phù hợp" description="Hãy thay đổi bộ lọc hoặc chọn khoảng thao tác khác." />}
 
         <div className="organization-pagination">
           <button
@@ -248,6 +239,19 @@ export function OrganizationAuditPage() {
           </button>
         </div>
       </section>
+
+      {selectedEvent && (
+        <AdminModal
+          open
+          placement="end"
+          className="organization-audit-drawer"
+          title="Chi tiết sự kiện"
+          description={`${selectedEvent.action} · ${formatAuditTimestamp(selectedEvent.created_at)}`}
+          onClose={() => setSelectedEvent(null)}
+        >
+          <AuditEventDetail event={selectedEvent} branchName={branchName(selectedEvent.branch_id)} />
+        </AdminModal>
+      )}
     </OrganizationPageLayout>
   )
 }
@@ -255,16 +259,13 @@ export function OrganizationAuditPage() {
 function AuditRow({
   event,
   branchName,
-  expanded,
-  onToggle,
+  onView,
 }: {
   event: AuditEvent
   branchName: string
-  expanded: boolean
-  onToggle: () => void
+  onView: () => void
 }) {
   return (
-    <>
       <tr>
         <td>{formatAuditTimestamp(event.created_at)}</td>
         <td>{event.actor_email || 'Hệ thống'}</td>
@@ -277,39 +278,39 @@ function AuditRow({
         </td>
         <td>{branchName}</td>
         <td>
-          <span className={`organization-status ${event.access_type === 'WRITE' ? 'is-warning' : 'is-active'}`}>
-            {auditAccessTypeLabel(event.access_type)}
-          </span>
+          <StatusBadge tone={event.access_type === 'WRITE' ? 'warning' : 'success'}>{auditAccessTypeLabel(event.access_type)}</StatusBadge>
         </td>
         <td>
-          <button type="button" className="organization-inline-link" onClick={onToggle}>
-            {expanded ? 'Thu gọn' : 'Chi tiết'}
+          <button type="button" className="organization-inline-link" onClick={onView}>
+            Xem chi tiết
           </button>
         </td>
       </tr>
-      {expanded && (
-        <tr className="organization-audit-detail-row">
-          <td colSpan={7}>
-            <div className="organization-audit-detail">
-              <dl>
-                <div><dt>IP</dt><dd>{event.ip_address || '—'}</dd></div>
-                <div><dt>Request ID</dt><dd>{event.request_id || '—'}</dd></div>
-                <div><dt>Thời điểm gốc</dt><dd>{event.created_at}</dd></div>
-              </dl>
-              <div className="organization-audit-json">
-                <div>
-                  <span>Trước thay đổi</span>
-                  <pre>{safeAuditJson(event.before_data)}</pre>
-                </div>
-                <div>
-                  <span>Sau thay đổi</span>
-                  <pre>{safeAuditJson(event.after_data)}</pre>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+  )
+}
+
+function AuditEventDetail({ event, branchName }: { event: AuditEvent; branchName: string }) {
+  return (
+    <div className="organization-audit-detail">
+      <dl>
+        <div><dt>Người thực hiện</dt><dd>{event.actor_email || 'Hệ thống'}</dd></div>
+        <div><dt>Chi nhánh</dt><dd>{branchName}</dd></div>
+        <div><dt>Tài nguyên</dt><dd>{event.resource_type} · {event.resource_id || '—'}</dd></div>
+        <div><dt>Loại truy cập</dt><dd>{auditAccessTypeLabel(event.access_type)}</dd></div>
+        <div><dt>IP</dt><dd>{event.ip_address || '—'}</dd></div>
+        <div><dt>Request ID</dt><dd>{event.request_id || '—'}</dd></div>
+        <div><dt>Thời điểm gốc</dt><dd>{event.created_at}</dd></div>
+      </dl>
+      <div className="organization-audit-json">
+        <div>
+          <span>Trước thay đổi</span>
+          <pre>{safeAuditJson(event.before_data)}</pre>
+        </div>
+        <div>
+          <span>Sau thay đổi</span>
+          <pre>{safeAuditJson(event.after_data)}</pre>
+        </div>
+      </div>
+    </div>
   )
 }

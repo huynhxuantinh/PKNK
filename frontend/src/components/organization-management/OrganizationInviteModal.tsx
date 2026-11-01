@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react'
 
 import type { OrganizationAdminRole, OrganizationBranch } from '../../api/organization'
+import { AdminModal } from '../admin/ui'
 
 export interface InviteFormState {
   email: string
@@ -37,27 +38,13 @@ export function OrganizationInviteModal({
   }
 
   return (
-    <div
-      className="branch-management-modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
-      }}
+    <AdminModal
+      open
+      title="Mời quản trị viên"
+      description="Vai trò chỉ được cấp sau khi người nhận chấp nhận lời mời."
+      className="organization-modal"
+      onClose={() => { if (!busy) onClose() }}
     >
-      <section
-        className="branch-management-modal organization-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="organization-invite-title"
-      >
-        <header>
-          <div>
-            <span className="branch-report-eyebrow">QUẢN TRỊ VIÊN</span>
-            <h2 id="organization-invite-title">Mời quản trị viên</h2>
-          </div>
-          <button type="button" className="organization-modal-close" disabled={busy} onClick={onClose}>
-            Đóng
-          </button>
-        </header>
         <p>
           Nhập email người cần cấp quyền. Nếu tài khoản chưa tồn tại hoặc chưa xác minh
           email, hệ thống sẽ gửi lời mời để họ hoàn tất trước khi nhận quyền.
@@ -125,7 +112,6 @@ export function OrganizationInviteModal({
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </AdminModal>
   )
 }

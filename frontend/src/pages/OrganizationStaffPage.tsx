@@ -70,12 +70,7 @@ export function OrganizationStaffPage() {
 
   return (
     <OrganizationPageLayout
-      title="Nhân sự"
-      path="/quan-ly-to-chuc/nhan-su"
-      active="staff"
       organizationId={scope.organizationId}
-      options={scope.options}
-      onSelectOrganization={scope.selectOrganization}
       heroKicker="Đội ngũ tổ chức"
       heroTitle={organizationName}
       heroDescription="Cấp quyền quản trị và quản lý hồ sơ nha sĩ, chi nhánh làm việc cùng danh mục dịch vụ."

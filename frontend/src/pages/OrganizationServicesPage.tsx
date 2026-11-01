@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   createOrganizationService,
+  listOrganizationBranches,
   listOrganizationServices,
   updateOrganizationService,
+  type OrganizationBranch,
   type OrganizationService,
 } from '../api/organization'
+import { listManagedBranchServices, type ManagedBranchService } from '../api/management'
 import { ConfirmationModal } from '../components/ConfirmationModal'
+import { AdminModal, DataTable, EmptyState, StatusBadge } from '../components/admin/ui'
 import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
 import { OrganizationServiceModal } from '../components/organization-management/OrganizationServiceModal'
 import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
@@ -22,6 +26,8 @@ export function OrganizationServicesPage() {
   const scope = useOrganizationScope()
   const [services, setServices] = useState<OrganizationService[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -30,10 +36,25 @@ export function OrganizationServicesPage() {
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState<OrganizationService | null>(null)
+  const [comparing, setComparing] = useState<OrganizationService | null>(null)
+  const [comparisonBranches, setComparisonBranches] = useState<OrganizationBranch[]>([])
+  const [branchServiceMap, setBranchServiceMap] = useState<Record<number, ManagedBranchService | null>>({})
+  const [comparisonLoading, setComparisonLoading] = useState(false)
+  const [comparisonError, setComparisonError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const organizationName =
     scope.options.find((option) => option.id === scope.organizationId)?.name
     || 'Quản trị tổ chức'
+  const filteredServices = useMemo(() => {
+    const keyword = query.trim().toLocaleLowerCase('vi-VN')
+    return services.filter((service) => {
+      const matchesKeyword = !keyword || [service.name, service.code, service.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase('vi-VN').includes(keyword))
+      const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? service.is_active : !service.is_active)
+      return matchesKeyword && matchesStatus
+    })
+  }, [query, services, statusFilter])
 
   useEffect(() => {
     if (!scope.organizationId) return
@@ -52,6 +73,32 @@ export function OrganizationServicesPage() {
       })
     return () => controller.abort()
   }, [scope.organizationId, reloadKey])
+
+  useEffect(() => {
+    if (!comparing || !scope.organizationId) return
+    const controller = new AbortController()
+    setComparisonLoading(true)
+    setComparisonError('')
+    setComparisonBranches([])
+    setBranchServiceMap({})
+    listOrganizationBranches(scope.organizationId, controller.signal)
+      .then(async (branchResponse) => {
+        const branches = branchResponse.data.filter((branch) => branch.is_active)
+        const results = await Promise.all(branches.map(async (branch) => {
+          const response = await listManagedBranchServices(branch.id_branch, controller.signal)
+          return [branch.id_branch, response.data.find((item) => item.service_id === comparing.id_service) || null] as const
+        }))
+        if (controller.signal.aborted) return
+        setComparisonBranches(branches)
+        setBranchServiceMap(Object.fromEntries(results))
+      })
+      .catch((caught) => {
+        if (controller.signal.aborted) return
+        setComparisonError(caught instanceof Error ? caught.message : 'Không thể tải cấu hình dịch vụ theo chi nhánh.')
+      })
+      .finally(() => { if (!controller.signal.aborted) setComparisonLoading(false) })
+    return () => controller.abort()
+  }, [comparing, scope.organizationId])
 
   function openCreate() {
     setEditingService(null)
@@ -116,12 +163,7 @@ export function OrganizationServicesPage() {
 
   return (
     <OrganizationPageLayout
-      title="Dịch vụ"
-      path="/quan-ly-to-chuc/dich-vu"
-      active="services"
       organizationId={scope.organizationId}
-      options={scope.options}
-      onSelectOrganization={scope.selectOrganization}
       heroKicker="Danh mục dịch vụ"
       heroTitle={organizationName}
       heroDescription="Chuẩn hóa danh mục dịch vụ dùng chung. Giá và thời lượng riêng của từng chi nhánh được cấu hình ở trang Cấu hình chi nhánh."
@@ -148,62 +190,25 @@ export function OrganizationServicesPage() {
           <small>{services.filter((service) => service.is_active).length} đang hoạt động</small>
         </header>
 
-        {loading ? (
-          <p role="status">Đang tải dịch vụ...</p>
-        ) : services.length > 0 ? (
-          <div className="branch-report-table-wrap">
-            <table className="branch-report-table organization-report-table">
-              <thead>
-                <tr>
-                  <th>Dịch vụ</th>
-                  <th>Thời lượng</th>
-                  <th>Giá chuẩn</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((service) => (
-                  <tr key={service.id_service}>
-                    <td>
-                      <strong>{service.name}</strong>
-                      <small>{service.code}{service.description ? ` · ${service.description}` : ''}</small>
-                    </td>
-                    <td>
-                      {service.standard_duration_minutes} phút
-                      {service.buffer_minutes > 0 && (
-                        <small> · đệm {service.buffer_minutes} phút</small>
-                      )}
-                    </td>
-                    <td>{formatVnd(service.standard_price)}</td>
-                    <td>
-                      <span className={`organization-status ${service.is_active ? 'is-active' : 'is-inactive'}`}>
-                        {service.is_active ? 'Đang hoạt động' : 'Đã ngưng'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="organization-row-actions">
-                        <button type="button" onClick={() => openEdit(service)}>Sửa</button>
-                        <button
-                          type="button"
-                          className={service.is_active ? 'is-danger' : undefined}
-                          disabled={busy}
-                          onClick={() => {
-                            if (service.is_active) setConfirming(service)
-                            else void toggleActive(service)
-                          }}
-                        >
-                          {service.is_active ? 'Ngưng' : 'Kích hoạt'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="branch-report-empty">Tổ chức chưa có dịch vụ.</p>
+        <div className="organization-branch-toolbar">
+          <label>Tìm dịch vụ<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên, mã hoặc mô tả" /></label>
+          <label>Trạng thái<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Đã ngưng</option></select></label>
+          <small>{filteredServices.length}/{services.length} dịch vụ</small>
+        </div>
+
+        {loading ? <p role="status">Đang tải dịch vụ...</p> : (
+          <DataTable
+            rows={filteredServices}
+            rowKey={(service) => service.id_service}
+            empty={<EmptyState title={services.length ? 'Không có dịch vụ phù hợp' : 'Tổ chức chưa có dịch vụ'} description={services.length ? 'Hãy thử đổi từ khóa hoặc trạng thái lọc.' : 'Thêm dịch vụ đầu tiên để chuẩn hóa danh mục.'} />}
+            columns={[
+              { key: 'service', header: 'Dịch vụ', cell: (service) => <div className="organization-branch-cell"><strong>{service.name}</strong><small>{service.code}{service.description ? ` · ${service.description}` : ''}</small></div> },
+              { key: 'duration', header: 'Thời lượng', cell: (service) => <div className="organization-branch-cell"><strong>{service.standard_duration_minutes} phút</strong><small>{service.buffer_minutes > 0 ? `Đệm ${service.buffer_minutes} phút` : 'Không có thời gian đệm'}</small></div> },
+              { key: 'price', header: 'Giá chuẩn', cell: (service) => formatVnd(service.standard_price) },
+              { key: 'status', header: 'Trạng thái', cell: (service) => <StatusBadge tone={service.is_active ? 'success' : 'neutral'}>{service.is_active ? 'Đang hoạt động' : 'Đã ngưng'}</StatusBadge> },
+              { key: 'actions', header: 'Thao tác', className: 'organization-branch-actions-cell', cell: (service) => <div className="organization-row-actions"><button type="button" onClick={() => setComparing(service)}>So sánh giá</button><button type="button" onClick={() => openEdit(service)}>Sửa</button><button type="button" className={service.is_active ? 'is-danger' : undefined} disabled={busy} onClick={() => setConfirming(service)}>{service.is_active ? 'Ngưng' : 'Kích hoạt'}</button></div> },
+            ]}
+          />
         )}
       </section>
 
@@ -226,15 +231,27 @@ export function OrganizationServicesPage() {
 
       {confirming && (
         <ConfirmationModal
-          title="Ngưng hoạt động dịch vụ"
-          description={`Ngưng dịch vụ ${confirming.name}? Nếu dịch vụ còn lịch hẹn tương lai, hệ thống sẽ từ chối thao tác.`}
-          confirmLabel="Ngưng dịch vụ"
-          danger
+          title={confirming.is_active ? 'Ngưng hoạt động dịch vụ' : 'Kích hoạt dịch vụ'}
+          description={confirming.is_active ? `Ngưng dịch vụ ${confirming.name}? Nếu dịch vụ còn lịch hẹn tương lai, hệ thống sẽ từ chối thao tác.` : `Kích hoạt ${confirming.name} để dịch vụ có thể được cấu hình và nhận lịch mới.`}
+          confirmLabel={confirming.is_active ? 'Ngưng dịch vụ' : 'Kích hoạt dịch vụ'}
+          danger={confirming.is_active}
           busy={busy}
           onCancel={() => setConfirming(null)}
           onConfirm={() => void toggleActive(confirming)}
         />
       )}
+
+      {comparing && <AdminModal open placement="end" className="organization-audit-drawer organization-service-comparison" title={`Giá dịch vụ: ${comparing.name}`} description={`Giá chuẩn toàn chuỗi: ${formatVnd(comparing.standard_price)} · ${comparing.standard_duration_minutes} phút`} onClose={() => setComparing(null)}>
+        {comparisonError && <div className="dentist-error" role="alert">{comparisonError}</div>}
+        {comparisonLoading ? <p role="status">Đang tải cấu hình ở các chi nhánh...</p> : <DataTable rows={comparisonBranches} rowKey={(branch) => branch.id_branch} empty={<EmptyState title="Chưa có chi nhánh hoạt động" />} columns={[
+          { key: 'branch', header: 'Chi nhánh', cell: (branch) => <div className="organization-branch-cell"><strong>{branch.name}</strong><small>{branch.code} · {branch.address_line}</small></div> },
+          { key: 'price', header: 'Giá áp dụng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? formatVnd(service.price) : 'Chưa cấu hình' } },
+          { key: 'time', header: 'Thời lượng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? `${service.duration_minutes ?? comparing.standard_duration_minutes} phút${service.buffer_minutes ? ` · đệm ${service.buffer_minutes} phút` : ''}` : '—' } },
+          { key: 'status', header: 'Trạng thái', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? <StatusBadge tone={service.is_active ? 'success' : 'neutral'}>{service.is_active ? 'Đang cung cấp' : 'Đã ngưng'}</StatusBadge> : <StatusBadge tone="warning">Chưa thêm</StatusBadge> } },
+          { key: 'open', header: '', cell: (branch) => <a className="organization-inline-link" href={`/quan-ly-chi-nhanh/cau-hinh?chi-nhanh=${branch.id_branch}`}>Cấu hình</a> },
+        ]} />}
+        <p className="organization-hint">Giá chuẩn là mức tham khảo của tổ chức. Giá hiển thị là cấu hình thực tế tại từng chi nhánh.</p>
+      </AdminModal>}
     </OrganizationPageLayout>
   )
 }

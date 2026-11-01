@@ -406,7 +406,7 @@ export function BranchManagementPage() {
             </label>
           </div>
 
-          {viewMode === 'calendar' ? <AppointmentCalendar items={items} dentists={branch?.dentists || []} days={days} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} /> : <AppointmentList items={items} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} />}
+          {viewMode === 'calendar' ? <AppointmentCalendar items={items} dentists={branch?.dentists || []} selectedDate={date} days={days} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} /> : <AppointmentList items={items} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} />}
         </section>
       </main>
 

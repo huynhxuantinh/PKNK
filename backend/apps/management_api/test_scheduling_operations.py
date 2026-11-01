@@ -273,6 +273,39 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(response.data["data"][0]["patient_note"], appointment.patient_note)
         self.assertEqual(cross.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_organization_appointment_list_is_paginated_and_scoped(self):
+        first = self.create_appointment("APT-ORG-LIST-1", branch=self.branch, starts_at=self.at(9))
+        second = self.create_appointment("APT-ORG-LIST-2", branch=self.other_branch, starts_at=self.at(10))
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.get(
+            reverse(
+                "management:organization-appointments",
+                kwargs={"organization_id": self.organization.pk},
+            ),
+            {
+                "date_from": self.at(0).isoformat(),
+                "date_to": self.at(23, 59).isoformat(),
+                "limit": 1,
+                "offset": 1,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["meta"], {"count": 2, "limit": 1, "offset": 1})
+        self.assertEqual(response.data["data"][0]["public_code"], second.public_code)
+        self.assertNotEqual(response.data["data"][0]["branch_id"], first.branch_id)
+
+        self.client.force_authenticate(self.branch_admin)
+        forbidden = self.client.get(
+            reverse(
+                "management:organization-appointments",
+                kwargs={"organization_id": self.organization.pk},
+            ),
+            {"date_from": self.at(0).isoformat(), "date_to": self.at(23, 59).isoformat()},
+        )
+        self.assertEqual(forbidden.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_confirm_then_check_in_writes_history_and_audit(self):
         appointment = self.create_appointment(
             "APT-FLOW",

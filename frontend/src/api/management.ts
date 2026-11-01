@@ -165,7 +165,7 @@ export function rescheduleManagedAppointment(publicCode: string, data: { starts_
 }
 
 export const listManagedWorkShifts = (branchId: number) => apiRequest<{ data: ManagedWorkShift[] }>(`/management/branches/${branchId}/work-shifts/`, {}, { auth: true })
-export const listManagedBranchDentists = (branchId: number) => apiRequest<{ data: ManagedDentist[] }>(`/management/branches/${branchId}/dentists/`, {}, { auth: true })
+export const listManagedBranchDentists = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedDentist[] }>(`/management/branches/${branchId}/dentists/`, { signal }, { auth: true })
 export const createManagedWorkShift = (branchId: number, data: Omit<ManagedWorkShift, 'id_work_shift' | 'branch_id'>) => apiRequest<{ data: ManagedWorkShift }>(`/management/branches/${branchId}/work-shifts/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedWorkShift = (id: number, data: Partial<ManagedWorkShift>) => apiRequest<{ data: ManagedWorkShift }>(`/management/work-shifts/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const listManagedTimeOffs = (branchId: number) => apiRequest<{ data: ManagedTimeOff[] }>(`/management/branches/${branchId}/time-offs/`, {}, { auth: true })
@@ -181,7 +181,7 @@ interface ManagedInvoiceListParams {
   offset?: number
 }
 
-export function listManagedInvoices(branchId: number, options: ManagedInvoiceListParams = {}) {
+export function listManagedInvoices(branchId: number, options: ManagedInvoiceListParams = {}, signal?: AbortSignal) {
   const query = new URLSearchParams()
   if (options.status) query.set('status', options.status)
   if (options.appointmentCode) query.set('appointment_code', options.appointmentCode)
@@ -190,9 +190,9 @@ export function listManagedInvoices(branchId: number, options: ManagedInvoiceLis
   return apiRequest<{
     data: ManagedInvoice[]
     meta: { count: number; limit: number; offset: number }
-  }>(`/management/branches/${branchId}/invoices/?${query}`, {}, { auth: true })
+  }>(`/management/branches/${branchId}/invoices/?${query}`, { signal }, { auth: true })
 }
-export const getManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, {}, { auth: true })
+export const getManagedInvoice = (id: number, signal?: AbortSignal) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { signal }, { auth: true })
 export const updateManagedInvoiceDraft = (id: number, data: ManagedInvoiceDraftInput) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
@@ -200,17 +200,17 @@ export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ d
 export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const voidManagedPayment = (paymentId: number, reason: string) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/payments/${paymentId}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 
-export const getManagedBranch = (branchId: number) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, {}, { auth: true })
-export const listManagedOpeningHours = (branchId: number) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, {}, { auth: true })
+export const getManagedBranch = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, { signal }, { auth: true })
+export const listManagedOpeningHours = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, { signal }, { auth: true })
 export const replaceManagedOpeningHours = (branchId: number, openingHours: ManagedOpeningHour[]) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, { method: 'PUT', body: JSON.stringify({ opening_hours: openingHours }) }, { auth: true })
-export const listManagedChairs = (branchId: number) => apiRequest<{ data: ManagedChair[] }>(`/management/branches/${branchId}/chairs/`, {}, { auth: true })
+export const listManagedChairs = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedChair[] }>(`/management/branches/${branchId}/chairs/`, { signal }, { auth: true })
 export const createManagedChair = (branchId: number, data: Omit<ManagedChair, 'id_chair' | 'branch_id'>) => apiRequest<{ data: ManagedChair }>(`/management/branches/${branchId}/chairs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedChair = (chairId: number, data: Partial<ManagedChair>) => apiRequest<{ data: ManagedChair }>(`/management/chairs/${chairId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
-export const listManagedOrganizationServices = (organizationId: number) => apiRequest<{ data: ManagedService[] }>(`/management/organizations/${organizationId}/services/`, {}, { auth: true })
-export const listManagedBranchServices = (branchId: number) => apiRequest<{ data: ManagedBranchService[] }>(`/management/branches/${branchId}/services/`, {}, { auth: true })
+export const listManagedOrganizationServices = (organizationId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedService[] }>(`/management/organizations/${organizationId}/services/`, { signal }, { auth: true })
+export const listManagedBranchServices = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedBranchService[] }>(`/management/branches/${branchId}/services/`, { signal }, { auth: true })
 export const createManagedBranchService = (branchId: number, data: Omit<ManagedBranchService, 'id_branch_service' | 'branch_id' | 'service_name'>) => apiRequest<{ data: ManagedBranchService }>(`/management/branches/${branchId}/services/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedBranchService = (branchServiceId: number, data: Partial<ManagedBranchService>) => apiRequest<{ data: ManagedBranchService }>(`/management/branch-services/${branchServiceId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
-export const listManagedHolidays = (organizationId: number) => apiRequest<{ data: ManagedHoliday[] }>(`/management/organizations/${organizationId}/holidays/`, {}, { auth: true })
+export const listManagedHolidays = (organizationId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedHoliday[] }>(`/management/organizations/${organizationId}/holidays/`, { signal }, { auth: true })
 export const createManagedHoliday = (organizationId: number, data: Omit<ManagedHoliday, 'id_holiday' | 'organization_id'>) => apiRequest<{ data: ManagedHoliday }>(`/management/organizations/${organizationId}/holidays/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedHoliday = (holidayId: number, data: Partial<ManagedHoliday>) => apiRequest<{ data: ManagedHoliday }>(`/management/holidays/${holidayId}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const deleteManagedHoliday = (holidayId: number) => apiRequest<void>(`/management/holidays/${holidayId}/`, { method: 'DELETE' }, { auth: true })

@@ -13,6 +13,7 @@ import {
   type OrganizationService,
 } from '../../api/organization'
 import { ConfirmationModal } from '../ConfirmationModal'
+import { DataTable, EmptyState, StatusBadge } from '../admin/ui'
 import { OrganizationAssignmentModal } from './OrganizationAssignmentModal'
 import { OrganizationDentistFormModal } from './OrganizationDentistFormModal'
 import {
@@ -38,6 +39,8 @@ export function OrganizationDentistPanel({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [busy, setBusy] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -61,32 +64,9 @@ export function OrganizationDentistPanel({
         const response = await listOrganizationDentists(organizationId, controller.signal)
         if (controller.signal.aborted) return
         setDentists(response.data)
-
-        const assignments = await Promise.allSettled(
-          response.data.map(async (dentist) => {
-            const [branchResponse, serviceResponse] = await Promise.all([
-              getDentistBranches(dentist.id_dentist, controller.signal),
-              getDentistServices(dentist.id_dentist, controller.signal),
-            ])
-            return {
-              dentistId: dentist.id_dentist,
-              branchIds: branchResponse.data.map((branch) => branch.id_branch),
-              serviceIds: serviceResponse.data.map((service) => service.id_service),
-            }
-          }),
-        )
-        if (controller.signal.aborted) return
-
-        const nextBranches: Record<number, number[]> = {}
-        const nextServices: Record<number, number[]> = {}
-        assignments.forEach((result) => {
-          if (result.status === 'fulfilled') {
-            nextBranches[result.value.dentistId] = result.value.branchIds
-            nextServices[result.value.dentistId] = result.value.serviceIds
-          }
-        })
-        setBranchAssignments(nextBranches)
-        setServiceAssignments(nextServices)
+        setBranchAssignments({})
+        setServiceAssignments({})
+        setSelectedId(null)
       } catch (caught) {
         if (controller.signal.aborted) return
         setDentists([])
@@ -100,12 +80,49 @@ export function OrganizationDentistPanel({
     return () => controller.abort()
   }, [organizationId, reloadKey])
 
+  useEffect(() => {
+    if (!selectedId || (branchAssignments[selectedId] && serviceAssignments[selectedId])) return
+    const controller = new AbortController()
+    Promise.all([
+      getDentistBranches(selectedId, controller.signal),
+      getDentistServices(selectedId, controller.signal),
+    ])
+      .then(([branchResponse, serviceResponse]) => {
+        if (controller.signal.aborted) return
+        setBranchAssignments((current) => ({
+          ...current,
+          [selectedId]: branchResponse.data.map((branch) => branch.id_branch),
+        }))
+        setServiceAssignments((current) => ({
+          ...current,
+          [selectedId]: serviceResponse.data.map((service) => service.id_service),
+        }))
+      })
+      .catch((caught) => {
+        if (!controller.signal.aborted) {
+          setError(caught instanceof Error ? caught.message : 'Không thể tải phân công của nha sĩ.')
+        }
+      })
+    return () => controller.abort()
+  }, [selectedId, branchAssignments, serviceAssignments])
+
   const selectedDentist = useMemo(
     () => dentists.find((dentist) => dentist.id_dentist === selectedId) || null,
     [dentists, selectedId],
   )
+  const filteredDentists = useMemo(() => {
+    const keyword = query.trim().toLocaleLowerCase('vi-VN')
+    return dentists.filter((dentist) => {
+      const matchesQuery = !keyword || [dentist.full_name, dentist.user_email, dentist.license_number]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase('vi-VN').includes(keyword))
+      const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? dentist.is_active : !dentist.is_active)
+      return matchesQuery && matchesStatus
+    })
+  }, [dentists, query, statusFilter])
 
   function branchNames(dentistId: number) {
+    if (!(dentistId in branchAssignments)) return 'Đang tải phân công…'
     const ids = branchAssignments[dentistId] || []
     if (ids.length === 0) return 'Chưa gán'
     return ids
@@ -114,6 +131,7 @@ export function OrganizationDentistPanel({
   }
 
   function serviceNames(dentistId: number) {
+    if (!(dentistId in serviceAssignments)) return 'Đang tải phân công…'
     const ids = serviceAssignments[dentistId] || []
     if (ids.length === 0) return 'Chưa gán'
     return ids
@@ -171,15 +189,37 @@ export function OrganizationDentistPanel({
     }
   }
 
-  function openAssignment(mode: AssignmentMode, dentist: OrganizationDentist) {
+  async function openAssignment(mode: AssignmentMode, dentist: OrganizationDentist) {
+    const hasAssignments = mode === 'branches'
+      ? dentist.id_dentist in branchAssignments
+      : dentist.id_dentist in serviceAssignments
+    let selected = mode === 'branches'
+      ? branchAssignments[dentist.id_dentist] || []
+      : serviceAssignments[dentist.id_dentist] || []
+    if (!hasAssignments) {
+      setBusy(true)
+      setAssignmentError('')
+      try {
+        if (mode === 'branches') {
+          const response = await getDentistBranches(dentist.id_dentist)
+          selected = response.data.map((branch) => branch.id_branch)
+          setBranchAssignments((current) => ({ ...current, [dentist.id_dentist]: selected }))
+        } else {
+          const response = await getDentistServices(dentist.id_dentist)
+          selected = response.data.map((service) => service.id_service)
+          setServiceAssignments((current) => ({ ...current, [dentist.id_dentist]: selected }))
+        }
+      } catch (caught) {
+        setAssignmentError(caught instanceof Error ? caught.message : 'Không thể tải phân công.')
+        return
+      } finally {
+        setBusy(false)
+      }
+    }
     setAssignmentMode(mode)
     setAssignmentTarget(dentist)
     setAssignmentError('')
-    setAssignmentIds(
-      mode === 'branches'
-        ? branchAssignments[dentist.id_dentist] || []
-        : serviceAssignments[dentist.id_dentist] || [],
-    )
+    setAssignmentIds(selected)
   }
 
   async function saveAssignment() {
@@ -242,65 +282,27 @@ export function OrganizationDentistPanel({
       {error && <div className="dentist-error" role="alert">{error}</div>}
       {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
+      {!loading && dentists.length > 0 && <div className="organization-branch-toolbar organization-staff-toolbar">
+        <label>Tìm nha sĩ<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên, email hoặc số giấy phép" /></label>
+        <label>Trạng thái<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Đã ngưng</option></select></label>
+        <small>{filteredDentists.length}/{dentists.length} nha sĩ</small>
+      </div>}
+
       {loading ? (
         <p role="status">Đang tải nha sĩ...</p>
       ) : dentists.length > 0 ? (
         <>
-          <div className="branch-report-table-wrap">
-            <table className="branch-report-table organization-report-table">
-              <thead>
-                <tr>
-                  <th>Nha sĩ</th>
-                  <th>Giấy phép</th>
-                  <th>Chi nhánh</th>
-                  <th>Dịch vụ</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dentists.map((dentist) => (
-                  <tr key={dentist.id_dentist}>
-                    <td>
-                      <strong>{dentist.full_name || 'Chưa đặt tên'}</strong>
-                      <small>{dentist.user_email}</small>
-                    </td>
-                    <td>{dentist.license_number || '—'}</td>
-                    <td>{branchNames(dentist.id_dentist)}</td>
-                    <td>{serviceNames(dentist.id_dentist)}</td>
-                    <td>
-                      <span className={`organization-status ${dentist.is_active ? 'is-active' : 'is-inactive'}`}>
-                        {dentist.is_active ? 'Đang hoạt động' : 'Đã ngưng'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="organization-row-actions">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(
-                            selectedId === dentist.id_dentist ? null : dentist.id_dentist,
-                          )}
-                        >
-                          {selectedId === dentist.id_dentist ? 'Ẩn chi tiết' : 'Chi tiết'}
-                        </button>
-                        <button
-                          type="button"
-                          className={dentist.is_active ? 'is-danger' : undefined}
-                          disabled={busy}
-                          onClick={() => {
-                            if (dentist.is_active) setConfirming(dentist)
-                            else void toggleActive(dentist)
-                          }}
-                        >
-                          {dentist.is_active ? 'Ngưng' : 'Kích hoạt'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={filteredDentists}
+            rowKey={(dentist) => dentist.id_dentist}
+            empty={<EmptyState title={dentists.length ? 'Không có nha sĩ phù hợp' : 'Chưa có nha sĩ'} description={dentists.length ? 'Hãy đổi từ khóa hoặc bộ lọc trạng thái.' : 'Thêm hồ sơ nha sĩ đầu tiên cho tổ chức.'} />}
+            columns={[
+              { key: 'dentist', header: 'Nha sĩ', cell: (dentist) => <div className="organization-branch-cell"><strong>{dentist.full_name || 'Chưa đặt tên'}</strong><small>{dentist.user_email}</small></div> },
+              { key: 'license', header: 'Giấy phép', cell: (dentist) => dentist.license_number || '—' },
+              { key: 'status', header: 'Trạng thái', cell: (dentist) => <StatusBadge tone={dentist.is_active ? 'success' : 'neutral'}>{dentist.is_active ? 'Đang hoạt động' : 'Đã ngưng'}</StatusBadge> },
+              { key: 'actions', header: 'Thao tác', className: 'organization-branch-actions-cell', cell: (dentist) => <div className="organization-row-actions"><button type="button" onClick={() => setSelectedId(selectedId === dentist.id_dentist ? null : dentist.id_dentist)}>{selectedId === dentist.id_dentist ? 'Ẩn chi tiết' : 'Chi tiết'}</button><button type="button" className={dentist.is_active ? 'is-danger' : undefined} disabled={busy} onClick={() => { if (dentist.is_active) setConfirming(dentist); else void toggleActive(dentist) }}>{dentist.is_active ? 'Ngưng' : 'Kích hoạt'}</button></div> },
+            ]}
+          />
 
           {selectedDentist && (
             <aside className="organization-detail-panel" aria-label="Chi tiết nha sĩ">
@@ -319,10 +321,10 @@ export function OrganizationDentistPanel({
                 <div><dt>Giới thiệu</dt><dd>{selectedDentist.biography || '—'}</dd></div>
               </dl>
               <div className="organization-detail-actions">
-                <button type="button" onClick={() => openAssignment('branches', selectedDentist)}>
+                <button type="button" onClick={() => void openAssignment('branches', selectedDentist)}>
                   Gán chi nhánh
                 </button>
-                <button type="button" onClick={() => openAssignment('services', selectedDentist)}>
+                <button type="button" onClick={() => void openAssignment('services', selectedDentist)}>
                   Gán dịch vụ
                 </button>
                 <button type="button" className="button-secondary" onClick={() => openEdit(selectedDentist)}>

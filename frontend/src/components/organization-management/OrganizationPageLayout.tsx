@@ -1,15 +1,7 @@
 import type { ReactNode } from 'react'
 
-import type { OrganizationOption } from '../../features/organization/organizationSelection'
-import type { OrganizationSection } from './OrganizationSectionNav'
-
 interface OrganizationPageLayoutProps {
-  title: string
-  path: string
-  active: OrganizationSection
   organizationId: number | null
-  options: OrganizationOption[]
-  onSelectOrganization: (organizationId: number) => void
   heroKicker: string
   heroTitle: string
   heroDescription: string
@@ -18,12 +10,7 @@ interface OrganizationPageLayoutProps {
 }
 
 export function OrganizationPageLayout({
-  title,
-  path,
-  active,
   organizationId,
-  options,
-  onSelectOrganization,
   heroKicker,
   heroTitle,
   heroDescription,
@@ -39,24 +26,7 @@ export function OrganizationPageLayout({
             <h1>{heroTitle}</h1>
             <p>{heroDescription}</p>
           </div>
-          <div className="organization-hero-tools">
-            {heroAside}
-            {options.length > 1 && (
-              <label>
-                Tổ chức đang quản trị
-                <select
-                  value={organizationId || ''}
-                  onChange={(event) => onSelectOrganization(Number(event.target.value))}
-                >
-                  {options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
+          {heroAside && <div className="organization-hero-tools">{heroAside}</div>}
         </section>
 
         {organizationId ? (

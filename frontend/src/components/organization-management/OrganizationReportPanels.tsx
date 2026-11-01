@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import type { CSSProperties } from 'react'
 
 import type {
   AppointmentReport,
@@ -165,6 +166,7 @@ export function OrganizationServiceRevenueTable({ revenue }: { revenue: RevenueR
 }
 
 export function OrganizationDailyRevenueTable({ revenue }: { revenue: RevenueReport }) {
+  const maxRevenue = Math.max(...revenue.by_period.map((period) => Number(period.revenue)), 1)
   return (
     <section className="branch-report-daily organization-report-section" aria-labelledby="organization-daily-revenue-title">
       <header>
@@ -175,8 +177,19 @@ export function OrganizationDailyRevenueTable({ revenue }: { revenue: RevenueRep
         <small>Chỉ tính hóa đơn đã thanh toán</small>
       </header>
       {revenue.by_period.length > 0 ? (
-        <div className="branch-report-table-wrap">
-          <table className="branch-report-table">
+        <>
+          <div className="organization-revenue-chart" aria-label="Biểu đồ doanh thu theo ngày">
+            {revenue.by_period.map((period) => {
+              const value = Number(period.revenue)
+              const height = Math.max(5, Math.round((value / maxRevenue) * 100))
+              return <div className="organization-revenue-chart__bar" key={`chart-${period.period_start}`} title={`${formatReportDate(period.period_start)}: ${formatVnd(period.revenue)}`}>
+                <i style={{ '--revenue-height': `${height}%` } as CSSProperties} />
+                <span>{formatReportDate(period.period_start)}</span>
+              </div>
+            })}
+          </div>
+          <div className="branch-report-table-wrap">
+            <table className="branch-report-table">
             <thead>
               <tr>
                 <th>Ngày</th>
@@ -193,8 +206,9 @@ export function OrganizationDailyRevenueTable({ revenue }: { revenue: RevenueRep
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+        </>
       ) : (
         <p className="branch-report-empty">
           Chưa có doanh thu đã thanh toán trong khoảng thời gian này.

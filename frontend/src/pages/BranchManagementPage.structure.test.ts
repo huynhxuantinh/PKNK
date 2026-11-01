@@ -9,6 +9,7 @@ describe('BranchManagementPage structure', () => {
     )
 
     expect(productionComponents.sort()).toEqual([
+      '../components/branch-management/AppointmentCalendar.tsx',
       '../components/branch-management/AppointmentList.tsx',
       '../components/branch-management/BranchConfigurationSections.tsx',
       '../components/branch-management/BranchReportDashboard.tsx',
