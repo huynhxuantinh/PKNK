@@ -179,7 +179,7 @@ class StaffInvitationService:
     @classmethod
     def _invitation(cls, raw_token, *, lock=False):
         queryset = StaffInvitation.objects.select_related(
-            "organization", "branch", "invited_by"
+            "organization", "branch", "invited_by", "replaces_membership"
         )
         if lock:
             queryset = queryset.select_for_update(of=("self",))
@@ -205,8 +205,31 @@ class StaffInvitationService:
 
     @classmethod
     @transaction.atomic
-    def create(cls, *, organization, branch, email, role, invited_by):
-        if role == Membership.Role.BRANCH_ADMIN:
+    def create(
+        cls,
+        *,
+        organization,
+        branch,
+        email,
+        role,
+        invited_by,
+        replaces_membership=None,
+    ):
+        if replaces_membership is not None:
+            if (
+                role != Membership.Role.BRANCH_ADMIN
+                or replaces_membership.organization_id != organization.pk
+                or replaces_membership.branch_id != getattr(branch, "pk", None)
+                or replaces_membership.role != Membership.Role.BRANCH_ADMIN
+                or not replaces_membership.is_active
+            ):
+                raise BranchAdminConflict("Quản lý được chọn để chuyển giao không còn hợp lệ.")
+            validate_branch_admin_scope(
+                branch=branch,
+                email=email,
+                exclude_membership_id=replaces_membership.pk,
+            )
+        elif role == Membership.Role.BRANCH_ADMIN:
             validate_branch_admin_scope(branch=branch, email=email)
         validate_staff_role_separation(role=role, email=email)
 
@@ -230,6 +253,7 @@ class StaffInvitationService:
             branch=branch,
             email=email.strip().lower(),
             role=role,
+            replaces_membership=replaces_membership,
             token_digest=cls.digest(raw_token),
             invited_by=invited_by,
             expires_at=now + timedelta(hours=settings.STAFF_INVITATION_TTL_HOURS),
@@ -247,8 +271,27 @@ class StaffInvitationService:
             or not user.is_active
         ):
             raise InvalidStaffInvitation
+        replaced_membership = None
+        if invitation.replaces_membership_id:
+            replaced_membership = Membership.objects.select_for_update().get(
+                pk=invitation.replaces_membership_id
+            )
+            if (
+                not replaced_membership.is_active
+                or replaced_membership.organization_id != invitation.organization_id
+                or replaced_membership.branch_id != invitation.branch_id
+                or replaced_membership.role != Membership.Role.BRANCH_ADMIN
+                or replaced_membership.user_id == user.pk
+            ):
+                raise BranchAdminConflict("Chuyển giao quản lý chi nhánh không còn hợp lệ.")
         if invitation.role == Membership.Role.BRANCH_ADMIN:
-            validate_branch_admin_scope(branch=invitation.branch, user=user)
+            validate_branch_admin_scope(
+                branch=invitation.branch,
+                user=user,
+                exclude_membership_id=(
+                    replaced_membership.pk if replaced_membership else None
+                ),
+            )
         validate_staff_role_separation(role=invitation.role, user=user)
         deactivate_patient_memberships(
             user,
@@ -256,6 +299,9 @@ class StaffInvitationService:
             request=request,
             source="STAFF_INVITATION_ACCEPTED",
         )
+        if replaced_membership:
+            replaced_membership.is_active = False
+            replaced_membership.save(update_fields=["is_active"])
         try:
             membership, _ = Membership.objects.update_or_create(
                 user=user,
@@ -279,8 +325,26 @@ class StaffInvitationService:
         if User.objects.filter(email__iexact=invitation.email).exists():
             raise InvitationAccountExists
 
+        replaced_membership = None
+        if invitation.replaces_membership_id:
+            replaced_membership = Membership.objects.select_for_update().get(
+                pk=invitation.replaces_membership_id
+            )
+            if (
+                not replaced_membership.is_active
+                or replaced_membership.organization_id != invitation.organization_id
+                or replaced_membership.branch_id != invitation.branch_id
+                or replaced_membership.role != Membership.Role.BRANCH_ADMIN
+            ):
+                raise BranchAdminConflict("Chuyển giao quản lý chi nhánh không còn hợp lệ.")
         if invitation.role == Membership.Role.BRANCH_ADMIN:
-            validate_branch_admin_scope(branch=invitation.branch, email=invitation.email)
+            validate_branch_admin_scope(
+                branch=invitation.branch,
+                email=invitation.email,
+                exclude_membership_id=(
+                    replaced_membership.pk if replaced_membership else None
+                ),
+            )
         validate_staff_role_separation(role=invitation.role, email=invitation.email)
 
         now = timezone.now()
@@ -301,6 +365,9 @@ class StaffInvitationService:
 
         try:
             with transaction.atomic():
+                if replaced_membership:
+                    replaced_membership.is_active = False
+                    replaced_membership.save(update_fields=["is_active"])
                 membership = Membership.objects.create(
                     user=user,
                     organization=invitation.organization,

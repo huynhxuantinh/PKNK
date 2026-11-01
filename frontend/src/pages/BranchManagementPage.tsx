@@ -83,6 +83,7 @@ export function BranchManagementPage() {
   const [busy, setBusy] = useState('')
   const [cancelling, setCancelling] = useState<ManagementAppointment | null>(null)
   const [moving, setMoving] = useState<ManagementAppointment | null>(null)
+  const [appointmentReloadVersion, setAppointmentReloadVersion] = useState(0)
 
   const activeBranches = branches.filter((item) => item.is_active)
   const branchIds = activeBranches.map((item) => item.id_branch)
@@ -214,7 +215,7 @@ export function BranchManagementPage() {
       document.removeEventListener('visibilitychange', refresh)
       controller.abort()
     }
-  }, [branchId, date, days, dentistId, status])
+  }, [appointmentReloadVersion, branchId, date, days, dentistId, status])
 
   function replaceAppointment(next: ManagementAppointment) {
     setItems(
@@ -281,25 +282,14 @@ export function BranchManagementPage() {
     if (!moving) return
     setBusy(moving.public_code)
     try {
-      const response = await rescheduleManagedAppointment(moving.public_code, {
+      await rescheduleManagedAppointment(moving.public_code, {
         starts_at: slot.starts_at,
         reason,
         dentist_id: moveDentistId,
         idempotency_key: idempotencyKey,
       })
-      setItems((current) =>
-        current
-          ? [
-              ...current.map((item) =>
-                item.public_code === moving.public_code
-                  ? { ...item, status: 'CANCELLED' as const }
-                  : item,
-              ),
-              response.data,
-            ]
-          : current,
-      )
       setMoving(null)
+      setAppointmentReloadVersion((version) => version + 1)
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Không thể đổi lịch.')
     } finally {

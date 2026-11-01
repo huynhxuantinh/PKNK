@@ -138,6 +138,14 @@ class StaffInvitation(models.Model):
         settings.AUTH_USER_MODEL, db_column="id_invited_by", on_delete=models.PROTECT,
         related_name="staff_invitations_sent",
     )
+    replaces_membership = models.ForeignKey(
+        Membership,
+        db_column="id_replaces_membership",
+        on_delete=models.SET_NULL,
+        related_name="replacement_invitations",
+        null=True,
+        blank=True,
+    )
     expires_at = models.DateTimeField()
     email_delivery_status = models.CharField(
         max_length=20,

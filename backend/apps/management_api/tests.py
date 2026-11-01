@@ -880,6 +880,38 @@ class ManagementAPITests(APITestCase):
             ).exists()
         )
 
+    def test_branch_manager_transfer_keeps_current_manager_until_invitation_is_accepted(self):
+        current_manager = Membership.objects.get(
+            user=self.branch_admin,
+            organization=self.org_a,
+            branch=self.branch_a,
+            role=Membership.Role.BRANCH_ADMIN,
+        )
+        successor = self.make_user("successor-manager@example.com")
+
+        invitation, token = StaffInvitationService.create(
+            organization=self.org_a,
+            branch=self.branch_a,
+            email=successor.email,
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.org_admin,
+            replaces_membership=current_manager,
+        )
+
+        current_manager.refresh_from_db()
+        self.assertTrue(current_manager.is_active)
+        self.assertEqual(invitation.replaces_membership_id, current_manager.pk)
+
+        membership, _ = StaffInvitationService.accept(
+            raw_token=token,
+            user=successor,
+        )
+
+        current_manager.refresh_from_db()
+        self.assertFalse(current_manager.is_active)
+        self.assertTrue(membership.is_active)
+        self.assertEqual(membership.branch_id, self.branch_a.pk)
+
     def test_cannot_assign_staff_role_while_patient_has_active_appointment(self):
         free_branch = self.make_branch(self.org_a, "FREE2")
         self.create_active_patient_appointment(

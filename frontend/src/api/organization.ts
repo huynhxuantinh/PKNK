@@ -84,6 +84,7 @@ export interface OrganizationInvitation {
   role: OrganizationAdminRole
   branch_id: number | null
   branch_name: string | null
+  replaces_membership_id: number | null
   status: 'PENDING' | 'EXPIRED' | 'ACCEPTED' | 'REVOKED'
   email_delivery_status: 'PENDING' | 'SENT' | 'FAILED'
   email_sent_at: string | null
@@ -97,6 +98,7 @@ export interface OrganizationMembershipInput {
   email: string
   role: OrganizationAdminRole
   branch_id?: number | null
+  replaces_membership_id?: number
 }
 
 export interface OrganizationMembershipPatch {

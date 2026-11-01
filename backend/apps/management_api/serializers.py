@@ -179,6 +179,9 @@ class MembershipCreateSerializer(serializers.Serializer):
     branch_id = serializers.PrimaryKeyRelatedField(
         source="branch", queryset=Branch.objects.all(), allow_null=True, required=False
     )
+    replaces_membership_id = serializers.PrimaryKeyRelatedField(
+        source="replaces_membership", queryset=Membership.objects.all(), required=False
+    )
 
     def validate_email(self, value):
         return value.strip().lower()
@@ -193,8 +196,22 @@ class MembershipCreateSerializer(serializers.Serializer):
         if branch is not None and not branch.is_active:
             raise serializers.ValidationError({"branch_id": "Chi nhánh đã ngưng hoạt động."})
         email = attrs["email"]
+        replaces_membership = attrs.get("replaces_membership")
+        if replaces_membership is not None:
+            if role != Membership.Role.BRANCH_ADMIN:
+                raise serializers.ValidationError(
+                    {"replaces_membership_id": "Only branch manager transfers may replace a membership."}
+                )
+            if (
+                not replaces_membership.is_active
+                or replaces_membership.role != Membership.Role.BRANCH_ADMIN
+                or replaces_membership.branch_id != branch.pk
+            ):
+                raise serializers.ValidationError(
+                    {"replaces_membership_id": "The selected branch manager is no longer active for this branch."}
+                )
         try:
-            if role == Membership.Role.BRANCH_ADMIN:
+            if role == Membership.Role.BRANCH_ADMIN and replaces_membership is None:
                 validate_branch_admin_scope(branch=branch, email=email)
             validate_staff_role_separation(role=role, email=email)
         except (BranchAdminConflict, StaffRoleConflict) as error:
@@ -288,6 +305,7 @@ class StaffInvitationManagementSerializer(serializers.ModelSerializer):
             "role",
             "branch_id",
             "branch_name",
+            "replaces_membership_id",
             "status",
             "email_delivery_status",
             "email_sent_at",

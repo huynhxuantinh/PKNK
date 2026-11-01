@@ -16,6 +16,7 @@ interface OrganizationInviteModalProps {
   busy: boolean
   error: string
   requiresBranch: boolean
+  transfer?: { branchName: string; managerEmail: string }
   onChange: (changes: Partial<InviteFormState>) => void
   onClose: () => void
   onSubmit: () => void
@@ -28,6 +29,7 @@ export function OrganizationInviteModal({
   busy,
   error,
   requiresBranch,
+  transfer,
   onChange,
   onClose,
   onSubmit,
@@ -41,7 +43,9 @@ export function OrganizationInviteModal({
     <AdminModal
       open
       title="Mời quản trị viên"
-      description="Vai trò chỉ được cấp sau khi người nhận chấp nhận lời mời."
+      description={transfer
+        ? `Quản lý hiện tại (${transfer.managerEmail}) vẫn giữ quyền cho đến khi người mới chấp nhận lời mời.`
+        : "Vai trò chỉ được cấp sau khi người nhận chấp nhận lời mời."}
       className="organization-modal"
       onClose={() => { if (!busy) onClose() }}
     >
@@ -49,6 +53,9 @@ export function OrganizationInviteModal({
           Nhập email người cần cấp quyền. Nếu tài khoản chưa tồn tại hoặc chưa xác minh
           email, hệ thống sẽ gửi lời mời để họ hoàn tất trước khi nhận quyền.
         </p>
+        {transfer && <p className="organization-warning">
+          Đang chuyển giao quản lý chi nhánh {transfer.branchName}. Quyền cũ chỉ được ngừng khi người mới nhận lời mời.
+        </p>}
         {error && <div className="dentist-error" role="alert">{error}</div>}
 
         <form className="organization-form-grid" onSubmit={submit}>
@@ -65,6 +72,7 @@ export function OrganizationInviteModal({
             Vai trò
             <select
               value={form.role}
+              disabled={Boolean(transfer)}
               onChange={(event) => {
                 const role = event.target.value as OrganizationAdminRole
                 onChange({
@@ -83,6 +91,7 @@ export function OrganizationInviteModal({
               <select
                 required
                 value={form.branchId}
+                disabled={Boolean(transfer)}
                 onChange={(event) => onChange({ branchId: event.target.value })}
               >
                 <option value="">Chọn chi nhánh</option>

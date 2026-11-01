@@ -527,6 +527,7 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
         email = serializer.validated_data["email"]
         role = serializer.validated_data["role"]
         branch = serializer.validated_data.get("branch")
+        replaces_membership = serializer.validated_data.get("replaces_membership")
         if branch and branch.organization_id != organization.pk:
             raise ValidationError({"branch_id": "Chi nhánh không thuộc organization."})
         user = User.objects.filter(email__iexact=email).first()
@@ -547,6 +548,7 @@ class OrganizationMembershipListCreateAPIView(ManagementAPIView):
                 email=email,
                 role=role,
                 invited_by=request.user,
+                replaces_membership=replaces_membership,
             )
         except (BranchAdminConflict, StaffRoleConflict) as error:
             raise ManagementConflict(str(error)) from error

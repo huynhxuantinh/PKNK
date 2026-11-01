@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -124,26 +125,56 @@ export function BranchStaffSchedulePage() {
     "ALL" | "ACTIVE" | "INACTIVE"
   >("ALL");
   const [shiftPage, setShiftPage] = useState(0);
+  const branchIdRef = useRef(branchId);
+  const [shiftModalBranchId, setShiftModalBranchId] = useState<number | null>(
+    null,
+  );
+  const [offModalBranchId, setOffModalBranchId] = useState<number | null>(
+    null,
+  );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!branchId) return;
     try {
       const [dentistData, shiftData, offData] = await Promise.all([
-        listManagedBranchDentists(branchId),
-        listManagedWorkShifts(branchId),
-        listManagedTimeOffs(branchId),
+        listManagedBranchDentists(branchId, signal),
+        listManagedWorkShifts(branchId, signal),
+        listManagedTimeOffs(branchId, signal),
       ]);
+      if (signal?.aborted || branchIdRef.current !== branchId) return;
       setDentists(dentistData.data);
       setShifts(shiftData.data);
       setOffs(offData.data);
       setError("");
     } catch (caught) {
+      if (signal?.aborted || branchIdRef.current !== branchId) return;
       setError(message(caught, "Không thể tải ca làm và lịch nghỉ."));
     }
   }, [branchId]);
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
+
+  useEffect(() => {
+    branchIdRef.current = branchId;
+    setDentists([]);
+    setShifts([]);
+    setOffs([]);
+    setShift(emptyShift());
+    setOff(emptyOff());
+    setEditingShiftId(null);
+    setEditingOffId(null);
+    setShiftOpen(false);
+    setOffOpen(false);
+    setShiftModalBranchId(null);
+    setOffModalBranchId(null);
+    setPendingToggle(null);
+    setBusyId(null);
+    setError("");
+    setNotice("");
+  }, [branchId]);
 
   const activeShiftCount = useMemo(
     () => shifts.filter((item) => item.is_active).length,
@@ -236,14 +267,17 @@ export function BranchStaffSchedulePage() {
   const resetShift = () => {
     setShift(emptyShift());
     setEditingShiftId(null);
+    setShiftModalBranchId(null);
     setShiftOpen(false);
   };
   const resetOff = () => {
     setOff(emptyOff());
     setEditingOffId(null);
+    setOffModalBranchId(null);
     setOffOpen(false);
   };
   const openShift = (item?: ManagedWorkShift) => {
+    if (!branchId || (item && item.branch_id !== branchId)) return;
     if (item) {
       setShift({
         dentist_id: String(item.dentist_id),
@@ -258,9 +292,11 @@ export function BranchStaffSchedulePage() {
       setShift(emptyShift());
       setEditingShiftId(null);
     }
+    setShiftModalBranchId(branchId);
     setShiftOpen(true);
   };
   const openOff = (item?: ManagedTimeOff) => {
+    if (!branchId || (item && item.branch_id !== null && item.branch_id !== branchId)) return;
     if (item) {
       setOff({
         dentist_id: String(item.dentist_id),
@@ -273,6 +309,7 @@ export function BranchStaffSchedulePage() {
       setOff(emptyOff());
       setEditingOffId(null);
     }
+    setOffModalBranchId(branchId);
     setOffOpen(true);
   };
 
@@ -280,6 +317,21 @@ export function BranchStaffSchedulePage() {
     event.preventDefault();
     setError("");
     setNotice("");
+    const submittingBranchId = branchId;
+    if (
+      !submittingBranchId ||
+      shiftModalBranchId !== submittingBranchId ||
+      (editingShiftId &&
+        !shifts.some(
+          (item) =>
+            item.id_work_shift === editingShiftId &&
+            item.branch_id === submittingBranchId,
+        ))
+    ) {
+      resetShift();
+      setError("Chi nhánh đã thay đổi. Hãy mở lại ca làm cần chỉnh sửa.");
+      return;
+    }
     if (shift.valid_to && shift.valid_to < shift.valid_from) {
       setError("Ngày kết thúc không được trước ngày bắt đầu.");
       return;
@@ -288,11 +340,13 @@ export function BranchStaffSchedulePage() {
       const payload = buildWorkShiftPayload(shift);
       if (editingShiftId) await patchManagedWorkShift(editingShiftId, payload);
       else
-        await createManagedWorkShift(branchId, { ...payload, is_active: true });
+        await createManagedWorkShift(submittingBranchId, { ...payload, is_active: true });
+      if (branchIdRef.current !== submittingBranchId) return;
       setNotice(editingShiftId ? "Đã cập nhật ca làm." : "Đã thêm ca làm.");
       resetShift();
       await load();
     } catch (caught) {
+      if (branchIdRef.current !== submittingBranchId) return;
       setError(conflictMessage(caught, "Không thể lưu ca làm."));
     }
   }
@@ -300,6 +354,21 @@ export function BranchStaffSchedulePage() {
     event.preventDefault();
     setError("");
     setNotice("");
+    const submittingBranchId = branchId;
+    if (
+      !submittingBranchId ||
+      offModalBranchId !== submittingBranchId ||
+      (editingOffId &&
+        !offs.some(
+          (item) =>
+            item.id_time_off === editingOffId &&
+            (item.branch_id === null || item.branch_id === submittingBranchId),
+        ))
+    ) {
+      resetOff();
+      setError("Chi nhánh đã thay đổi. Hãy mở lại lịch nghỉ cần chỉnh sửa.");
+      return;
+    }
     if (
       !off.starts_at ||
       !off.ends_at ||
@@ -317,17 +386,29 @@ export function BranchStaffSchedulePage() {
     try {
       if (editingOffId) await patchManagedTimeOff(editingOffId, payload);
       else
-        await createManagedTimeOff(branchId, { ...payload, is_active: true });
+        await createManagedTimeOff(submittingBranchId, { ...payload, is_active: true });
+      if (branchIdRef.current !== submittingBranchId) return;
       setNotice(editingOffId ? "Đã cập nhật lịch nghỉ." : "Đã thêm lịch nghỉ.");
       resetOff();
       await load();
     } catch (caught) {
+      if (branchIdRef.current !== submittingBranchId) return;
       setError(conflictMessage(caught, "Không thể lưu lịch nghỉ."));
     }
   }
   async function toggle() {
     if (!pendingToggle) return;
     const { item, kind } = pendingToggle;
+    const submittingBranchId = branchId;
+    const isInCurrentScope =
+      kind === "shift"
+        ? item.branch_id === submittingBranchId
+        : item.branch_id === null || item.branch_id === submittingBranchId;
+    if (!submittingBranchId || !isInCurrentScope) {
+      setPendingToggle(null);
+      setError("Chi nhánh đã thay đổi. Hãy mở lại mục cần cập nhật.");
+      return;
+    }
     const id = kind === "shift" ? item.id_work_shift : item.id_time_off;
     setBusyId(id);
     setError("");
@@ -335,10 +416,12 @@ export function BranchStaffSchedulePage() {
       if (kind === "shift")
         await patchManagedWorkShift(id, { is_active: !item.is_active });
       else await patchManagedTimeOff(id, { is_active: !item.is_active });
+      if (branchIdRef.current !== submittingBranchId) return;
       setNotice(item.is_active ? "Đã ngừng áp dụng." : "Đã kích hoạt lại.");
       setPendingToggle(null);
       await load();
     } catch (caught) {
+      if (branchIdRef.current !== submittingBranchId) return;
       setError(conflictMessage(caught, "Không thể cập nhật trạng thái."));
     } finally {
       setBusyId(null);

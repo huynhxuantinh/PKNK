@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -18,6 +18,7 @@ import "./branch-dashboard.css";
 import "./branch-dashboard-pagination.css";
 
 const today = () => hcmDate(new Date());
+const BRANCH_DASHBOARD_REFRESH_MS = 30_000;
 const timeFormatter = new Intl.DateTimeFormat("vi-VN", {
   timeZone: "Asia/Ho_Chi_Minh",
   hour: "2-digit",
@@ -36,6 +37,8 @@ export function BranchDashboardPage() {
   >(null);
   const [error, setError] = useState("");
   const [upcomingPage, setUpcomingPage] = useState(0);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const loadedBranchId = useRef<number | null>(null);
   const currentDate = today();
   const branch = scope.branches.find(
     (item) => item.id_branch === scope.branchId,
@@ -43,10 +46,14 @@ export function BranchDashboardPage() {
 
   useEffect(() => {
     if (!scope.branchId) return;
+    const initialLoad = loadedBranchId.current !== scope.branchId;
+    loadedBranchId.current = scope.branchId;
     const controller = new AbortController();
-    setAppointments(null);
-    setError("");
-    setUpcomingPage(0);
+    if (initialLoad) {
+      setAppointments(null);
+      setError("");
+      setUpcomingPage(0);
+    }
     listBranchAppointments(
       scope.branchId,
       currentDate,
@@ -55,12 +62,14 @@ export function BranchDashboardPage() {
       7,
       controller.signal,
     )
-      .then(
-        (response) =>
-          !controller.signal.aborted && setAppointments(response.data),
-      )
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setAppointments(response.data);
+          setError("");
+        }
+      })
       .catch((caught) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && initialLoad)
           setError(
             caught instanceof Error
               ? caught.message
@@ -68,7 +77,21 @@ export function BranchDashboardPage() {
           );
       });
     return () => controller.abort();
-  }, [currentDate, scope.branchId]);
+  }, [currentDate, refreshVersion, scope.branchId]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        setRefreshVersion((version) => version + 1);
+      }
+    };
+    const intervalId = window.setInterval(refresh, BRANCH_DASHBOARD_REFRESH_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   const summary = useMemo(() => {
     const todayAppointments =

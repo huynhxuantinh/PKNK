@@ -55,6 +55,10 @@ export function OrganizationAdminPanel({
     branch: OrganizationBranch
     manager: OrganizationMembership
   } | null>(null)
+  const [managerTransfer, setManagerTransfer] = useState<{
+    branch: OrganizationBranch
+    manager: OrganizationMembership
+  } | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -123,6 +127,20 @@ export function OrganizationAdminPanel({
   const expiredInvitationCount = invitations.filter(
     (invitation) => invitation.status === 'EXPIRED',
   ).length
+  const pendingTransferByBranch = useMemo(
+    () => new Map(
+      invitations
+        .filter(
+          (invitation) =>
+            invitation.status === 'PENDING'
+            && invitation.role === 'BRANCH_ADMIN'
+            && invitation.branch_id !== null
+            && invitation.replaces_membership_id !== null,
+        )
+        .map((invitation) => [invitation.branch_id as number, invitation]),
+    ),
+    [invitations],
+  )
   function branchName(branchId: number | null) {
     if (!branchId) return 'Toàn tổ chức'
     return branches.find((branch) => branch.id_branch === branchId)?.name
@@ -132,6 +150,7 @@ export function OrganizationAdminPanel({
   function openInvite(branchId = '') {
     setForm({ ...emptyInvite(), branchId })
     setFormError('')
+    setManagerTransfer(null)
     setModalOpen(true)
   }
 
@@ -153,9 +172,13 @@ export function OrganizationAdminPanel({
         email: form.email.trim(),
         role: form.role,
         branch_id: form.role === 'BRANCH_ADMIN' ? Number(form.branchId) : null,
+        ...(managerTransfer
+          ? { replaces_membership_id: managerTransfer.manager.id_membership }
+          : {}),
       })
       setNotice(`Đã gửi lời mời tới ${form.email.trim()}.`)
       setModalOpen(false)
+      setManagerTransfer(null)
       setReloadKey((current) => current + 1)
     } catch (caught) {
       setFormError(caught instanceof Error ? caught.message : 'Không thể mời quản trị viên.')
@@ -245,6 +268,16 @@ export function OrganizationAdminPanel({
     }
   }
 
+  function beginManagerTransfer() {
+    if (!changingManager) return
+    const { branch, manager } = changingManager
+    setChangingManager(null)
+    setManagerTransfer({ branch, manager })
+    setForm({ ...emptyInvite(), branchId: String(branch.id_branch) })
+    setFormError('')
+    setModalOpen(true)
+  }
+
   return (
     <section className="branch-management-schedule organization-report-section" aria-labelledby="organization-admins-title">
       <header>
@@ -327,6 +360,7 @@ export function OrganizationAdminPanel({
               ))}
               {activeBranches.map((branch) => {
                 const manager = managerByBranch.get(branch.id_branch)
+                const pendingTransfer = pendingTransferByBranch.get(branch.id_branch)
                 return (
                   <tr key={`branch-${branch.id_branch}`}>
                     <td>
@@ -345,8 +379,8 @@ export function OrganizationAdminPanel({
                     <td>{branch.name}</td>
                     <td>
                       {manager ? (
-                        <span className="organization-status is-active">
-                          Đang hoạt động
+                        <span className={`organization-status ${pendingTransfer ? 'is-inactive' : 'is-active'}`}>
+                          {pendingTransfer ? 'Đang bàn giao' : 'Đang hoạt động'}
                         </span>
                       ) : (
                         <span className="organization-status is-inactive">
@@ -470,13 +504,22 @@ export function OrganizationAdminPanel({
         <OrganizationInviteModal
           form={form}
           branches={activeBranches}
-          occupiedBranchIds={Array.from(managerByBranch.keys())}
+          occupiedBranchIds={Array.from(managerByBranch.keys()).filter(
+            (branchId) => branchId !== managerTransfer?.branch.id_branch,
+          )}
           busy={busy}
           error={formError}
           requiresBranch={form.role === 'BRANCH_ADMIN'}
+          transfer={managerTransfer ? {
+            branchName: managerTransfer.branch.name,
+            managerEmail: managerTransfer.manager.user_email,
+          } : undefined}
           onChange={(changes) => setForm((current) => ({ ...current, ...changes }))}
           onClose={() => {
-            if (!busy) setModalOpen(false)
+            if (!busy) {
+              setModalOpen(false)
+              setManagerTransfer(null)
+            }
           }}
           onSubmit={() => void invite()}
         />
@@ -485,12 +528,11 @@ export function OrganizationAdminPanel({
       {changingManager && (
         <ConfirmationModal
           title="Đổi quản lý chi nhánh"
-          description={`Ngưng quyền quản lý của ${changingManager.manager.user_email} tại ${changingManager.branch.name} để mời người mới? Chi nhánh sẽ chưa có quản lý cho tới khi người mới nhận lời mời.`}
-          confirmLabel="Ngưng và mời người mới"
-          danger
+          description={`Mời người mới tiếp quản ${changingManager.branch.name}? ${changingManager.manager.user_email} vẫn giữ quyền quản lý cho đến khi người mới chấp nhận lời mời.`}
+          confirmLabel="Mời người tiếp quản"
           busy={busy}
           onCancel={() => setChangingManager(null)}
-          onConfirm={() => void deactivateManagerForChange()}
+          onConfirm={beginManagerTransfer}
         />
       )}
 

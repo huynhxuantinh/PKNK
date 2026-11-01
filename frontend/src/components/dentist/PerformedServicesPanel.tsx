@@ -56,7 +56,10 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
     setConfirmed(encounter.performed_services_confirmed)
     setInitialConfirmed(encounter.performed_services_confirmed)
     setError('')
-  }, [encounter.id_clinical_encounter, encounter.updated_at])
+  // Lưu nháp nội dung bệnh án cũng thay đổi updated_at. Chỉ đồng bộ lại khi
+  // chuyển sang một lượt khám khác; nếu không, các dịch vụ nha sĩ đang nhập
+  // nhưng chưa xác nhận sẽ bị ghi đè bằng dữ liệu cũ từ server.
+  }, [encounter.id_clinical_encounter])
 
   const dirty = !areEqual(items, initialItems) || confirmed !== initialConfirmed
 
@@ -134,7 +137,37 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
         </span>
       </header>
 
-      {items.length === 0 ? (
+      {disabled ? (
+        encounter.performed_services.length === 0 ? (
+          <div className="performed-services-empty">Chưa ghi nhận thủ thuật nào trong lượt khám này.</div>
+        ) : (
+          <div className="performed-services-list performed-services-list-readonly">
+            {encounter.performed_services.map((item, index) => (
+              <article key={item.id_clinical_performed_service}>
+                <div className="performed-service-number">{String(index + 1).padStart(2, '0')}</div>
+                <div className="performed-service-snapshot">
+                  <strong>{item.service_name_snapshot}</strong>
+                  <span>{money.format(Number(item.unit_price_snapshot))}</span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Số lượng</dt>
+                    <dd>{item.quantity}</dd>
+                  </div>
+                  <div>
+                    <dt>Răng / vùng điều trị</dt>
+                    <dd>{item.tooth_reference || 'Không ghi nhận'}</dd>
+                  </div>
+                  <div>
+                    <dt>Ghi chú chuyên môn</dt>
+                    <dd>{item.clinical_note || 'Không ghi nhận'}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        )
+      ) : items.length === 0 ? (
         <div className="performed-services-empty">Chưa ghi nhận thủ thuật nào trong lượt khám này.</div>
       ) : (
         <div className="performed-services-list">
