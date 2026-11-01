@@ -12,7 +12,7 @@ from rest_framework.test import APITestCase
 
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.audit.models import AuditEvent
-from apps.catalog.models import BranchService, Service
+from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
@@ -65,6 +65,7 @@ class ClinicalAPITests(APITestCase):
         cls.branch_service = BranchService.objects.create(
             branch=cls.branch, service=cls.service, price=Decimal("1200000")
         )
+        DentistService.objects.create(dentist=cls.dentist, service=cls.service)
         cls.chair = Chair.objects.create(
             branch=cls.branch, code="C1", name="Chair", resource_type=Chair.ResourceType.CHAIR
         )
@@ -219,6 +220,36 @@ class ClinicalAPITests(APITestCase):
         self.finalize(encounter)
         finalized = self.client.put(url, {"confirmed": True, "items": []}, format="json")
         self.assertEqual(finalized.status_code, status.HTTP_409_CONFLICT)
+
+    def test_dentist_can_only_record_services_assigned_to_them(self):
+        unassigned_service = Service.objects.create(
+            organization=self.organization,
+            code="UNASSIGNED",
+            name="Unassigned service",
+            standard_duration_minutes=30,
+            standard_price=Decimal("300000"),
+        )
+        unassigned_branch_service = BranchService.objects.create(
+            branch=self.branch,
+            service=unassigned_service,
+            price=Decimal("300000"),
+        )
+        appointment = self.appointment(code="APT-UNASSIGNED-SERVICE")
+        encounter = self.create_encounter(appointment)
+
+        choices = self.client.get(
+            reverse("dentist_api:assigned-branch-services", kwargs={"branch_id": self.branch.pk})
+        )
+        rejected = self.client.put(
+            reverse("dentist_api:clinical-performed-services", kwargs={"encounter_id": encounter.pk}),
+            {"confirmed": True, "items": [{"branch_service_id": unassigned_branch_service.pk}]},
+            format="json",
+        )
+
+        self.assertEqual(choices.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id_branch_service"] for item in choices.data["data"]], [self.branch_service.pk])
+        self.assertEqual(rejected.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("chưa được phân công", rejected.data["message"])
 
     def test_create_encounter_rejects_confirmed_appointment(self):
         appointment = self.appointment(code="APT-CONFIRMED")

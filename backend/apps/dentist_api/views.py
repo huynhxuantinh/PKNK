@@ -10,6 +10,8 @@ from rest_framework.views import APIView
 from apps.accounts.models import Dentist
 from apps.accounts.permissions import IsDentistOnly
 from apps.audit.services import AuditService
+from apps.catalog.models import BranchService
+from apps.locations.serializers import BranchServiceSerializer
 from apps.organizations.models import Membership
 from apps.scheduling.models import Appointment, AppointmentStatusHistory
 from apps.scheduling.services import AppointmentService
@@ -113,6 +115,23 @@ class DentistAppointmentDetailAPIView(DentistAPIView):
             request=request,
         )
         return Response({"data": self.serializer_class(appointment).data})
+
+
+class DentistAssignedBranchServiceAPIView(DentistAPIView):
+    """Active branch services explicitly assigned to the current dentist."""
+
+    @extend_schema(responses={200: BranchServiceSerializer(many=True)})
+    def get(self, request, branch_id):
+        dentist, branch_ids = self.dentist_and_branch_ids()
+        if branch_id not in branch_ids:
+            raise PermissionDenied("Nha sĩ không có quyền tại chi nhánh này.")
+        services = BranchService.objects.filter(
+            branch_id=branch_id,
+            is_active=True,
+            service__is_active=True,
+            service__dentist_services__dentist=dentist,
+        ).select_related("service").order_by("service__name")
+        return Response({"data": BranchServiceSerializer(services, many=True).data})
 
 
 class DentistAppointmentStartAPIView(DentistAPIView):

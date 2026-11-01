@@ -4,6 +4,7 @@ import type {
   ClinicalEncounter,
   ClinicalPerformedService,
   ClinicalPerformedServiceInput,
+  BranchService,
   DentistAppointment,
   DentistPatientSummary,
   DentistScheduleResponse,
@@ -27,6 +28,14 @@ export function startDentistAppointment(publicCode: string) {
 
 export function getDentistAppointment(publicCode: string) {
   return apiRequest<{ data: DentistAppointment }>(`/dentist/me/appointments/${publicCode}/`, {}, { auth: true })
+}
+
+export function listDentistAssignedBranchServices(branchId: number) {
+  return apiRequest<{ data: BranchService[] }>(
+    `/dentist/me/branches/${branchId}/assigned-services/`,
+    {},
+    { auth: true },
+  )
 }
 
 export function getClinicalEncounter(publicCode: string) {

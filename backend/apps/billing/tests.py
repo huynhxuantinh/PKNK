@@ -295,11 +295,18 @@ class CounterBillingTests(APITestCase):
         self.client.force_authenticate(self.admin)
 
         queue = self.client.get(
-            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk})
+            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk}),
+            {
+                "date_from": timezone.localdate().isoformat(),
+                "date_to": timezone.localdate().isoformat(),
+                "limit": 1,
+                "offset": 0,
+            },
         )
         created = self.create_invoice(appointment)
 
         self.assertEqual(queue.status_code, status.HTTP_200_OK)
+        self.assertEqual(queue.data["meta"], {"count": 1, "limit": 1, "offset": 0})
         self.assertEqual(queue.data["data"][0]["appointment_code"], appointment.public_code)
         self.assertEqual(queue.data["data"][0]["estimated_total"], Decimal("800000.00"))
         self.assertEqual(created.status_code, status.HTTP_201_CREATED)

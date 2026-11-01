@@ -6,6 +6,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.audit.services import AuditService
+from apps.catalog.models import BranchService, DentistService
 from apps.scheduling.models import Appointment
 
 from .models import (
@@ -35,8 +36,6 @@ class ClinicalWorkflowService:
         cls.ensure_draft(encounter)
 
         branch_service_ids = [item["branch_service_id"] for item in items]
-        from apps.catalog.models import BranchService
-
         branch_services = {
             branch_service.pk: branch_service
             for branch_service in BranchService.objects.select_related("service").filter(
@@ -48,6 +47,17 @@ class ClinicalWorkflowService:
         }
         if set(branch_service_ids).difference(branch_services):
             raise ValidationError("Dịch vụ thực hiện không thuộc danh mục đang hoạt động của chi nhánh.")
+        service_ids = {branch_service.service_id for branch_service in branch_services.values()}
+        assigned_service_ids = set(
+            DentistService.objects.filter(
+                dentist_id=encounter.appointment.dentist_id,
+                service_id__in=service_ids,
+            ).values_list("service_id", flat=True)
+        )
+        if service_ids.difference(assigned_service_ids):
+            raise ValidationError(
+                "Nha sĩ chưa được phân công thực hiện một hoặc nhiều dịch vụ đã chọn."
+            )
 
         before_count = encounter.performed_services.count()
         ClinicalPerformedService.objects.filter(encounter=encounter).delete()

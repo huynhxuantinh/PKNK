@@ -19,10 +19,30 @@ export function InvoiceAppointmentHint() {
 export function InvoiceReadyAppointmentQueue({
   appointments,
   loading,
+  count,
+  limit,
+  offset,
+  dateFrom,
+  dateTo,
+  onDateFromChange,
+  onDateToChange,
+  onApplyFilters,
+  onClearFilters,
+  onPageChange,
   onCreate,
 }: {
   appointments: InvoiceReadyAppointment[]
   loading: boolean
+  count: number
+  limit: number
+  offset: number
+  dateFrom: string
+  dateTo: string
+  onDateFromChange: (value: string) => void
+  onDateToChange: (value: string) => void
+  onApplyFilters: () => void
+  onClearFilters: () => void
+  onPageChange: (offset: number) => void
   onCreate: (appointment: InvoiceReadyAppointment) => void
 }) {
   return <section className="invoice-ready-queue" aria-labelledby="invoice-ready-title">
@@ -32,8 +52,14 @@ export function InvoiceReadyAppointmentQueue({
         <h2 id="invoice-ready-title">Dịch vụ nha sĩ đã xác nhận</h2>
         <p>Hóa đơn nháp dùng đúng dịch vụ, số lượng và giá đã ghi nhận trong lượt khám.</p>
       </div>
-      <span>{appointments.length} lượt chờ</span>
+      <span>Tổng {count} lượt chờ</span>
     </header>
+    <form className="invoice-ready-filters" aria-label="Lọc lượt khám chờ lập hóa đơn" onSubmit={(event) => { event.preventDefault(); onApplyFilters() }}>
+      <label>Từ ngày<input type="date" value={dateFrom} onChange={(event) => onDateFromChange(event.target.value)} /></label>
+      <label>Đến ngày<input type="date" value={dateTo} onChange={(event) => onDateToChange(event.target.value)} /></label>
+      <button type="submit">Lọc</button>
+      {(dateFrom || dateTo) && <button type="button" className="button-secondary" onClick={onClearFilters}>Xóa lọc</button>}
+    </form>
     {loading ? <p className="invoice-ready-loading">Đang tải lượt khám hoàn tất...</p> : appointments.length === 0 ? <p className="invoice-ready-empty">Không có lượt khám nào đang chờ lập hóa đơn.</p> : <div className="invoice-ready-list">
       {appointments.map((appointment) => <article key={appointment.appointment_code}>
         <div className="invoice-ready-main">
@@ -45,6 +71,7 @@ export function InvoiceReadyAppointmentQueue({
         <div className="invoice-ready-action"><strong>{money(appointment.estimated_total)}</strong><button type="button" onClick={() => onCreate(appointment)}>Lập hóa đơn</button></div>
       </article>)}
     </div>}
+    {!loading && <InvoicePagination count={count} limit={limit} offset={offset} onChange={onPageChange} />}
   </section>
 }
 

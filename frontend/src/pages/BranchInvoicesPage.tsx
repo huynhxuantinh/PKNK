@@ -24,6 +24,7 @@ import {
 } from '../components/branch-management/invoicePresentation'
 
 const INVOICE_PAGE_SIZE = 20
+const INVOICE_READY_PAGE_SIZE = 10
 
 export function BranchInvoicesPage() {
   const { user } = useAuth()
@@ -37,6 +38,12 @@ export function BranchInvoicesPage() {
   const [offset, setOffset] = useState(0)
   const [readyAppointments, setReadyAppointments] = useState<InvoiceReadyAppointment[]>([])
   const [loadingReadyAppointments, setLoadingReadyAppointments] = useState(true)
+  const [readyAppointmentCount, setReadyAppointmentCount] = useState(0)
+  const [readyAppointmentOffset, setReadyAppointmentOffset] = useState(0)
+  const [readyDateFrom, setReadyDateFrom] = useState('')
+  const [readyDateTo, setReadyDateTo] = useState('')
+  const [appliedReadyDateFrom, setAppliedReadyDateFrom] = useState('')
+  const [appliedReadyDateTo, setAppliedReadyDateTo] = useState('')
   const [selected, setSelected] = useState<ManagedInvoice | null>(null)
   const [appointmentCode, setAppointmentCode] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -100,6 +107,12 @@ export function BranchInvoicesPage() {
     setInvoiceCount(0)
     setReadyAppointments([])
     setLoadingReadyAppointments(true)
+    setReadyAppointmentCount(0)
+    setReadyAppointmentOffset(0)
+    setReadyDateFrom('')
+    setReadyDateTo('')
+    setAppliedReadyDateFrom('')
+    setAppliedReadyDateTo('')
     setSelected(null)
     setAppointmentCode('')
     setShowCreate(false)
@@ -123,23 +136,57 @@ export function BranchInvoicesPage() {
   const loadReadyAppointments = useCallback(async (signal?: AbortSignal) => {
     if (!branchId) return
     try {
-      const response = await listInvoiceReadyAppointments(branchId, signal)
-      if (!signal?.aborted && isCurrentBranch()) setReadyAppointments(response.data)
+      const response = await listInvoiceReadyAppointments(branchId, {
+        dateFrom: appliedReadyDateFrom || undefined,
+        dateTo: appliedReadyDateTo || undefined,
+        limit: INVOICE_READY_PAGE_SIZE,
+        offset: readyAppointmentOffset,
+      }, signal)
+      if (!signal?.aborted && isCurrentBranch()) {
+        if (readyAppointmentOffset > 0 && response.data.length === 0) {
+          setReadyAppointmentOffset(Math.max(0, readyAppointmentOffset - INVOICE_READY_PAGE_SIZE))
+          return
+        }
+        setReadyAppointments(response.data)
+        setReadyAppointmentCount(response.meta.count)
+      }
     } catch {
-      if (!signal?.aborted && isCurrentBranch()) setReadyAppointments([])
+      if (!signal?.aborted && isCurrentBranch()) {
+        setReadyAppointments([])
+        setReadyAppointmentCount(0)
+      }
     } finally {
       if (!signal?.aborted && isCurrentBranch()) setLoadingReadyAppointments(false)
     }
   // isCurrentBranch reads the current ref; only branch changes should recreate the loader.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchId])
+  }, [appliedReadyDateFrom, appliedReadyDateTo, branchId, readyAppointmentOffset])
 
   useEffect(() => {
     if (!branchId) return
     const controller = new AbortController()
     void loadReadyAppointments(controller.signal)
     return () => controller.abort()
-  }, [branchId, loadReadyAppointments])
+  }, [loadReadyAppointments])
+
+  function applyReadyFilters() {
+    if (readyDateFrom && readyDateTo && readyDateFrom > readyDateTo) {
+      setError('Ngày đến phải sau hoặc bằng ngày từ.')
+      return
+    }
+    setError('')
+    setReadyAppointmentOffset(0)
+    setAppliedReadyDateFrom(readyDateFrom)
+    setAppliedReadyDateTo(readyDateTo)
+  }
+
+  function clearReadyFilters() {
+    setReadyDateFrom('')
+    setReadyDateTo('')
+    setAppliedReadyDateFrom('')
+    setAppliedReadyDateTo('')
+    setReadyAppointmentOffset(0)
+  }
 
   async function selectInvoice(invoice: ManagedInvoice) {
     if (!scopeReady) return
@@ -264,7 +311,21 @@ export function BranchInvoicesPage() {
     <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
     {error && <div className="dentist-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
-    <InvoiceReadyAppointmentQueue appointments={readyAppointments} loading={loadingReadyAppointments} onCreate={(appointment) => { setAppointmentCode(appointment.appointment_code); setShowCreate(true) }} />
+    <InvoiceReadyAppointmentQueue
+      appointments={readyAppointments}
+      loading={loadingReadyAppointments}
+      count={readyAppointmentCount}
+      limit={INVOICE_READY_PAGE_SIZE}
+      offset={readyAppointmentOffset}
+      dateFrom={readyDateFrom}
+      dateTo={readyDateTo}
+      onDateFromChange={setReadyDateFrom}
+      onDateToChange={setReadyDateTo}
+      onApplyFilters={applyReadyFilters}
+      onClearFilters={clearReadyFilters}
+      onPageChange={setReadyAppointmentOffset}
+      onCreate={(appointment) => { setAppointmentCode(appointment.appointment_code); setShowCreate(true) }}
+    />
     <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
       {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
       {!loading && <InvoicePagination count={invoiceCount} limit={INVOICE_PAGE_SIZE} offset={offset} onChange={setOffset} />}

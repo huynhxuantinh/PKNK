@@ -1,3 +1,6 @@
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -15,6 +18,7 @@ from .management_serializers import (
     InvoiceDraftUpdateSerializer,
     InvoiceListQuerySerializer,
     InvoiceReadyAppointmentSerializer,
+    InvoiceReadyAppointmentQuerySerializer,
     InvoiceSerializer,
     PaymentCreateSerializer,
     PaymentSerializer,
@@ -91,9 +95,12 @@ class BranchInvoiceListCreateAPIView(ManagementAPIView):
 class BranchInvoiceReadyAppointmentListAPIView(ManagementAPIView):
     """Completed visits with confirmed clinical services but no active invoice."""
 
-    @extend_schema(responses={200: InvoiceReadyAppointmentSerializer(many=True)})
+    @extend_schema(parameters=[InvoiceReadyAppointmentQuerySerializer], responses={200: InvoiceReadyAppointmentSerializer(many=True)})
     def get(self, request, branch_id):
         branch = self.branch(branch_id)
+        query = InvoiceReadyAppointmentQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        filters = query.validated_data
         appointments = (
             Appointment.objects.filter(
                 branch=branch,
@@ -107,7 +114,23 @@ class BranchInvoiceReadyAppointmentListAPIView(ManagementAPIView):
             .order_by("-completed_at", "-id_appointment")
             .distinct()
         )
-        return Response({"data": InvoiceReadyAppointmentSerializer(appointments[:100], many=True).data})
+        hcm = ZoneInfo("Asia/Ho_Chi_Minh")
+        if filters.get("date_from"):
+            appointments = appointments.filter(
+                completed_at__gte=datetime.combine(filters["date_from"], time.min, tzinfo=hcm)
+            )
+        if filters.get("date_to"):
+            appointments = appointments.filter(
+                completed_at__lt=datetime.combine(filters["date_to"] + timedelta(days=1), time.min, tzinfo=hcm)
+            )
+        count = appointments.count()
+        offset = filters["offset"]
+        limit = filters["limit"]
+        page = appointments[offset:offset + limit]
+        return Response({
+            "data": InvoiceReadyAppointmentSerializer(page, many=True).data,
+            "meta": {"count": count, "limit": limit, "offset": offset},
+        })
 
 
 class InvoiceDetailAPIView(ManagementAPIView):

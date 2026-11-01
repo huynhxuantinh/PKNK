@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     DentistAppointmentDetailAPIView,
+    DentistAssignedBranchServiceAPIView,
     DentistAppointmentStartAPIView,
     DentistPatientSummaryAPIView,
     DentistScheduleAPIView,
@@ -36,6 +37,7 @@ app_name = "dentist_api"
 
 urlpatterns = [
     path("me/schedule/", DentistScheduleAPIView.as_view(), name="schedule"),
+    path("me/branches/<int:branch_id>/assigned-services/", DentistAssignedBranchServiceAPIView.as_view(), name="assigned-branch-services"),
     path(
         "me/appointments/<str:public_code>/",
         DentistAppointmentDetailAPIView.as_view(),

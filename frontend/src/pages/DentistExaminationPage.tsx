@@ -8,9 +8,9 @@ import {
   getClinicalEncounter,
   getDentistAppointment,
   getDentistPatientSummary,
+  listDentistAssignedBranchServices,
   updateClinicalEncounter,
 } from '../api/dentist'
-import { listBranchServices } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { hasActiveRole } from '../auth/roles'
@@ -170,7 +170,7 @@ export function DentistExaminationPage() {
         if (localDraft && !clinicalFormsEqual(localDraft, latestServerForm)) {
           setNotice('Đã khôi phục bản nháp lưu trên thiết bị.')
         }
-        return listBranchServices(appointmentResponse.data.branch_id)
+        return listDentistAssignedBranchServices(appointmentResponse.data.branch_id)
           .then((servicesResponse) => {
             if (active) setBranchServices(servicesResponse.data)
           })

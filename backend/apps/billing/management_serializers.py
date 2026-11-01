@@ -77,6 +77,18 @@ class InvoiceReadyAppointmentSerializer(serializers.Serializer):
         )
 
 
+class InvoiceReadyAppointmentQuerySerializer(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    offset = serializers.IntegerField(min_value=0, default=0)
+
+    def validate(self, attrs):
+        if attrs.get("date_from") and attrs.get("date_to") and attrs["date_from"] > attrs["date_to"]:
+            raise serializers.ValidationError({"date_to": "Ngày đến phải sau hoặc bằng ngày từ."})
+        return attrs
+
+
 class InvoiceListQuerySerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Invoice.Status.choices, required=False)
     appointment_code = serializers.CharField(max_length=30, required=False)

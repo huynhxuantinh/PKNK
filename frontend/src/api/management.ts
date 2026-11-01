@@ -218,7 +218,22 @@ export function listManagedInvoices(branchId: number, options: ManagedInvoiceLis
 export const getManagedInvoice = (id: number, signal?: AbortSignal) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { signal }, { auth: true })
 export const updateManagedInvoiceDraft = (id: number, data: ManagedInvoiceDraftInput) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
-export const listInvoiceReadyAppointments = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: InvoiceReadyAppointment[] }>(`/management/branches/${branchId}/invoice-ready-appointments/`, { signal }, { auth: true })
+export function listInvoiceReadyAppointments(
+  branchId: number,
+  options: { dateFrom?: string; dateTo?: string; limit?: number; offset?: number } = {},
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({
+    limit: String(options.limit ?? 20),
+    offset: String(options.offset ?? 0),
+  })
+  if (options.dateFrom) query.set('date_from', options.dateFrom)
+  if (options.dateTo) query.set('date_to', options.dateTo)
+  return apiRequest<{
+    data: InvoiceReadyAppointment[]
+    meta: { count: number; limit: number; offset: number }
+  }>(`/management/branches/${branchId}/invoice-ready-appointments/?${query}`, { signal }, { auth: true })
+}
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
