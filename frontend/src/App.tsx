@@ -12,6 +12,7 @@ import { DentistDashboardPage } from './pages/DentistDashboardPage'
 import { DentistBranchSelectionPage } from './pages/DentistBranchSelectionPage'
 import { DentistExaminationPage } from './pages/DentistExaminationPage'
 import { BranchManagementPage } from './pages/BranchManagementPage'
+import { BranchDashboardPage } from './pages/BranchDashboardPage'
 import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
 import { BranchReportsPage } from './pages/BranchReportsPage'
 import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
@@ -26,6 +27,7 @@ import { OrganizationAuditPage } from './pages/OrganizationAuditPage'
 import { AccountSecurityPage } from './pages/AccountSecurityPage'
 import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { AdminShell } from './components/admin/AdminShell'
 import { RequireRole } from './auth/RequireRole'
 
 const router = createBrowserRouter(createRoutesFromElements(
@@ -54,18 +56,23 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/bac-si/kham/:publicCode" element={<DentistExaminationPage />} />
     </Route>
     <Route element={<RequireRole area="MANAGEMENT" />}>
-      <Route path="/quan-ly-chi-nhanh" element={<BranchManagementPage />} />
-      <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
-      <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
-      <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
-      <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
+      <Route element={<AdminShell />}>
+        <Route path="/quan-ly-chi-nhanh" element={<BranchDashboardPage />} />
+        <Route path="/quan-ly-chi-nhanh/lich-hen" element={<BranchManagementPage />} />
+        <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
+        <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
+        <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
+        <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
+      </Route>
     </Route>
     <Route element={<RequireRole area="ORGANIZATION" />}>
-      <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
-      <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
-      <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
-      <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
-      <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+      <Route element={<AdminShell />}>
+        <Route path="/quan-ly-to-chuc" element={<OrganizationOverviewPage />} />
+        <Route path="/quan-ly-to-chuc/chi-nhanh" element={<OrganizationBranchesPage />} />
+        <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
+        <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
+        <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+      </Route>
     </Route>
     <Route path="/dang-nhap" element={<LoginPage />} />
     <Route path="/dang-ky" element={<RegisterPage />} />

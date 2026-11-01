@@ -50,3 +50,7 @@ export function canAccessArea(user: User | null, area: ProtectedArea) {
   if (area === 'ORGANIZATION') return hasActiveRole(user, ['ORGANIZATION_ADMIN'])
   return hasActiveRole(user, ['BRANCH_ADMIN', 'ORGANIZATION_ADMIN'])
 }
+
+export function canSwitchAdminArea(user: User | null) {
+  return hasActiveRole(user, ['ORGANIZATION_ADMIN'])
+}

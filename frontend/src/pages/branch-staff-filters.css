@@ -1,0 +1,6 @@
+.branch-staff-page__filters{display:flex;align-items:end;gap:12px;padding:14px 16px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-lg);background:#fff;box-shadow:var(--admin-shadow-sm)}
+.branch-staff-page__filters label{display:grid;gap:5px;min-width:190px;color:var(--admin-muted);font-size:10px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
+.branch-staff-page__filters select{min-height:39px;padding:8px 10px;border:1px solid var(--admin-border-strong);border-radius:8px;background:#fff;color:var(--admin-navy-800);font:inherit;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none}
+.branch-staff-page__filters button{min-height:39px;padding:8px 11px;border:1px solid #b8dce3;border-radius:8px;background:#fff;color:var(--admin-teal-700);font:inherit;font-size:12px;font-weight:800}
+.branch-staff-page__filters small{margin-left:auto;padding-bottom:10px;color:var(--admin-muted);font-size:12px;font-weight:700}
+@media(max-width:700px){.branch-staff-page__filters{align-items:stretch;flex-direction:column}.branch-staff-page__filters label{min-width:0}.branch-staff-page__filters small{margin-left:0;padding-bottom:0}.branch-staff-page__filters button{width:100%}}

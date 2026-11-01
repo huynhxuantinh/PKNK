@@ -1,11 +1,7 @@
 import type { ReactNode } from 'react'
 
-import { ManagementPageHeader } from '../branch-management/ManagementPageHeader'
 import type { OrganizationOption } from '../../features/organization/organizationSelection'
-import {
-  OrganizationSectionNav,
-  type OrganizationSection,
-} from './OrganizationSectionNav'
+import type { OrganizationSection } from './OrganizationSectionNav'
 
 interface OrganizationPageLayoutProps {
   title: string
@@ -36,7 +32,6 @@ export function OrganizationPageLayout({
 }: OrganizationPageLayoutProps) {
   return (
     <div className="branch-management-page organization-management-page">
-      <ManagementPageHeader title={title} path={path} />
       <main className="branch-management-main">
         <section className="branch-management-hero organization-management-hero">
           <div>
@@ -66,7 +61,6 @@ export function OrganizationPageLayout({
 
         {organizationId ? (
           <>
-            <OrganizationSectionNav active={active} organizationId={organizationId} />
             {children}
           </>
         ) : (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import {
   cancelManagedAppointment,
   checkInManagedAppointment,
@@ -14,22 +14,20 @@ import {
   type ManagementAppointmentStatus,
 } from '../api/management'
 import { getBranchDetail } from '../api/booking'
-import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import {
   AppointmentList,
   ManagementErrorBanner,
 } from '../components/branch-management/AppointmentList'
+import { AppointmentCalendar } from '../components/branch-management/AppointmentCalendar'
 import { CancelAppointmentModal } from '../components/branch-management/CancelAppointmentModal'
-import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { RescheduleAppointmentModal } from '../components/branch-management/RescheduleAppointmentModal'
 import {
   appointmentStatusLabels,
   hcmDate,
 } from '../components/branch-management/appointmentPresentation'
 import { resolveScopedManagedBranchId } from '../components/branch-management/managedBranchSelection'
-import { Seo } from '../seo/Seo'
 import type { BranchDetail, Slot } from '../types/api'
 
 type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
@@ -76,6 +74,7 @@ export function BranchManagementPage() {
   const [branch, setBranch] = useState<BranchDetail | null>(null)
   const [date, setDate] = useState(() => hcmDate(new Date()))
   const [days, setDays] = useState<1 | 7>(7)
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [dentistId, setDentistId] = useState<number>()
   const [status, setStatus] = useState<ManagementAppointmentStatus | ''>('')
   const [items, setItems] = useState<ManagementAppointment[] | null>(null)
@@ -315,23 +314,6 @@ export function BranchManagementPage() {
 
   return (
     <div className="branch-management-page">
-      <Seo
-        title="Quản lý chi nhánh | DentaVie"
-        description="Khu vực vận hành chi nhánh DentaVie."
-        path="/quan-ly-chi-nhanh"
-        noIndex
-      />
-      <header className="dentist-header">
-        <Link className="brand" to="/">
-          <img src="/branding/dentavie-logo-horizontal-color.png" alt="DentaVie" />
-        </Link>
-        <div className="dentist-header-context">
-          <span>Khu vực vận hành</span>
-          <strong>Quản lý chi nhánh</strong>
-        </div>
-        <AuthBar />
-      </header>
-
       <main className="branch-management-main">
         <section className="branch-management-hero">
           <div>
@@ -356,8 +338,6 @@ export function BranchManagementPage() {
           )}
         </section>
 
-        {branchId && <ManagementSectionNav branchId={branchId} active="appointments" />}
-
         {error && <ManagementErrorBanner message={error} />}
         {pendingNotice && (
           <p className="branch-management-pending-notice" role="status">
@@ -370,6 +350,10 @@ export function BranchManagementPage() {
             <div>
               <p className="eyebrow">Lịch hẹn chi nhánh</p>
               <h2>Điều phối lịch khám</h2>
+            </div>
+            <div className="branch-management-view-switch" role="group" aria-label="Chế độ hiển thị">
+              <button type="button" className={viewMode === 'table' ? 'is-active' : ''} onClick={() => setViewMode('table')}>Danh sách</button>
+              <button type="button" className={viewMode === 'calendar' ? 'is-active' : ''} onClick={() => setViewMode('calendar')}>Lịch</button>
             </div>
           </header>
 
@@ -422,13 +406,7 @@ export function BranchManagementPage() {
             </label>
           </div>
 
-          <AppointmentList
-            items={items}
-            busyCode={busy}
-            onAction={updateAppointment}
-            onCancel={setCancelling}
-            onReschedule={setMoving}
-          />
+          {viewMode === 'calendar' ? <AppointmentCalendar items={items} dentists={branch?.dentists || []} days={days} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} /> : <AppointmentList items={items} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} />}
         </section>
       </main>
 

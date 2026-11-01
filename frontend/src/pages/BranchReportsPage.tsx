@@ -1,120 +1,122 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 
-import { branchReport } from '../api/management'
-import { useAuth } from '../auth/AuthContext'
-import { canAccessArea } from '../auth/roles'
-import { BranchReportDashboard } from '../components/branch-management/BranchReportDashboard'
+import { branchReport } from "../api/management";
+import { useAuth } from "../auth/AuthContext";
+import { canAccessArea } from "../auth/roles";
+import { BranchReportDashboard } from "../components/branch-management/BranchReportDashboard";
 import {
   type BranchReportData,
   validateReportDateRange,
-} from '../components/branch-management/branchReportPresentation'
-import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
-import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
-import { ManagedBranchSelector } from '../components/branch-management/ManagedBranchSelector'
-import { resolveScopedManagedBranchId } from '../components/branch-management/managedBranchSelection'
-import { useManagedBranches } from '../components/branch-management/useManagedBranches'
+} from "../components/branch-management/branchReportPresentation";
+import { ManagedBranchSelector } from "../components/branch-management/ManagedBranchSelector";
+import { resolveScopedManagedBranchId } from "../components/branch-management/managedBranchSelection";
+import { useManagedBranches } from "../components/branch-management/useManagedBranches";
+import { printBranchReport } from "../components/branch-management/reportPdf";
+import "./branch-reports.css";
+import "./branch-report-print.css";
 
-const iso = (date: Date) => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Ho_Chi_Minh',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-}).format(date)
+const iso = (date: Date) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 
 export function BranchReportsPage() {
-  const { user } = useAuth()
-  const [params, setParams] = useSearchParams()
-  const requestedBranchId = Number(params.get('chi-nhanh')) || 0
-  const managedBranches = useManagedBranches(user)
-  const branchId = resolveScopedManagedBranchId({
-    isBranchAdmin: managedBranches.isBranchAdmin,
-    primaryBranchId: managedBranches.primaryBranchId,
-    requestedBranchId: requestedBranchId || null,
-    branches: managedBranches.branches,
-    loaded: !managedBranches.loading,
-  }) ?? 0
-  const [from, setFrom] = useState(() => iso(new Date(Date.now() - 29 * 86400000)))
-  const [to, setTo] = useState(() => iso(new Date()))
-  const [data, setData] = useState<BranchReportData | null>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const loadedBranchRef = useRef<number | null>(null)
+  const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const requestedBranchId = Number(params.get("chi-nhanh")) || 0;
+  const managedBranches = useManagedBranches(user);
+  const branchId =
+    resolveScopedManagedBranchId({
+      isBranchAdmin: managedBranches.isBranchAdmin,
+      primaryBranchId: managedBranches.primaryBranchId,
+      requestedBranchId: requestedBranchId || null,
+      branches: managedBranches.branches,
+      loaded: !managedBranches.loading,
+    }) ?? 0;
+  const [from, setFrom] = useState(() =>
+    iso(new Date(Date.now() - 29 * 86400000)),
+  );
+  const [to, setTo] = useState(() => iso(new Date()));
+  const [data, setData] = useState<BranchReportData | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const loadedBranchRef = useRef<number | null>(null);
+  const branchName =
+    managedBranches.branches.find((branch) => branch.id_branch === branchId)
+      ?.name || `Chi nhánh #${branchId}`;
 
   const load = useCallback(async () => {
-    const rangeError = validateReportDateRange(from, to)
+    const rangeError = validateReportDateRange(from, to);
 
     if (rangeError) {
-      setLoading(false)
-      setData(null)
-      setError(rangeError)
-      return
+      setLoading(false);
+      setData(null);
+      setError(rangeError);
+      return;
     }
 
-    setLoading(true)
-    setData(null)
-    setError('')
+    setLoading(true);
+    setData(null);
+    setError("");
 
     try {
       const [revenue, appointments, chairs] = await Promise.all([
-        branchReport(branchId, 'revenue', from, to),
-        branchReport(branchId, 'appointments', from, to),
-        branchReport(branchId, 'chair-utilization', from, to),
-      ])
+        branchReport(branchId, "revenue", from, to),
+        branchReport(branchId, "appointments", from, to),
+        branchReport(branchId, "chair-utilization", from, to),
+      ]);
 
       setData({
-        revenue: revenue.data as unknown as BranchReportData['revenue'],
-        appointments: appointments.data as unknown as BranchReportData['appointments'],
-        chairs: chairs.data as unknown as BranchReportData['chairs'],
-      })
+        revenue: revenue.data as unknown as BranchReportData["revenue"],
+        appointments:
+          appointments.data as unknown as BranchReportData["appointments"],
+        chairs: chairs.data as unknown as BranchReportData["chairs"],
+      });
     } catch (caught) {
-      setData(null)
-      setError(caught instanceof Error ? caught.message : 'Không thể tải báo cáo.')
+      setData(null);
+      setError(
+        caught instanceof Error ? caught.message : "Không thể tải báo cáo.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [branchId, from, to])
+  }, [branchId, from, to]);
 
   useEffect(() => {
     if (branchId && loadedBranchRef.current !== branchId) {
-      loadedBranchRef.current = branchId
-      void load()
+      loadedBranchRef.current = branchId;
+      void load();
     }
-  }, [branchId, load])
+  }, [branchId, load]);
 
-  if (!canAccessArea(user, 'MANAGEMENT')) {
-    return <Navigate to="/quan-ly-chi-nhanh" replace />
+  if (!canAccessArea(user, "MANAGEMENT")) {
+    return <Navigate to="/quan-ly-chi-nhanh" replace />;
   }
 
   if (!branchId) {
     return (
       <div className="branch-management-page">
-        <ManagementPageHeader
-          title="Báo cáo chi nhánh"
-          path="/quan-ly-chi-nhanh/bao-cao"
-        />
         <main className="branch-management-main">
           <ManagedBranchSelector
             branches={managedBranches.branches}
             loading={managedBranches.loading}
             error={managedBranches.error}
             onSelect={(selectedBranchId) => {
-              setParams({ 'chi-nhanh': String(selectedBranchId) })
+              setParams({ "chi-nhanh": String(selectedBranchId) });
             }}
           />
         </main>
       </div>
-    )
+    );
   }
 
   return (
     <div className="branch-management-page">
-      <ManagementPageHeader
-        title="Báo cáo chi nhánh"
-        path="/quan-ly-chi-nhanh/bao-cao"
-      />
-
-      <main className="branch-management-main">
+      <main className="branch-management-main branch-reports-page">
         <Link
           className="staff-schedule-back"
           to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}
@@ -122,9 +124,10 @@ export function BranchReportsPage() {
           ← Quay lại quản lý chi nhánh
         </Link>
         <h1>Báo cáo chi nhánh</h1>
-        <ManagementSectionNav branchId={branchId} active="reports" />
-
         <div className="branch-management-filters">
+          <button className="branch-report-print-button" type="button" disabled={!data || loading} onClick={() => data && printBranchReport({ branchName, from, to, data })}>
+            Xuất PDF
+          </button>
           <label>
             Từ ngày
             <input
@@ -144,7 +147,7 @@ export function BranchReportsPage() {
             />
           </label>
           <button type="button" disabled={loading} onClick={() => void load()}>
-            {loading ? 'Đang tải...' : 'Xem báo cáo'}
+            {loading ? "Đang tải..." : "Xem báo cáo"}
           </button>
         </div>
 
@@ -161,5 +164,5 @@ export function BranchReportsPage() {
         {!loading && data && <BranchReportDashboard data={data} />}
       </main>
     </div>
-  )
+  );
 }

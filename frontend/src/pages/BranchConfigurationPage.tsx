@@ -13,8 +13,7 @@ import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import { BranchChairList, BranchHolidayList, BranchServiceList, OpeningHoursEditor } from '../components/branch-management/BranchConfigurationSections'
 import { buildHolidayPayload } from '../components/branch-management/branchConfigurationPresentation'
-import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
-import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
+import './branch-configuration.css'
 
 const defaultHours = (): ManagedOpeningHour[] => Array.from({ length: 7 }, (_, index) => ({ weekday: index + 1, is_closed: index === 6, open_time: index === 6 ? null : '08:00', close_time: index === 6 ? null : '18:00' }))
 const emptyChair = (): { code: string; name: string; resource_type: 'CHAIR' | 'ROOM' } => ({ code: '', name: '', resource_type: 'CHAIR' })
@@ -115,11 +114,9 @@ export function BranchConfigurationPage() {
 
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
   return <div className="branch-management-page branch-config-page">
-    <ManagementPageHeader title="Cấu hình chi nhánh" path="/quan-ly-chi-nhanh/cau-hinh" />
     <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
     <header className="branch-config-heading"><div><span>Thiết lập vận hành</span><h1>Cấu hình chi nhánh</h1><p>Quản lý khung giờ, nguồn lực và dịch vụ được sử dụng khi xếp lịch.</p></div><strong>4 nhóm cấu hình</strong></header>
-    <ManagementSectionNav branchId={branchId} active="configuration" />
     {error && <div className="dentist-error" role="alert">{error}</div>}{notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
     <div className="branch-config-grid">

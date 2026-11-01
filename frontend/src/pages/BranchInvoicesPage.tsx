@@ -15,13 +15,11 @@ import {
   InvoiceDraftEditor,
   InvoiceDetailPanel,
   InvoiceFilters,
-  InvoiceList,
+  InvoiceTable,
   InvoicePagination,
   PaymentModal,
   VoidPaymentModal,
 } from '../components/branch-management/InvoiceManagement'
-import { ManagementPageHeader } from '../components/branch-management/ManagementPageHeader'
-import { ManagementSectionNav } from '../components/branch-management/ManagementSectionNav'
 import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import {
   latestVoidedInvoiceId,
@@ -193,15 +191,13 @@ export function BranchInvoicesPage() {
 
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
   return <div className="branch-management-page invoice-management-page">
-    <ManagementPageHeader title="Hóa đơn chi nhánh" path="/quan-ly-chi-nhanh/hoa-don" />
     <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
     <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
-    <ManagementSectionNav branchId={branchId} active="invoices" />
     {error && <div className="dentist-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
     <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
-      {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceList items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
+      {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
       {!loading && <InvoicePagination count={invoiceCount} limit={INVOICE_PAGE_SIZE} offset={offset} onChange={setOffset} />}
     </section>
   </div>

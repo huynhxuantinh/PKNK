@@ -8,7 +8,7 @@ import {
   resolveOrganizationId,
 } from '../../features/organization/organizationSelection'
 
-export function useOrganizationScope() {
+export function useOrganizationScope(enabled = true) {
   const { user } = useAuth()
   const [params, setParams] = useSearchParams()
   const options = useMemo(() => organizationOptionsForUser(user), [user])
@@ -17,16 +17,20 @@ export function useOrganizationScope() {
   const organizationId = resolveOrganizationId(requestedOrganizationId, allowedIds)
 
   useEffect(() => {
-    if (organizationId && requestedOrganizationId !== organizationId) {
-      setParams({ 'to-chuc': String(organizationId) }, { replace: true })
+    if (enabled && organizationId && requestedOrganizationId !== organizationId) {
+      const next = new URLSearchParams(params)
+      next.set('to-chuc', String(organizationId))
+      setParams(next, { replace: true })
     }
-  }, [organizationId, requestedOrganizationId, setParams])
+  }, [enabled, organizationId, params, requestedOrganizationId, setParams])
 
   const selectOrganization = useCallback(
     (nextOrganizationId: number) => {
-      setParams({ 'to-chuc': String(nextOrganizationId) })
+      const next = new URLSearchParams(params)
+      next.set('to-chuc', String(nextOrganizationId))
+      setParams(next)
     },
-    [setParams],
+    [params, setParams],
   )
 
   return {

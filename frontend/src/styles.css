@@ -21,6 +21,24 @@
   --danger: #de2828;
   --shadow: 0 4px 16px rgba(18,56,74,.05), 0 16px 40px rgba(18,56,74,.05);
   --font-display: "Montserrat Variable", Montserrat, Arial, sans-serif;
+  /* Shared DentaVie foundation tokens. Feature shells may alias these locally. */
+  --dv-navy-900: #082d4a;
+  --dv-navy-800: #123e52;
+  --dv-teal-700: #087c9d;
+  --dv-teal-600: #118da8;
+  --dv-teal-100: #eaf6f8;
+  --dv-canvas: #f4fbfc;
+  --dv-border: #d9e8ed;
+  --dv-radius-sm: 8px;
+  --dv-radius-md: 12px;
+  --dv-radius-lg: 18px;
+  --dv-radius-xl: 24px;
+  --dv-space-1: 4px;
+  --dv-space-2: 8px;
+  --dv-space-3: 12px;
+  --dv-space-4: 16px;
+  --dv-space-5: 24px;
+  --dv-space-6: 32px;
   scroll-behavior: smooth;
 }
 

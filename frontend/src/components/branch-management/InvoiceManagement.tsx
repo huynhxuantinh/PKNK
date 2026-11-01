@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 
 import type { ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
+import { DataTable, EmptyState, StatusBadge } from '../admin/ui'
 import { invoiceStatusLabels } from './invoicePresentation'
+import './invoice-management-refresh.css'
 
 const money = (value: string) => `${new Intl.NumberFormat('vi-VN').format(Number(value))} ₫`
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
@@ -12,6 +14,18 @@ export function InvoiceAppointmentHint() {
     Danh sách chỉ gợi ý lịch đã hoàn tất trong 30 ngày gần nhất. Với lịch cũ hơn,
     hãy nhập trực tiếp mã lịch hẹn.
   </p>
+}
+
+export function InvoiceTable({ items, onSelect }: { items: ManagedInvoice[]; onSelect: (invoice: ManagedInvoice) => void }) {
+  const tone = (status: ManagedInvoiceStatus) => status === 'PAID' ? 'success' as const : status === 'VOID' ? 'danger' as const : status === 'DRAFT' ? 'neutral' as const : 'info' as const
+  return <DataTable rows={items} rowKey={(invoice) => invoice.id_invoice} empty={<EmptyState title="Chưa có hóa đơn phù hợp" description="Thử thay đổi bộ lọc hoặc tạo hóa đơn từ lịch khám hoàn tất." />} columns={[
+    { key: 'number', header: 'Hóa đơn', cell: (invoice) => <div className="invoice-table-identity"><strong>{invoice.invoice_number}</strong><small>{invoice.appointment_code}</small></div> },
+    { key: 'patient', header: 'Bệnh nhân', cell: (invoice) => invoice.patient_name },
+    { key: 'created', header: 'Ngày tạo', cell: (invoice) => dateTime(invoice.created_at) },
+    { key: 'total', header: 'Tổng tiền', cell: (invoice) => <strong className="invoice-table-total">{money(invoice.total)}</strong> },
+    { key: 'status', header: 'Trạng thái', cell: (invoice) => <StatusBadge tone={tone(invoice.status)}>{invoiceStatusLabels[invoice.status]}</StatusBadge> },
+    { key: 'action', header: '', cell: (invoice) => <button type="button" className="invoice-table-open" onClick={() => onSelect(invoice)}>Xem chi tiết</button> },
+  ]} />
 }
 
 export function InvoiceList({ items, onSelect }: { items: ManagedInvoice[]; onSelect: (invoice: ManagedInvoice) => void }) {

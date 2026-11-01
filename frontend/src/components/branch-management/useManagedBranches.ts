@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   listManagedOrganizationBranches,
   type ManagedBranch,
 } from '../../api/management'
 import type { User } from '../../types/api'
+import { resolveScopedManagedBranchId } from './managedBranchSelection'
 
 export function useManagedBranches(user: User | null) {
   const directBranches = useMemo<ManagedBranch[]>(
@@ -78,5 +80,37 @@ export function useManagedBranches(user: User | null) {
     error,
     isBranchAdmin: primaryBranchId !== null,
     primaryBranchId,
+  }
+}
+
+/** Keeps the current branch valid and synchronized in the management URL. */
+export function useManagedBranchScope(user: User | null, enabled = true) {
+  const managed = useManagedBranches(user)
+  const [params, setParams] = useSearchParams()
+  const requestedBranchId = Number(params.get('chi-nhanh')) || null
+  const branchId = resolveScopedManagedBranchId({
+    isBranchAdmin: managed.isBranchAdmin,
+    primaryBranchId: managed.primaryBranchId,
+    requestedBranchId,
+    branches: managed.branches,
+    loaded: !managed.loading,
+  }) ?? null
+
+  useEffect(() => {
+    if (!enabled || !branchId || requestedBranchId === branchId) return
+    const next = new URLSearchParams(params)
+    next.set('chi-nhanh', String(branchId))
+    setParams(next, { replace: true })
+  }, [branchId, enabled, params, requestedBranchId, setParams])
+
+  return {
+    ...managed,
+    branchId,
+    requestedBranchId,
+    selectBranch(nextBranchId: number) {
+      const next = new URLSearchParams(params)
+      next.set('chi-nhanh', String(nextBranchId))
+      setParams(next)
+    },
   }
 }
