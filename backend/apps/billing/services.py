@@ -7,6 +7,8 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.audit.services import AuditService
+from apps.catalog.models import BranchService
+from apps.clinical.models import ClinicalEncounter, ClinicalPerformedService
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
 from apps.scheduling.models import Appointment
@@ -38,7 +40,7 @@ class BillingService:
     @transaction.atomic
     def create_invoice(cls, *, appointment_id, actor_user, replacement_for_id=None, request=None):
         appointment = Appointment.objects.select_for_update().select_related(
-            "branch__organization", "patient_profile", "branch_service__service"
+            "branch__organization", "patient_profile"
         ).get(pk=appointment_id)
         if appointment.status != Appointment.Status.COMPLETED:
             raise ValidationError("Chỉ lập hóa đơn cho lượt khám đã hoàn thành.")
@@ -51,29 +53,48 @@ class BillingService:
             ).first()
             if replacement is None:
                 raise ValidationError("Hóa đơn được thay thế không hợp lệ.")
-        price = appointment.service_price_snapshot
-        if price <= 0 or not _is_whole_vnd(price):
-            raise ValidationError("Giá dịch vụ đã chốt phải là số VND nguyên và lớn hơn 0.")
+        encounter = ClinicalEncounter.objects.select_for_update().filter(
+            appointment=appointment,
+        ).first()
+        if encounter is None or encounter.status != ClinicalEncounter.Status.FINALIZED:
+            raise ValidationError("Lượt khám chưa có bệnh án đã chốt.")
+        if not encounter.performed_services_confirmed:
+            raise ValidationError("Nha sĩ chưa xác nhận dịch vụ thực hiện cho lượt khám này.")
+        performed_services = list(
+            ClinicalPerformedService.objects.select_for_update().select_related("branch_service__service").filter(
+                encounter=encounter,
+            )
+        )
+        if not performed_services:
+            raise ValidationError("Lượt khám chưa có dịch vụ thực hiện để lập hóa đơn.")
+        subtotal = sum(
+            (item.unit_price_snapshot * item.quantity for item in performed_services),
+            Decimal("0"),
+        )
+        if subtotal <= 0 or not _is_whole_vnd(subtotal):
+            raise ValidationError("Tổng dịch vụ thực hiện phải là số VND nguyên và lớn hơn 0.")
         invoice = Invoice.objects.create(
             appointment=appointment,
             branch=appointment.branch,
             patient_profile=appointment.patient_profile,
             replacement_for=replacement,
             invoice_number=f"INV-{uuid.uuid4().hex[:24].upper()}",
-            subtotal=price,
-            total=price,
+            subtotal=subtotal,
+            total=subtotal,
             created_by=actor_user,
         )
-        service = appointment.branch_service.service
-        InvoiceLine.objects.create(
-            invoice=invoice,
-            service=service,
-            service_code_snapshot=service.code,
-            description=appointment.service_name_snapshot,
-            quantity=1,
-            unit_price=price,
-            line_total=price,
-        )
+        InvoiceLine.objects.bulk_create([
+            InvoiceLine(
+                invoice=invoice,
+                service=item.branch_service.service,
+                service_code_snapshot=item.service_code_snapshot,
+                description=item.service_name_snapshot,
+                quantity=item.quantity,
+                unit_price=item.unit_price_snapshot,
+                line_total=item.unit_price_snapshot * item.quantity,
+            )
+            for item in performed_services
+        ])
         cls._audit(
             invoice, actor_user=actor_user, action="INVOICE_CREATED",
             before={}, after={"status": invoice.status, "appointment_id": appointment.pk},
@@ -83,7 +104,16 @@ class BillingService:
 
     @classmethod
     @transaction.atomic
-    def update_draft(cls, *, invoice_id, actor_user, discount=None, lines=None, request=None):
+    def update_draft(
+        cls,
+        *,
+        invoice_id,
+        actor_user,
+        discount=None,
+        lines=None,
+        adjustment_reason="",
+        request=None,
+    ):
         invoice = Invoice.objects.select_for_update().select_related(
             "branch__organization"
         ).get(pk=invoice_id)
@@ -97,6 +127,11 @@ class BillingService:
                 service = item.get("service")
                 if service and service.organization_id != invoice.branch.organization_id:
                     raise ValidationError("Dịch vụ không thuộc organization của hóa đơn.")
+                if service and not BranchService.objects.filter(
+                    branch=invoice.branch,
+                    service=service,
+                ).exists():
+                    raise ValidationError("Dịch vụ chưa được cấu hình cho chi nhánh của hóa đơn.")
                 unit_price = item["unit_price"]
                 quantity = item["quantity"]
                 if not _is_whole_vnd(unit_price):
@@ -126,7 +161,12 @@ class BillingService:
         cls._audit(
             invoice, actor_user=actor_user, action="INVOICE_DRAFT_UPDATED",
             before=before,
-            after={"subtotal": str(invoice.subtotal), "discount": str(invoice.discount), "total": str(invoice.total)},
+            after={
+                "subtotal": str(invoice.subtotal),
+                "discount": str(invoice.discount),
+                "total": str(invoice.total),
+                "adjustment_reason": adjustment_reason.strip(),
+            },
             request=request,
         )
         return invoice

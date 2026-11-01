@@ -64,7 +64,7 @@ export interface ManagedTimeOff { id_time_off: number; branch_id: number | null;
 export type ManagedInvoiceStatus = 'DRAFT' | 'ISSUED' | 'PAID' | 'VOID'
 export interface ManagedInvoiceLine { id_invoice_line: number; service_id: number | null; service_code_snapshot: string; description: string; quantity: number; unit_price: string; line_total: string }
 export interface ManagedInvoiceDraftLineInput { service?: number | null; description: string; quantity: number; unit_price: string }
-export interface ManagedInvoiceDraftInput { discount: string; lines: ManagedInvoiceDraftLineInput[] }
+export interface ManagedInvoiceDraftInput { discount: string; lines: ManagedInvoiceDraftLineInput[]; adjustment_reason: string }
 export type ManagedPaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CARD'
 export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: ManagedPaymentMethod; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; source: 'MANUAL' | 'PAYOS'; posted_at: string; voided_at: string | null; void_reason: string }
 export interface ManagedPaymentInput { method: ManagedPaymentMethod; amount: string; external_reference: string; idempotency_key: string }
@@ -74,6 +74,19 @@ export interface ManagedInvoice {
   status: ManagedInvoiceStatus; currency: 'VND'; subtotal: string; discount: string; total: string
   lines: ManagedInvoiceLine[]; payments: ManagedInvoicePayment[]; issued_at: string | null
   paid_at: string | null; voided_at: string | null; void_reason: string; created_at: string
+}
+export interface InvoiceReadyAppointment {
+  appointment_code: string
+  patient_name: string
+  dentist_name: string
+  completed_at: string
+  estimated_total: string
+  performed_services: Array<{
+    service_name: string
+    quantity: number
+    unit_price: string
+    tooth_reference: string
+  }>
 }
 export interface ManagedBranchDetail { id_branch: number; organization_id: number; code: string; name: string; is_active: boolean }
 export interface ManagedOpeningHour { weekday: number; is_closed: boolean; open_time: string | null; close_time: string | null }
@@ -172,7 +185,17 @@ export const listManagedTimeOffs = (branchId: number) => apiRequest<{ data: Mana
 export const createManagedTimeOff = (branchId: number, data: Omit<ManagedTimeOff, 'id_time_off' | 'branch_id'> & { applies_to_all_branches?: boolean }) => apiRequest<{ data: ManagedTimeOff }>(`/management/branches/${branchId}/time-offs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 
-export const branchReport = (branchId: number, name: 'revenue' | 'appointments' | 'chair-utilization', dateFrom: string, dateTo: string) => apiRequest<{ data: Record<string, unknown> }>(`/management/branches/${branchId}/reports/${name}/?${new URLSearchParams({ date_from: dateFrom, date_to: dateTo, ...(name === 'revenue' ? { interval: 'DAY' } : {}) })}`, {}, { auth: true })
+export const branchReport = (
+  branchId: number,
+  name: 'revenue' | 'appointments' | 'chair-utilization',
+  dateFrom: string,
+  dateTo: string,
+  signal?: AbortSignal,
+) => apiRequest<{ data: Record<string, unknown> }>(
+  `/management/branches/${branchId}/reports/${name}/?${new URLSearchParams({ date_from: dateFrom, date_to: dateTo, ...(name === 'revenue' ? { interval: 'DAY' } : {}) })}`,
+  { signal },
+  { auth: true },
+)
 
 interface ManagedInvoiceListParams {
   status?: ManagedInvoiceStatus
@@ -195,6 +218,7 @@ export function listManagedInvoices(branchId: number, options: ManagedInvoiceLis
 export const getManagedInvoice = (id: number, signal?: AbortSignal) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { signal }, { auth: true })
 export const updateManagedInvoiceDraft = (id: number, data: ManagedInvoiceDraftInput) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const createManagedInvoice = (branchId: number, appointmentCode: string, replacementForId?: number) => apiRequest<{ data: ManagedInvoice }>(`/management/branches/${branchId}/invoices/`, { method: 'POST', body: JSON.stringify({ appointment_code: appointmentCode, ...(replacementForId ? { replacement_for_id: replacementForId } : {}) }) }, { auth: true })
+export const listInvoiceReadyAppointments = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: InvoiceReadyAppointment[] }>(`/management/branches/${branchId}/invoice-ready-appointments/`, { signal }, { auth: true })
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })

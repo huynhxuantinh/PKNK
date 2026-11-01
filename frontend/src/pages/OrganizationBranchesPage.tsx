@@ -36,6 +36,7 @@ export function OrganizationBranchesPage() {
   const [notice, setNotice] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState<OrganizationBranch | null>(null)
+  const [modalOrganizationId, setModalOrganizationId] = useState<number | null>(null)
   const [form, setForm] = useState<BranchFormState>(emptyBranchForm)
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,6 +88,19 @@ export function OrganizationBranchesPage() {
   }, [scope.organizationId, reloadKey])
 
   useEffect(() => {
+    wardControllerRef.current?.abort()
+    setModalOpen(false)
+    setModalOrganizationId(null)
+    setEditingBranch(null)
+    setConfirmingBranch(null)
+    setSelectedBranch(null)
+    setForm(emptyBranchForm())
+    setFormError('')
+    setWards([])
+    setNotice('')
+  }, [scope.organizationId])
+
+  useEffect(() => {
     if (!selectedBranch) return
     const controller = new AbortController()
     setDetailsLoading(true)
@@ -135,6 +149,7 @@ export function OrganizationBranchesPage() {
 
   function openCreate() {
     setEditingBranch(null)
+    setModalOrganizationId(scope.organizationId)
     setForm(emptyBranchForm())
     setWards([])
     setFormError('')
@@ -143,6 +158,7 @@ export function OrganizationBranchesPage() {
 
   function openEdit(branch: OrganizationBranch) {
     setEditingBranch(branch)
+    setModalOrganizationId(scope.organizationId)
     setForm(branchToForm(branch))
     setFormError('')
     setModalOpen(true)
@@ -156,7 +172,10 @@ export function OrganizationBranchesPage() {
   }
 
   async function submitBranch() {
-    if (!scope.organizationId) return
+    if (!scope.organizationId || modalOrganizationId !== scope.organizationId) {
+      setFormError('Phạm vi tổ chức đã thay đổi. Hãy mở lại biểu mẫu.')
+      return
+    }
     let input
     try {
       input = buildBranchInput(form)
@@ -178,6 +197,7 @@ export function OrganizationBranchesPage() {
       }
       setModalOpen(false)
       setEditingBranch(null)
+      setModalOrganizationId(null)
       setReloadKey((current) => current + 1)
     } catch (caught) {
       setFormError(caught instanceof Error ? caught.message : 'Không thể lưu chi nhánh.')
@@ -273,6 +293,7 @@ export function OrganizationBranchesPage() {
             if (!busy) {
               setModalOpen(false)
               setEditingBranch(null)
+              setModalOrganizationId(null)
             }
           }}
           onSubmit={() => void submitBranch()}

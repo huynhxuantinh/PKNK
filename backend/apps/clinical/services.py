@@ -8,7 +8,13 @@ from django.utils import timezone
 from apps.audit.services import AuditService
 from apps.scheduling.models import Appointment
 
-from .models import ClinicalAmendment, ClinicalEncounter, Prescription, TreatmentPlan
+from .models import (
+    ClinicalAmendment,
+    ClinicalEncounter,
+    ClinicalPerformedService,
+    Prescription,
+    TreatmentPlan,
+)
 
 
 class ClinicalWorkflowService:
@@ -21,6 +27,65 @@ class ClinicalWorkflowService:
 
     @classmethod
     @transaction.atomic
+    def replace_performed_services(cls, *, encounter_id, items, actor_user, request=None):
+        """Replace dentist-confirmed services performed in a draft encounter."""
+        encounter = ClinicalEncounter.objects.select_for_update().select_related(
+            "appointment__branch__organization"
+        ).get(pk=encounter_id)
+        cls.ensure_draft(encounter)
+
+        branch_service_ids = [item["branch_service_id"] for item in items]
+        from apps.catalog.models import BranchService
+
+        branch_services = {
+            branch_service.pk: branch_service
+            for branch_service in BranchService.objects.select_related("service").filter(
+                pk__in=branch_service_ids,
+                branch_id=encounter.appointment.branch_id,
+                is_active=True,
+                service__is_active=True,
+            )
+        }
+        if set(branch_service_ids).difference(branch_services):
+            raise ValidationError("Dịch vụ thực hiện không thuộc danh mục đang hoạt động của chi nhánh.")
+
+        before_count = encounter.performed_services.count()
+        ClinicalPerformedService.objects.filter(encounter=encounter).delete()
+        ClinicalPerformedService.objects.bulk_create(
+            [
+                ClinicalPerformedService(
+                    encounter=encounter,
+                    branch_service=branch_services[item["branch_service_id"]],
+                    service_code_snapshot=branch_services[item["branch_service_id"]].service.code,
+                    service_name_snapshot=branch_services[item["branch_service_id"]].service.name,
+                    unit_price_snapshot=branch_services[item["branch_service_id"]].price,
+                    quantity=item["quantity"],
+                    tooth_reference=item.get("tooth_reference", "").strip(),
+                    clinical_note=item.get("clinical_note", "").strip(),
+                )
+                for item in items
+            ]
+        )
+        encounter.performed_services_confirmed = True
+        encounter.save(update_fields=["performed_services_confirmed", "updated_at"])
+        AuditService.record_write(
+            actor_user=actor_user,
+            organization=encounter.appointment.branch.organization,
+            branch=encounter.appointment.branch,
+            action="CLINICAL_PERFORMED_SERVICES_REPLACED",
+            resource_type="ClinicalEncounter",
+            resource_id=encounter.pk,
+            before_data={"performed_service_count": before_count},
+            after_data={
+                "performed_service_count": len(items),
+                "performed_services_confirmed": True,
+            },
+            request=request,
+        )
+        return encounter
+
+    @classmethod
+    @transaction.atomic
     def finalize_encounter(cls, *, encounter_id, actor_user, request=None):
         encounter = ClinicalEncounter.objects.select_for_update().select_related(
             "appointment__branch__organization"
@@ -28,6 +93,10 @@ class ClinicalWorkflowService:
         cls.ensure_draft(encounter)
         if not encounter.diagnosis_summary.strip():
             raise ValidationError("Phải nhập chẩn đoán trước khi chốt bệnh án.")
+        if not encounter.performed_services_confirmed:
+            raise ValidationError(
+                "Cần xác nhận dịch vụ đã thực hiện hoặc xác nhận không có thủ thuật trước khi chốt bệnh án."
+            )
         now = timezone.now()
         encounter.status = ClinicalEncounter.Status.FINALIZED
         encounter.finalized_by = actor_user

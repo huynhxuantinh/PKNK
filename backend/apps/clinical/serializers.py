@@ -13,6 +13,7 @@ from .models import (
     ClinicalAmendment,
     ClinicalAttachment,
     ClinicalEncounter,
+    ClinicalPerformedService,
     OdontogramEntry,
     Prescription,
     PrescriptionItem,
@@ -214,24 +215,59 @@ class TreatmentPlanSerializer(serializers.ModelSerializer):
         )
 
 
+class ClinicalPerformedServiceSerializer(serializers.ModelSerializer):
+    branch_service_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ClinicalPerformedService
+        fields = (
+            "id_clinical_performed_service", "branch_service_id",
+            "service_code_snapshot", "service_name_snapshot", "unit_price_snapshot",
+            "quantity", "tooth_reference", "clinical_note", "created_at", "updated_at",
+        )
+        read_only_fields = fields
+
+
+class ClinicalPerformedServiceInputSerializer(serializers.Serializer):
+    branch_service_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    tooth_reference = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    clinical_note = serializers.CharField(allow_blank=True, required=False)
+
+
+class ClinicalPerformedServiceReplaceSerializer(serializers.Serializer):
+    confirmed = serializers.BooleanField()
+    items = ClinicalPerformedServiceInputSerializer(many=True)
+
+    def validate_confirmed(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                "Cần xác nhận đã ghi nhận dịch vụ thực hiện hoặc không có thủ thuật."
+            )
+        return value
+
+
 class ClinicalEncounterSerializer(serializers.ModelSerializer):
     odontogram_entries = OdontogramEntrySerializer(many=True, read_only=True)
     attachments = ClinicalAttachmentSerializer(many=True, read_only=True)
     amendments = ClinicalAmendmentSerializer(many=True, read_only=True)
     prescription = PrescriptionSerializer(read_only=True)
+    performed_services = ClinicalPerformedServiceSerializer(many=True, read_only=True)
 
     class Meta:
         model = ClinicalEncounter
         fields = (
             "id_clinical_encounter", "appointment_id", "status", "chief_complaint",
             "medical_history", "diagnosis_summary", "notes", "aftercare_instructions",
-            "finalized_at",
-            "odontogram_entries", "amendments", "prescription", "created_at", "updated_at",
+            "performed_services_confirmed", "finalized_at",
+            "odontogram_entries", "amendments", "prescription", "performed_services",
+            "created_at", "updated_at",
             "attachments",
         )
         read_only_fields = (
-            "id_clinical_encounter", "appointment_id", "status", "finalized_at",
-            "odontogram_entries", "amendments", "prescription", "created_at", "updated_at",
+            "id_clinical_encounter", "appointment_id", "status", "performed_services_confirmed", "finalized_at",
+            "odontogram_entries", "amendments", "prescription", "performed_services",
+            "created_at", "updated_at",
             "attachments",
         )
 

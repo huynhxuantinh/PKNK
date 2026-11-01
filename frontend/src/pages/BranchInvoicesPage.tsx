@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
-import { listBranchAppointments } from '../api/management'
 import {
-  createManagedInvoice, getManagedInvoice, issueManagedInvoice, listManagedInvoices,
+  createManagedInvoice, getManagedInvoice, issueManagedInvoice, listInvoiceReadyAppointments, listManagedInvoices,
   postManagedPayment, voidManagedInvoice, voidManagedPayment,
-  updateManagedInvoiceDraft, type ManagedInvoice, type ManagedInvoiceDraftInput,
+  updateManagedInvoiceDraft, type InvoiceReadyAppointment, type ManagedInvoice, type ManagedInvoiceDraftInput,
   type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPaymentInput,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
 import {
-  InvoiceAppointmentHint,
+  InvoiceAppointmentHint, InvoiceReadyAppointmentQueue,
   InvoiceDraftEditor,
   InvoiceDetailPanel,
   InvoiceFilters,
@@ -20,7 +19,6 @@ import {
   PaymentModal,
   VoidPaymentModal,
 } from '../components/branch-management/InvoiceManagement'
-import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import {
   latestVoidedInvoiceId,
 } from '../components/branch-management/invoicePresentation'
@@ -37,7 +35,8 @@ export function BranchInvoicesPage() {
   const [items, setItems] = useState<ManagedInvoice[]>([])
   const [invoiceCount, setInvoiceCount] = useState(0)
   const [offset, setOffset] = useState(0)
-  const [completedAppointments, setCompletedAppointments] = useState<Array<{ public_code: string; patient_name: string; service_name_snapshot: string }>>([])
+  const [readyAppointments, setReadyAppointments] = useState<InvoiceReadyAppointment[]>([])
+  const [loadingReadyAppointments, setLoadingReadyAppointments] = useState(true)
   const [selected, setSelected] = useState<ManagedInvoice | null>(null)
   const [appointmentCode, setAppointmentCode] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -99,7 +98,8 @@ export function BranchInvoicesPage() {
     setLoading(true)
     setItems([])
     setInvoiceCount(0)
-    setCompletedAppointments([])
+    setReadyAppointments([])
+    setLoadingReadyAppointments(true)
     setSelected(null)
     setAppointmentCode('')
     setShowCreate(false)
@@ -120,15 +120,26 @@ export function BranchInvoicesPage() {
     void loadInvoices(controller.signal)
     return () => controller.abort()
   }, [loadInvoices])
+  const loadReadyAppointments = useCallback(async (signal?: AbortSignal) => {
+    if (!branchId) return
+    try {
+      const response = await listInvoiceReadyAppointments(branchId, signal)
+      if (!signal?.aborted && isCurrentBranch()) setReadyAppointments(response.data)
+    } catch {
+      if (!signal?.aborted && isCurrentBranch()) setReadyAppointments([])
+    } finally {
+      if (!signal?.aborted && isCurrentBranch()) setLoadingReadyAppointments(false)
+    }
+  // isCurrentBranch reads the current ref; only branch changes should recreate the loader.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId])
+
   useEffect(() => {
     if (!branchId) return
     const controller = new AbortController()
-    const from = hcmDate(new Date(Date.now() - 30 * 86400000))
-    listBranchAppointments(branchId, from, 'COMPLETED', undefined, 31, controller.signal)
-      .then((response) => { if (!controller.signal.aborted) setCompletedAppointments(response.data) })
-      .catch(() => { if (!controller.signal.aborted) setCompletedAppointments([]) })
+    void loadReadyAppointments(controller.signal)
     return () => controller.abort()
-  }, [branchId])
+  }, [branchId, loadReadyAppointments])
 
   async function selectInvoice(invoice: ManagedInvoice) {
     if (!scopeReady) return
@@ -170,7 +181,7 @@ export function BranchInvoicesPage() {
       const replacementId = latestVoidedInvoiceId(existing.data)
       const response = await createManagedInvoice(branchId, code, replacementId)
       if (!isCurrentBranch()) return
-      setShowCreate(false); setAppointmentCode(''); setSelected(response.data); setNotice('Đã tạo hóa đơn nháp.'); await loadInvoices()
+      setShowCreate(false); setAppointmentCode(''); setSelected(response.data); setNotice('Đã tạo hóa đơn nháp.'); await Promise.all([loadInvoices(), loadReadyAppointments()])
     } catch (caught) { if (!isCurrentBranch()) return; setError(caught instanceof Error ? caught.message : 'Không thể tạo hóa đơn.') }
     finally { setBusy(false) }
   }
@@ -253,13 +264,14 @@ export function BranchInvoicesPage() {
     <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
     {error && <div className="dentist-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
+    <InvoiceReadyAppointmentQueue appointments={readyAppointments} loading={loadingReadyAppointments} onCreate={(appointment) => { setAppointmentCode(appointment.appointment_code); setShowCreate(true) }} />
     <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
       {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
       {!loading && <InvoicePagination count={invoiceCount} limit={INVOICE_PAGE_SIZE} offset={offset} onChange={setOffset} />}
     </section>
   </div>
 
-    {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><InvoiceAppointmentHint /><label>Mã lịch hẹn<input required list="completed-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="completed-appointments">{completedAppointments.map((appointment) => <option key={appointment.public_code} value={appointment.public_code}>{appointment.patient_name} — {appointment.service_name_snapshot}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
+    {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><InvoiceAppointmentHint /><label>Mã lịch hẹn<input required list="ready-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="ready-appointments">{readyAppointments.map((appointment) => <option key={appointment.appointment_code} value={appointment.appointment_code}>{appointment.patient_name} — {appointment.performed_services.map((service) => service.service_name).join(', ')}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
     {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} onEdit={openDraftEditor} onRecordPayment={openPayment} onVoidPayment={openVoidPayment} />}
     {showVoid && selected && <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={voidInvoice}><h2>Hủy hóa đơn</h2><p>Lý do hủy sẽ được lưu trong nhật ký đối soát.</p><label>Lý do<textarea required minLength={3} maxLength={1000} value={voidReason} onChange={(event) => setVoidReason(event.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setShowVoid(false)}>Quay lại</button><button type="submit" disabled={busy}>Xác nhận hủy</button></div></form></div>}
     {showPayment && selected && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}

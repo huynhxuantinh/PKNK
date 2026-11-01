@@ -26,6 +26,7 @@ class ClinicalEncounter(models.Model):
     diagnosis_summary = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     aftercare_instructions = models.TextField(blank=True, default="")
+    performed_services_confirmed = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, db_column="id_created_by",
         on_delete=models.PROTECT, related_name="clinical_encounters_created",
@@ -167,6 +168,49 @@ class ClinicalAttachment(models.Model):
             models.CheckConstraint(
                 condition=models.Q(sha256__regex=r"^[0-9a-f]{64}$"),
                 name="ck_clinical_attachments_sha256",
+            ),
+        ]
+
+
+class ClinicalPerformedService(models.Model):
+    """A service clinically performed during one encounter, separate from a treatment plan."""
+
+    id_clinical_performed_service = models.BigAutoField(primary_key=True)
+    encounter = models.ForeignKey(
+        ClinicalEncounter,
+        db_column="id_clinical_encounter",
+        on_delete=models.PROTECT,
+        related_name="performed_services",
+    )
+    branch_service = models.ForeignKey(
+        "catalog.BranchService",
+        db_column="id_branch_service",
+        on_delete=models.PROTECT,
+        related_name="clinical_performed_services",
+    )
+    service_code_snapshot = models.CharField(max_length=50)
+    service_name_snapshot = models.CharField(max_length=200)
+    unit_price_snapshot = models.DecimalField(max_digits=14, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=1)
+    tooth_reference = models.CharField(max_length=100, blank=True)
+    clinical_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "clinical_performed_services"
+        ordering = ["id_clinical_performed_service"]
+        indexes = [
+            models.Index(fields=["encounter", "branch_service"], name="idx_cperf_enc_service"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(unit_price_snapshot__gte=0),
+                name="ck_performed_services_price",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0),
+                name="ck_performed_services_quantity",
             ),
         ]
 

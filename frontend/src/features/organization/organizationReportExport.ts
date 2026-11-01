@@ -2,8 +2,16 @@ import type { AppointmentReport, ChairUtilizationReport, RevenueReport } from '.
 import { formatPercent, formatVnd } from '../../components/branch-management/branchReportPresentation'
 import { formatMinutes } from './organizationReports'
 
+export function sanitizeCsvCell(value: string | number) {
+  if (typeof value !== 'string') return String(value)
+  // Spreadsheet apps evaluate cells beginning with these characters as formulas.
+  // Prefixing an apostrophe keeps user-provided text literal in Excel and Sheets.
+  const literal = /^[\s\t\r\n]*[=+\-@]/.test(value) ? `'${value}` : value
+  return literal
+}
+
 function csvValue(value: string | number) {
-  return `"${String(value).replaceAll('"', '""')}"`
+  return `"${sanitizeCsvCell(value).replaceAll('"', '""')}"`
 }
 
 function escapeHtml(value: string | number) {

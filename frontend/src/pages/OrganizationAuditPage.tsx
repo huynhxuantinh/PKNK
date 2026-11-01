@@ -41,6 +41,16 @@ export function OrganizationAuditPage() {
     || 'Quản trị tổ chức'
 
   useEffect(() => {
+    setBranches([])
+    setDraft({ ...emptyDraft })
+    setApplied({ ...emptyDraft })
+    setPage(1)
+    setData(null)
+    setSelectedEvent(null)
+    setError('')
+  }, [scope.organizationId])
+
+  useEffect(() => {
     if (!scope.organizationId) return
     const controller = new AbortController()
     listOrganizationBranches(scope.organizationId, controller.signal)

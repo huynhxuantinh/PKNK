@@ -21,6 +21,7 @@ from .models import (
     ClinicalAmendment,
     ClinicalAttachment,
     ClinicalEncounter,
+    ClinicalPerformedService,
     OdontogramEntry,
     PrescriptionItem,
 )
@@ -102,12 +103,31 @@ class ClinicalAPITests(APITestCase):
         return ClinicalEncounter.objects.get(appointment=appointment)
 
     def finalize(self, encounter):
+        if not encounter.performed_services_confirmed:
+            ClinicalEncounter.objects.filter(pk=encounter.pk).update(performed_services_confirmed=True)
+            encounter.refresh_from_db()
         response = self.client.post(
             reverse("dentist_api:clinical-encounter-finalize", kwargs={"encounter_id": encounter.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         encounter.refresh_from_db()
         return encounter
+
+    def test_finalize_requires_performed_services_confirmation(self):
+        encounter = self.create_encounter(self.appointment(code="APT-SERVICE-CONFIRMATION"))
+        url = reverse("dentist_api:clinical-encounter-finalize", kwargs={"encounter_id": encounter.pk})
+
+        missing_confirmation = self.client.post(url)
+        self.assertEqual(missing_confirmation.status_code, status.HTTP_409_CONFLICT)
+
+        confirmed = self.client.put(
+            reverse("dentist_api:clinical-performed-services", kwargs={"encounter_id": encounter.pk}),
+            {"confirmed": True, "items": []},
+            format="json",
+        )
+        self.assertEqual(confirmed.status_code, status.HTTP_200_OK)
+        finalized = self.client.post(url)
+        self.assertEqual(finalized.status_code, status.HTTP_200_OK)
 
     @staticmethod
     def png_file(name="patient-name-xray.png"):
@@ -138,6 +158,67 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(encounter.status, ClinicalEncounter.Status.FINALIZED)
         self.assertEqual(viewed.status_code, status.HTTP_200_OK)
         self.assertTrue(AuditEvent.objects.filter(action="CLINICAL_ENCOUNTER_VIEWED").exists())
+
+    def test_dentist_records_performed_services_with_branch_price_snapshot(self):
+        appointment = self.appointment(code="APT-PERFORMED-SERVICE")
+        encounter = self.create_encounter(appointment)
+        response = self.client.put(
+            reverse("dentist_api:clinical-performed-services", kwargs={"encounter_id": encounter.pk}),
+            {
+                "confirmed": True,
+                "items": [
+                    {
+                        "branch_service_id": self.branch_service.pk,
+                        "quantity": 2,
+                        "tooth_reference": "16, 17",
+                        "clinical_note": "Completed during this visit",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["data"]["confirmed"])
+        self.assertEqual(len(response.data["data"]["items"]), 1)
+        performed = ClinicalPerformedService.objects.get(encounter=encounter)
+        self.assertEqual(performed.service_name_snapshot, self.service.name)
+        self.assertEqual(performed.unit_price_snapshot, Decimal("1200000"))
+        self.assertEqual(performed.quantity, 2)
+        self.assertEqual(performed.tooth_reference, "16, 17")
+        encounter.refresh_from_db()
+        self.assertTrue(encounter.performed_services_confirmed)
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="CLINICAL_PERFORMED_SERVICES_REPLACED",
+                resource_id=str(encounter.pk),
+            ).exists()
+        )
+
+        self.branch_service.price = Decimal("999999")
+        self.branch_service.save(update_fields=["price"])
+        performed.refresh_from_db()
+        self.assertEqual(performed.unit_price_snapshot, Decimal("1200000"))
+
+    def test_performed_services_must_belong_to_active_branch_catalog_and_draft_encounter(self):
+        appointment = self.appointment(code="APT-PERFORMED-VALIDATION")
+        encounter = self.create_encounter(appointment)
+        self.branch_service.is_active = False
+        self.branch_service.save(update_fields=["is_active"])
+        url = reverse("dentist_api:clinical-performed-services", kwargs={"encounter_id": encounter.pk})
+
+        inactive = self.client.put(
+            url,
+            {"confirmed": True, "items": [{"branch_service_id": self.branch_service.pk}]},
+            format="json",
+        )
+        self.assertEqual(inactive.status_code, status.HTTP_409_CONFLICT)
+
+        self.branch_service.is_active = True
+        self.branch_service.save(update_fields=["is_active"])
+        self.finalize(encounter)
+        finalized = self.client.put(url, {"confirmed": True, "items": []}, format="json")
+        self.assertEqual(finalized.status_code, status.HTTP_409_CONFLICT)
 
     def test_create_encounter_rejects_confirmed_appointment(self):
         appointment = self.appointment(code="APT-CONFIRMED")
@@ -536,6 +617,7 @@ class ClinicalAPITests(APITestCase):
     def test_finalize_and_complete_is_atomic_when_completion_fails(self):
         appointment = self.appointment(code="APT-ATOMIC-FAIL")
         encounter = self.create_encounter(appointment, diagnosis="Initial diagnosis")
+        ClinicalEncounter.objects.filter(pk=encounter.pk).update(performed_services_confirmed=True)
         self.client.post(
             reverse("dentist_api:prescription", kwargs={"encounter_id": encounter.pk}),
             {"instructions": "Draft prescription"},
@@ -562,6 +644,7 @@ class ClinicalAPITests(APITestCase):
     def test_finalize_and_complete_updates_and_completes_draft(self):
         appointment = self.appointment(code="APT-ATOMIC-SUCCESS")
         encounter = self.create_encounter(appointment, diagnosis="Initial diagnosis")
+        ClinicalEncounter.objects.filter(pk=encounter.pk).update(performed_services_confirmed=True)
 
         response = self.client.post(
             reverse(

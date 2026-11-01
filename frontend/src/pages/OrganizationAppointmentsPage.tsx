@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { type ManagementAppointment, type ManagementAppointmentStatus } from '../api/management'
-import { listOrganizationAppointments, listOrganizationBranches, type OrganizationBranch } from '../api/organization'
+import {
+  listOrganizationAppointments,
+  listOrganizationBranches,
+  listOrganizationDentists,
+  type OrganizationBranch,
+  type OrganizationDentist,
+} from '../api/organization'
 import { AdminModal, DataTable, EmptyState, StatusBadge } from '../components/admin/ui'
 import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
 import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
@@ -36,6 +42,7 @@ function statusTone(status: ManagementAppointmentStatus) {
 export function OrganizationAppointmentsPage() {
   const scope = useOrganizationScope()
   const [branches, setBranches] = useState<OrganizationBranch[]>([])
+  const [dentists, setDentists] = useState<OrganizationDentist[]>([])
   const [date, setDate] = useState(todayHcm)
   const [days, setDays] = useState<1 | 7>(1)
   const [branchId, setBranchId] = useState('')
@@ -54,8 +61,24 @@ export function OrganizationAppointmentsPage() {
     if (!scope.organizationId) return
     const controller = new AbortController()
     setBranches([])
-    listOrganizationBranches(scope.organizationId, controller.signal)
-      .then((response) => { if (!controller.signal.aborted) setBranches(response.data.filter((branch) => branch.is_active)) })
+    setDentists([])
+    setBranchId('')
+    setDentistId('')
+    setStatus('ALL')
+    setQuery('')
+    setOffset(0)
+    setSelected(null)
+    setTotal(0)
+    setItems(null)
+    Promise.all([
+      listOrganizationBranches(scope.organizationId, controller.signal),
+      listOrganizationDentists(scope.organizationId, controller.signal),
+    ])
+      .then(([branchResponse, dentistResponse]) => {
+        if (controller.signal.aborted) return
+        setBranches(branchResponse.data.filter((branch) => branch.is_active))
+        setDentists(dentistResponse.data.filter((dentist) => dentist.is_active))
+      })
       .catch((caught) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Không thể tải chi nhánh.') })
     return () => controller.abort()
   }, [scope.organizationId])
@@ -95,10 +118,6 @@ export function OrganizationAppointmentsPage() {
     return () => controller.abort()
   }, [branchId, branches, date, days, dentistId, offset, query, scope.organizationId, status])
 
-  const dentistOptions = useMemo(() => {
-    const source = items || []
-    return [...new Map(source.map((item) => [String(item.dentist_id), item.dentist_name])).entries()]
-  }, [items])
   const rows = items || []
   const page = Math.floor(offset / 25) + 1
   const pageCount = Math.max(1, Math.ceil(total / 25))
@@ -116,10 +135,10 @@ export function OrganizationAppointmentsPage() {
         <div className="organization-filter-grid">
           <label>Ngày bắt đầu<input type="date" value={date} onChange={(event) => resetPage(() => setDate(event.target.value))} /></label>
           <label>Khoảng xem<select value={days} onChange={(event) => resetPage(() => setDays(Number(event.target.value) as 1 | 7))}><option value={1}>Theo ngày</option><option value={7}>7 ngày</option></select></label>
-          <label>Chi nhánh<select value={branchId} onChange={(event) => resetPage(() => { setBranchId(event.target.value); setDentistId('') })}><option value="">Tất cả chi nhánh</option>{branches.map((branch) => <option key={branch.id_branch} value={branch.id_branch}>{branch.name}</option>)}</select></label>
+          <label>Chi nhánh<select value={branchId} onChange={(event) => resetPage(() => setBranchId(event.target.value))}><option value="">Tất cả chi nhánh</option>{branches.map((branch) => <option key={branch.id_branch} value={branch.id_branch}>{branch.name}</option>)}</select></label>
           <label>Trạng thái<select value={status} onChange={(event) => resetPage(() => setStatus(event.target.value as StatusFilter))}>{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <label>Tìm lịch<input value={query} onChange={(event) => resetPage(() => setQuery(event.target.value))} placeholder="Mã lịch, bệnh nhân, dịch vụ..." /></label>
-          <label>Nha sĩ<select value={dentistId} onChange={(event) => resetPage(() => setDentistId(event.target.value))}><option value="">Tất cả nha sĩ</option>{dentistOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+          <label>Nha sĩ<select value={dentistId} onChange={(event) => resetPage(() => setDentistId(event.target.value))}><option value="">Tất cả nha sĩ</option>{dentists.map((dentist) => <option key={dentist.id_dentist} value={dentist.id_dentist}>{dentist.full_name || dentist.user_email}</option>)}</select></label>
         </div>
       </section>
 

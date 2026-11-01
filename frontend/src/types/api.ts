@@ -357,7 +357,29 @@ export interface ClinicalEncounter {
   diagnosis_summary: string
   notes: string
   aftercare_instructions: string
+  performed_services_confirmed: boolean
+  performed_services: ClinicalPerformedService[]
   finalized_at: string | null
   updated_at: string
   attachments: ClinicalAttachment[]
+}
+
+export interface ClinicalPerformedService {
+  id_clinical_performed_service: number
+  branch_service_id: number
+  service_code_snapshot: string
+  service_name_snapshot: string
+  unit_price_snapshot: string
+  quantity: number
+  tooth_reference: string
+  clinical_note: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ClinicalPerformedServiceInput {
+  branch_service_id: number
+  quantity: number
+  tooth_reference?: string
+  clinical_note?: string
 }

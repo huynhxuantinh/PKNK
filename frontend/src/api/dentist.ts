@@ -1,5 +1,13 @@
 import { apiRequest } from './client'
-import type { ClinicalAttachment, ClinicalEncounter, DentistAppointment, DentistPatientSummary, DentistScheduleResponse } from '../types/api'
+import type {
+  ClinicalAttachment,
+  ClinicalEncounter,
+  ClinicalPerformedService,
+  ClinicalPerformedServiceInput,
+  DentistAppointment,
+  DentistPatientSummary,
+  DentistScheduleResponse,
+} from '../types/api'
 
 export function listDentistSchedule(dateFrom: Date, dateTo: Date) {
   const params = new URLSearchParams({
@@ -54,6 +62,19 @@ export function finalizeClinicalEncounter(encounterId: number) {
   return apiRequest<{ data: ClinicalEncounter }>(
     `/dentist/me/clinical-encounters/${encounterId}/finalize/`,
     { method: 'POST' },
+    { auth: true },
+  )
+}
+
+export function replaceClinicalPerformedServices(
+  encounterId: number,
+  input: { confirmed: true; items: ClinicalPerformedServiceInput[] },
+) {
+  return apiRequest<{
+    data: { confirmed: boolean; updated_at: string; items: ClinicalPerformedService[] }
+  }>(
+    `/dentist/me/clinical-encounters/${encounterId}/performed-services/`,
+    { method: 'PUT', body: JSON.stringify(input) },
     { auth: true },
   )
 }

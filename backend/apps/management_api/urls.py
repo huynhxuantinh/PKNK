@@ -43,6 +43,7 @@ from .scheduling_views import (
 )
 from apps.billing.management_views import (
     BranchInvoiceListCreateAPIView,
+    BranchInvoiceReadyAppointmentListAPIView,
     InvoiceDetailAPIView,
     InvoiceIssueAPIView,
     InvoicePaymentCreateAPIView,
@@ -100,6 +101,7 @@ urlpatterns = [
     path("appointments/<str:public_code>/reschedule/", AppointmentRescheduleAPIView.as_view(), name="appointment-reschedule"),
     path("appointments/<str:public_code>/reschedule-slots/", AppointmentRescheduleSlotsAPIView.as_view(), name="appointment-reschedule-slots"),
     path("branches/<int:branch_id>/invoices/", BranchInvoiceListCreateAPIView.as_view(), name="branch-invoices"),
+    path("branches/<int:branch_id>/invoice-ready-appointments/", BranchInvoiceReadyAppointmentListAPIView.as_view(), name="branch-invoice-ready-appointments"),
     path("invoices/<int:invoice_id>/", InvoiceDetailAPIView.as_view(), name="invoice-detail"),
     path("invoices/<int:invoice_id>/issue/", InvoiceIssueAPIView.as_view(), name="invoice-issue"),
     path("invoices/<int:invoice_id>/void/", InvoiceVoidAPIView.as_view(), name="invoice-void"),

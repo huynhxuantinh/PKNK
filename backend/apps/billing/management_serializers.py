@@ -48,6 +48,35 @@ class InvoiceCreateSerializer(serializers.Serializer):
     replacement_for_id = serializers.IntegerField(required=False, allow_null=True)
 
 
+class InvoiceReadyAppointmentSerializer(serializers.Serializer):
+    """Completed clinical work that can become one draft invoice."""
+
+    appointment_code = serializers.CharField(source="public_code", read_only=True)
+    patient_name = serializers.CharField(source="patient_profile.user.full_name", read_only=True)
+    dentist_name = serializers.CharField(source="dentist.user.full_name", read_only=True)
+    completed_at = serializers.DateTimeField(read_only=True)
+    performed_services = serializers.SerializerMethodField()
+    estimated_total = serializers.SerializerMethodField()
+
+    def get_performed_services(self, appointment):
+        encounter = appointment.clinical_encounter
+        return [
+            {
+                "service_name": item.service_name_snapshot,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price_snapshot,
+                "tooth_reference": item.tooth_reference,
+            }
+            for item in encounter.performed_services.all()
+        ]
+
+    def get_estimated_total(self, appointment):
+        return sum(
+            item.unit_price_snapshot * item.quantity
+            for item in appointment.clinical_encounter.performed_services.all()
+        )
+
+
 class InvoiceListQuerySerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Invoice.Status.choices, required=False)
     appointment_code = serializers.CharField(max_length=30, required=False)
@@ -65,6 +94,7 @@ class InvoiceLineWriteSerializer(serializers.Serializer):
 class InvoiceDraftUpdateSerializer(serializers.Serializer):
     discount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False)
     lines = InvoiceLineWriteSerializer(many=True, required=False, allow_empty=True)
+    adjustment_reason = serializers.CharField(min_length=3, max_length=1000, trim_whitespace=True)
 
 
 class ReasonSerializer(serializers.Serializer):

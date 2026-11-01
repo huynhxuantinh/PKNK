@@ -12,6 +12,29 @@ type ShiftRow = ManagedWorkShift & { branchName: string; dentistName: string }
 type OffRow = ManagedTimeOff & { branchName: string; dentistName: string }
 
 const hcmDateTime = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
+const BRANCH_SCHEDULE_CONCURRENCY = 3
+
+export async function settledMapWithConcurrency<T, TResult>(
+  items: T[],
+  worker: (item: T) => Promise<TResult>,
+  concurrency = BRANCH_SCHEDULE_CONCURRENCY,
+) {
+  const results = new Array<PromiseSettledResult<TResult>>(items.length)
+  let nextIndex = 0
+  const run = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      try {
+        results[index] = { status: 'fulfilled', value: await worker(items[index]) }
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), items.length) }, run))
+  return results
+}
 
 export function OrganizationStaffSchedulePage() {
   const scope = useOrganizationScope()
@@ -38,16 +61,27 @@ export function OrganizationStaffSchedulePage() {
         setBranches(activeBranches)
         setDentists(dentistResponse.data)
         const dentistById = new Map(dentistResponse.data.map((dentist) => [dentist.id_dentist, dentist.full_name || dentist.user_email]))
-        const results = await Promise.allSettled(activeBranches.map(async (branch) => {
+        // Keep requests bounded until a server-side organization schedule endpoint is available.
+        const results = await settledMapWithConcurrency(activeBranches, async (branch) => {
+          if (controller.signal.aborted) throw new DOMException('Request aborted', 'AbortError')
           const [shiftResponse, offResponse] = await Promise.all([listManagedWorkShifts(branch.id_branch), listManagedTimeOffs(branch.id_branch)])
           return {
             shifts: shiftResponse.data.map((shift) => ({ ...shift, branchName: branch.name, dentistName: dentistById.get(shift.dentist_id) || `Nha sĩ #${shift.dentist_id}` })),
             offs: offResponse.data.map((off) => ({ ...off, branchName: branch.name, dentistName: dentistById.get(off.dentist_id) || `Nha sĩ #${off.dentist_id}` })),
           }
-        }))
+        })
         if (controller.signal.aborted) return
         setShifts(results.flatMap((result) => result.status === 'fulfilled' ? result.value.shifts : []))
-        setOffs(results.flatMap((result) => result.status === 'fulfilled' ? result.value.offs : []))
+        const uniqueOffs = new Map<number, OffRow>()
+        results.forEach((result) => {
+          if (result.status !== 'fulfilled') return
+          result.value.offs.forEach((off) => {
+            if (!uniqueOffs.has(off.id_time_off)) {
+              uniqueOffs.set(off.id_time_off, off.branch_id === null ? { ...off, branchName: 'Toàn chuỗi' } : off)
+            }
+          })
+        })
+        setOffs([...uniqueOffs.values()])
         if (results.some((result) => result.status === 'rejected')) setError('Một vài chi nhánh chưa tải được ca làm hoặc lịch nghỉ.')
       })
       .catch((caught) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Không thể tải lịch làm việc.') })
@@ -55,7 +89,7 @@ export function OrganizationStaffSchedulePage() {
     return () => controller.abort()
   }, [scope.organizationId])
 
-  const matches = (item: { branch_id: number | null; dentist_id: number; is_active: boolean }) => (!branchId || item.branch_id === Number(branchId)) && (!dentistId || item.dentist_id === Number(dentistId)) && (status === 'ALL' || item.is_active === (status === 'ACTIVE'))
+  const matches = (item: { branch_id: number | null; dentist_id: number; is_active: boolean }) => (!branchId || item.branch_id === null || item.branch_id === Number(branchId)) && (!dentistId || item.dentist_id === Number(dentistId)) && (status === 'ALL' || item.is_active === (status === 'ACTIVE'))
   const visibleShifts = useMemo(() => shifts.filter(matches), [branchId, dentistId, shifts, status])
   const visibleOffs = useMemo(() => offs.filter(matches), [branchId, dentistId, offs, status])
 

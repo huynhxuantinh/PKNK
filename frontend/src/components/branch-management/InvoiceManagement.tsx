@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 
-import type { ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
+import type { InvoiceReadyAppointment, ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
 import { DataTable, EmptyState, StatusBadge } from '../admin/ui'
 import { invoiceStatusLabels } from './invoicePresentation'
 import './invoice-management-refresh.css'
@@ -14,6 +14,38 @@ export function InvoiceAppointmentHint() {
     Danh sách chỉ gợi ý lịch đã hoàn tất trong 30 ngày gần nhất. Với lịch cũ hơn,
     hãy nhập trực tiếp mã lịch hẹn.
   </p>
+}
+
+export function InvoiceReadyAppointmentQueue({
+  appointments,
+  loading,
+  onCreate,
+}: {
+  appointments: InvoiceReadyAppointment[]
+  loading: boolean
+  onCreate: (appointment: InvoiceReadyAppointment) => void
+}) {
+  return <section className="invoice-ready-queue" aria-labelledby="invoice-ready-title">
+    <header>
+      <div>
+        <p className="eyebrow">Đã khám – chờ lập hóa đơn</p>
+        <h2 id="invoice-ready-title">Dịch vụ nha sĩ đã xác nhận</h2>
+        <p>Hóa đơn nháp dùng đúng dịch vụ, số lượng và giá đã ghi nhận trong lượt khám.</p>
+      </div>
+      <span>{appointments.length} lượt chờ</span>
+    </header>
+    {loading ? <p className="invoice-ready-loading">Đang tải lượt khám hoàn tất...</p> : appointments.length === 0 ? <p className="invoice-ready-empty">Không có lượt khám nào đang chờ lập hóa đơn.</p> : <div className="invoice-ready-list">
+      {appointments.map((appointment) => <article key={appointment.appointment_code}>
+        <div className="invoice-ready-main">
+          <strong>{appointment.patient_name}</strong>
+          <span>{appointment.appointment_code} · {dateTime(appointment.completed_at)}</span>
+          <small>BS. {appointment.dentist_name}</small>
+          <p>{appointment.performed_services.map((service) => `${service.service_name} × ${service.quantity}${service.tooth_reference ? ` · ${service.tooth_reference}` : ''}`).join(' · ')}</p>
+        </div>
+        <div className="invoice-ready-action"><strong>{money(appointment.estimated_total)}</strong><button type="button" onClick={() => onCreate(appointment)}>Lập hóa đơn</button></div>
+      </article>)}
+    </div>}
+  </section>
 }
 
 export function InvoiceTable({ items, onSelect }: { items: ManagedInvoice[]; onSelect: (invoice: ManagedInvoice) => void }) {
@@ -144,6 +176,7 @@ export function InvoiceDraftEditor({ invoice, busy, serverError = '', onCancel, 
     unitPrice: line.unit_price,
   })))
   const [validationError, setValidationError] = useState('')
+  const [adjustmentReason, setAdjustmentReason] = useState('')
   const subtotal = lines.reduce((sum, line) => {
     const quantity = Number(line.quantity)
     const unitPrice = Number(line.unitPrice)
@@ -171,10 +204,12 @@ export function InvoiceDraftEditor({ invoice, busy, serverError = '', onCancel, 
     const invalidQuantity = lines.some((line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) < 1)
     const invalidPrice = lines.some((line) => !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0)
     const invalidDescription = lines.some((line) => !line.description.trim())
+    const reason = adjustmentReason.trim()
     if (invalidQuantity) setValidationError('Số lượng của mỗi dòng phải là số nguyên từ 1 trở lên.')
     else if (invalidPrice) setValidationError('Đơn giá của mỗi dòng phải từ 0 trở lên.')
     else if (invalidDescription) setValidationError('Mỗi dòng hóa đơn cần có mô tả.')
     else if (!Number.isFinite(discountValue) || discountValue < 0 || discountValue > subtotal) setValidationError('Giảm giá phải từ 0 đến tạm tính.')
+    else if (reason.length < 3) setValidationError('Cần ghi rõ lý do điều chỉnh hóa đơn, tối thiểu 3 ký tự.')
     else {
       setValidationError('')
       onSubmit({
@@ -185,6 +220,7 @@ export function InvoiceDraftEditor({ invoice, busy, serverError = '', onCancel, 
           quantity: Number(line.quantity),
           unit_price: line.unitPrice,
         })),
+        adjustment_reason: reason,
       })
     }
   }
@@ -201,6 +237,7 @@ export function InvoiceDraftEditor({ invoice, busy, serverError = '', onCancel, 
       <button type="button" className="invoice-add-line" aria-label="Thêm dòng hóa đơn" disabled={busy} onClick={addLine}>+ Thêm dòng</button>
     </div>
     <label>Giảm giá<input name="invoice-discount" type="number" min="0" step="1" value={discount} disabled={busy} onChange={(event) => setDiscount(event.target.value)} /></label>
+    <label>Lý do điều chỉnh<textarea name="invoice-adjustment-reason" required minLength={3} maxLength={1000} value={adjustmentReason} disabled={busy} onChange={(event) => setAdjustmentReason(event.target.value)} placeholder="Ví dụ: Điều chỉnh theo dịch vụ phát sinh đã được bệnh nhân đồng ý." /></label>
     <dl className="invoice-draft-preview"><div><dt>Tạm tính dự kiến</dt><dd>{money(String(subtotal))}</dd></div><div><dt>Tổng dự kiến</dt><dd>{money(String(estimatedTotal))}</dd></div></dl>
     <p className="invoice-draft-note">Số tiền chính thức được lấy từ hệ thống sau khi lưu.</p>
     <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div>

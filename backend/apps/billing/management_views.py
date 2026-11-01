@@ -14,6 +14,7 @@ from .management_serializers import (
     InvoiceCreateSerializer,
     InvoiceDraftUpdateSerializer,
     InvoiceListQuerySerializer,
+    InvoiceReadyAppointmentSerializer,
     InvoiceSerializer,
     PaymentCreateSerializer,
     PaymentSerializer,
@@ -85,6 +86,28 @@ class BranchInvoiceListCreateAPIView(ManagementAPIView):
         except DjangoValidationError as error:
             raise billing_conflict(error)
         return Response({"data": InvoiceSerializer(invoice).data}, status=status.HTTP_201_CREATED)
+
+
+class BranchInvoiceReadyAppointmentListAPIView(ManagementAPIView):
+    """Completed visits with confirmed clinical services but no active invoice."""
+
+    @extend_schema(responses={200: InvoiceReadyAppointmentSerializer(many=True)})
+    def get(self, request, branch_id):
+        branch = self.branch(branch_id)
+        appointments = (
+            Appointment.objects.filter(
+                branch=branch,
+                status=Appointment.Status.COMPLETED,
+                clinical_encounter__performed_services_confirmed=True,
+                clinical_encounter__performed_services__isnull=False,
+            )
+            .exclude(invoices__status__in=[Invoice.Status.DRAFT, Invoice.Status.ISSUED, Invoice.Status.PAID])
+            .select_related("patient_profile__user", "dentist__user", "clinical_encounter")
+            .prefetch_related("clinical_encounter__performed_services")
+            .order_by("-completed_at", "-id_appointment")
+            .distinct()
+        )
+        return Response({"data": InvoiceReadyAppointmentSerializer(appointments[:100], many=True).data})
 
 
 class InvoiceDetailAPIView(ManagementAPIView):

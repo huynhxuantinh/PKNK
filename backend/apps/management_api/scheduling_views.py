@@ -298,6 +298,8 @@ class OrganizationAppointmentListAPIView(ManagementAPIView):
                 | Q(patient_profile__user__full_name__icontains=keyword)
                 | Q(contact_name_snapshot__icontains=keyword)
                 | Q(contact_phone_snapshot__icontains=keyword)
+                | Q(service_name_snapshot__icontains=keyword)
+                | Q(dentist__user__full_name__icontains=keyword)
             )
 
         appointments = appointments.order_by("starts_at", "pk")

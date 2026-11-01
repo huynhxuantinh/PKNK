@@ -10,11 +10,13 @@ import {
   getDentistPatientSummary,
   updateClinicalEncounter,
 } from '../api/dentist'
+import { listBranchServices } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
 import { hasActiveRole } from '../auth/roles'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { ClinicalAttachmentPanel } from '../components/dentist/ClinicalAttachmentPanel'
+import { PerformedServicesPanel } from '../components/dentist/PerformedServicesPanel'
 import {
   clearClinicalDraft,
   clinicalFormsEqual,
@@ -22,7 +24,7 @@ import {
   writeClinicalDraft,
 } from '../features/dentist/clinicalDraft'
 import { Seo } from '../seo/Seo'
-import type { ClinicalEncounter, DentistAppointment, DentistPatientSummary } from '../types/api'
+import type { BranchService, ClinicalEncounter, DentistAppointment, DentistPatientSummary } from '../types/api'
 
 type ClinicalForm = Pick<ClinicalEncounter, 'chief_complaint' | 'medical_history' | 'diagnosis_summary' | 'notes' | 'aftercare_instructions'>
 
@@ -64,6 +66,8 @@ export function DentistExaminationPage() {
   const [appointment, setAppointment] = useState<DentistAppointment | null>(null)
   const [encounter, setEncounter] = useState<ClinicalEncounter | null>(null)
   const [patientSummary, setPatientSummary] = useState<DentistPatientSummary | null>(null)
+  const [branchServices, setBranchServices] = useState<BranchService[]>([])
+  const [branchServicesError, setBranchServicesError] = useState('')
   const [patientSummaryError, setPatientSummaryError] = useState('')
   const [form, setForm] = useState<ClinicalForm>(emptyForm)
   const [serverForm, setServerForm] = useState<ClinicalForm | null>(null)
@@ -72,6 +76,7 @@ export function DentistExaminationPage() {
   const [notice, setNotice] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
+  const [performedServicesDirty, setPerformedServicesDirty] = useState(false)
   const [showCompleteConfirmation, setShowCompleteConfirmation] = useState(false)
   const redirectTimerRef = useRef<number | null>(null)
   const encounterCreationRef = useRef<{
@@ -82,12 +87,13 @@ export function DentistExaminationPage() {
   const branchId = Number(searchParams.get('chi-nhanh')) || null
   const currentUserId = user?.id_user
   const isDentist = hasActiveRole(user, ['DENTIST'])
-  const isDirty = Boolean(
+  const textFormDirty = Boolean(
     encounter?.status !== 'FINALIZED'
     && appointment?.status !== 'COMPLETED'
     && serverForm
     && !clinicalFormsEqual(form, serverForm),
   )
+  const isDirty = textFormDirty || performedServicesDirty
   const navigationBlocker = useBlocker(isDirty)
 
   useEffect(() => () => {
@@ -106,16 +112,19 @@ export function DentistExaminationPage() {
 
   useEffect(() => {
     if (!currentUserId || !publicCode || draftReadyFor !== publicCode || !serverForm) return
-    if (isDirty && encounter) {
+    if (textFormDirty && encounter) {
       writeClinicalDraft(sessionStorage, currentUserId, publicCode, form, encounter.updated_at)
     }
     else clearClinicalDraft(sessionStorage, currentUserId, publicCode)
-  }, [currentUserId, draftReadyFor, encounter, form, isDirty, publicCode, serverForm])
+  }, [currentUserId, draftReadyFor, encounter, form, publicCode, serverForm, textFormDirty])
 
   useEffect(() => {
     if (!isAuthenticated || !publicCode) return
     let active = true
     setDraftReadyFor('')
+    setBranchServices([])
+    setBranchServicesError('')
+    setPerformedServicesDirty(false)
 
     const loadEncounter = async () => {
       try {
@@ -161,6 +170,16 @@ export function DentistExaminationPage() {
         if (localDraft && !clinicalFormsEqual(localDraft, latestServerForm)) {
           setNotice('Đã khôi phục bản nháp lưu trên thiết bị.')
         }
+        return listBranchServices(appointmentResponse.data.branch_id)
+          .then((servicesResponse) => {
+            if (active) setBranchServices(servicesResponse.data)
+          })
+          .catch((servicesReason) => {
+            if (active) {
+              setBranchServices([])
+              setBranchServicesError(servicesReason instanceof Error ? servicesReason.message : 'Không thể tải danh mục dịch vụ của chi nhánh.')
+            }
+          })
       })
       .catch((reason) => {
         if (active) setError(reason instanceof Error ? reason.message : 'Không thể mở lượt khám.')
@@ -206,6 +225,14 @@ export function DentistExaminationPage() {
     if (!encounter) return
     if (pendingAttachmentCount > 0) {
       setError(`Còn ${pendingAttachmentCount} ảnh chưa tải lên. Hãy tải ảnh lên hoặc bỏ ảnh trước khi chốt bệnh án.`)
+      return
+    }
+    if (performedServicesDirty) {
+      setError('Danh sách dịch vụ đã thay đổi. Hãy xác nhận dịch vụ trước khi chốt lượt khám.')
+      return
+    }
+    if (!encounter.performed_services_confirmed) {
+      setError('Hãy xác nhận dịch vụ đã thực hiện hoặc xác nhận không có thủ thuật trước khi chốt lượt khám.')
       return
     }
     if (encounter.status !== 'FINALIZED' && !form.diagnosis_summary.trim()) {
@@ -290,7 +317,7 @@ export function DentistExaminationPage() {
                 {pendingAttachmentCount > 0 && <div className="examination-pending-attachments" role="status">Còn {pendingAttachmentCount} ảnh chưa tải lên.</div>}
                 {appointment.status !== 'COMPLETED' && (
                   <footer>
-                    {isDirty && <span className="examination-local-draft">Đã lưu nháp trên thiết bị</span>}
+                    {textFormDirty && <span className="examination-local-draft">Đã lưu nháp trên thiết bị</span>}
                     {!isFinalized && <button type="button" className="examination-save" disabled={isSaving} onClick={saveDraft}>Lưu nháp</button>}
                     <button type="button" className="examination-complete" disabled={isSaving} onClick={requestFinalizeAndComplete}>
                       {isSaving ? 'Đang xử lý...' : isFinalized ? 'Hoàn tất lượt khám' : 'Chốt & hoàn tất khám'}
@@ -300,6 +327,22 @@ export function DentistExaminationPage() {
               </div>
               <aside className="examination-summary"><p className="eyebrow">Thông tin đặt khám</p><h2>Ghi chú người bệnh</h2><p>{appointment.patient_note || 'Không có ghi chú thêm từ người đặt.'}</p><hr /><span>Mã lịch hẹn</span><strong>{appointment.public_code}</strong><span>Ghế khám</span><strong>{appointment.chair_name}</strong></aside>
             </section>
+            {branchServicesError ? <div className="dentist-error" role="alert">{branchServicesError}</div> : (
+              <PerformedServicesPanel
+                encounter={encounter}
+                branchServices={branchServices}
+                disabled={isReadOnly}
+                onDirtyChange={setPerformedServicesDirty}
+                onSaved={(result) => setEncounter((current) => (
+                  current ? {
+                    ...current,
+                    performed_services_confirmed: result.confirmed,
+                    performed_services: result.items,
+                    updated_at: result.updated_at,
+                  } : current
+                ))}
+              />
+            )}
             <section className="examination-history" aria-labelledby="patient-history-title">
               <header>
                 <div><p className="eyebrow">Hồ sơ người bệnh</p><h2 id="patient-history-title">Thông tin và lịch sử khám</h2></div>

@@ -31,6 +31,8 @@ from .serializers import (
     ClinicalAmendmentSerializer,
     ClinicalAttachmentSerializer,
     ClinicalEncounterSerializer,
+    ClinicalPerformedServiceReplaceSerializer,
+    ClinicalPerformedServiceSerializer,
     OdontogramEntrySerializer,
     PrescriptionItemSerializer,
     PrescriptionSerializer,
@@ -78,7 +80,8 @@ class ClinicalAPIView(DentistAPIView):
             "appointment__patient_profile__user",
             "appointment__dentist__user",
         ).prefetch_related(
-            "odontogram_entries", "attachments", "amendments", "prescription__items"
+            "odontogram_entries", "attachments", "amendments", "prescription__items",
+            "performed_services__branch_service__service",
         )
 
     def encounter(self, encounter_id):
@@ -167,6 +170,41 @@ class ClinicalEncounterFinalizeAPIView(ClinicalAPIView):
         except DjangoValidationError as error:
             raise conflict(error)
         return Response({"data": ClinicalEncounterSerializer(encounter).data})
+
+
+class ClinicalPerformedServiceListReplaceAPIView(ClinicalAPIView):
+    """View and replace services clinically performed in one draft encounter."""
+
+    @staticmethod
+    def response_data(encounter):
+        return {
+            "confirmed": encounter.performed_services_confirmed,
+            "updated_at": encounter.updated_at,
+            "items": ClinicalPerformedServiceSerializer(
+                encounter.performed_services.all(), many=True
+            ).data,
+        }
+
+    def get(self, request, encounter_id):
+        encounter = self.encounter(encounter_id)
+        self.audit_read(request, encounter, "CLINICAL_PERFORMED_SERVICES_VIEWED", "ClinicalEncounter")
+        return Response({"data": self.response_data(encounter)})
+
+    @transaction.atomic
+    def put(self, request, encounter_id):
+        encounter = self.encounter(encounter_id)
+        payload = ClinicalPerformedServiceReplaceSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        try:
+            encounter = ClinicalWorkflowService.replace_performed_services(
+                encounter_id=encounter.pk,
+                items=payload.validated_data["items"],
+                actor_user=request.user,
+                request=request,
+            )
+        except DjangoValidationError as error:
+            raise conflict(error)
+        return Response({"data": self.response_data(encounter)})
 
 
 class ClinicalAmendmentListCreateAPIView(ClinicalAPIView):

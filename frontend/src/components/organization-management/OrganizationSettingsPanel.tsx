@@ -63,12 +63,15 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
     setForm((current) => (current ? { ...current, [key]: value } : current))
   }
 
-  function hasSensitiveChanges() {
-    if (!organization || !form) return false
-    return (
-      form.timezone !== organization.timezone
-      || Number(form.noShowGraceMinutes) !== organization.no_show_grace_minutes
-    )
+  function operationalChanges() {
+    if (!organization || !form) return []
+    const changes: string[] = []
+    if (form.timezone !== organization.timezone) changes.push('múi giờ')
+    if (form.autoConfirm !== organization.auto_confirm) changes.push('tự động xác nhận lịch hẹn')
+    if (Number(form.slotHoldMinutes) !== organization.slot_hold_minutes) changes.push('thời gian giữ chỗ')
+    if (Number(form.cancellationCutoffMinutes) !== organization.cancellation_cutoff_minutes) changes.push('hạn hủy lịch')
+    if (Number(form.noShowGraceMinutes) !== organization.no_show_grace_minutes) changes.push('ân hạn không đến')
+    return changes
   }
 
   async function save() {
@@ -104,7 +107,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    if (hasSensitiveChanges()) {
+    if (operationalChanges().length > 0) {
       setSensitiveConfirmOpen(true)
       return
     }
@@ -186,7 +189,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
           </label>
           <div className="organization-settings-actions">
             <p>
-              Đổi múi giờ hoặc ân hạn không đến sẽ ảnh hưởng tới lịch hẹn và báo cáo.
+              Thay đổi quy tắc đặt, hủy hoặc xác nhận lịch sẽ cần xác nhận trước khi lưu.
             </p>
             <button type="submit" disabled={busy}>
               {busy ? 'Đang lưu...' : 'Lưu cài đặt'}
@@ -198,7 +201,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
       {sensitiveConfirmOpen && (
         <ConfirmationModal
           title="Xác nhận thay đổi ảnh hưởng vận hành"
-          description="Bạn đang thay đổi múi giờ hoặc thời gian ân hạn không đến. Thay đổi này ảnh hưởng tới cách tính lịch hẹn và báo cáo hiện có. Tiếp tục lưu?"
+          description={`Bạn đang thay đổi ${operationalChanges().join(', ')}. Thay đổi này có thể ảnh hưởng tới lịch hẹn và báo cáo hiện có. Tiếp tục lưu?`}
           confirmLabel="Lưu thay đổi"
           busy={busy}
           onCancel={() => setSensitiveConfirmOpen(false)}

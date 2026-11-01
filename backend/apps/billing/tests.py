@@ -17,6 +17,7 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, Service
+from apps.clinical.models import ClinicalEncounter, ClinicalPerformedService
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
@@ -67,9 +68,9 @@ class CounterBillingTests(APITestCase):
             email_verified_at=timezone.now(),
         )
 
-    def appointment(self, code="APT-BILLING"):
+    def appointment(self, code="APT-BILLING", *, service_rows=None, confirmed=True):
         starts = timezone.now() - timedelta(hours=2)
-        return Appointment.objects.create(
+        appointment = Appointment.objects.create(
             public_code=code, patient_profile=self.patient, branch=self.branch,
             branch_service=self.branch_service, dentist=self.dentist, chair=self.chair,
             service_name_snapshot=self.service.name,
@@ -78,6 +79,26 @@ class CounterBillingTests(APITestCase):
             occupied_until=starts + timedelta(minutes=30), status=Appointment.Status.COMPLETED,
             completed_at=timezone.now(),
         )
+        encounter = ClinicalEncounter.objects.create(
+            appointment=appointment,
+            performed_services_confirmed=confirmed,
+            created_by=self.dentist.user,
+        )
+        service_rows = service_rows or [(self.branch_service, self.service, Decimal("500000"), 1)]
+        for branch_service, service, price, quantity in service_rows:
+            ClinicalPerformedService.objects.create(
+                encounter=encounter,
+                branch_service=branch_service,
+                service_code_snapshot=service.code,
+                service_name_snapshot=service.name,
+                unit_price_snapshot=price,
+                quantity=quantity,
+            )
+        encounter.status = ClinicalEncounter.Status.FINALIZED
+        encounter.finalized_by = self.dentist.user
+        encounter.finalized_at = timezone.now()
+        encounter.save(update_fields=["status", "finalized_by", "finalized_at"])
+        return appointment
 
     def create_invoice(self, appointment):
         self.client.force_authenticate(self.admin)
@@ -157,6 +178,52 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(rejected_payment.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(Payment.objects.exists())
 
+    def test_draft_adjustment_requires_reason_and_branch_service(self):
+        created = self.create_invoice(self.appointment("APT-DRAFT-REASON"))
+        invoice_id = created.data["data"]["id_invoice"]
+
+        missing_reason = self.client.patch(
+            reverse("management:invoice-detail", kwargs={"invoice_id": invoice_id}),
+            {"discount": "10000"},
+            format="json",
+        )
+        updated = self.client.patch(
+            reverse("management:invoice-detail", kwargs={"invoice_id": invoice_id}),
+            {"discount": "10000", "adjustment_reason": "Ưu đãi chăm sóc định kỳ"},
+            format="json",
+        )
+
+        self.assertEqual(missing_reason.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated.data["data"]["discount"], "10000.00")
+        self.assertTrue(AuditEvent.objects.filter(
+            action="INVOICE_DRAFT_UPDATED",
+            after_data__adjustment_reason="Ưu đãi chăm sóc định kỳ",
+        ).exists())
+
+    def test_dentist_cannot_adjust_or_issue_invoice(self):
+        created = self.create_invoice(self.appointment("APT-DENTIST-NO-BILLING"))
+        invoice_id = created.data["data"]["id_invoice"]
+        Membership.objects.create(
+            user=self.dentist.user,
+            organization=self.organization,
+            branch=self.branch,
+            role=Membership.Role.DENTIST,
+        )
+        self.client.force_authenticate(self.dentist.user)
+
+        adjustment = self.client.patch(
+            reverse("management:invoice-detail", kwargs={"invoice_id": invoice_id}),
+            {"discount": "10000", "adjustment_reason": "Không có quyền"},
+            format="json",
+        )
+        issuance = self.client.post(
+            reverse("management:invoice-issue", kwargs={"invoice_id": invoice_id}),
+        )
+
+        self.assertEqual(adjustment.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(issuance.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_branch_scope_and_patient_read_only_scope(self):
         created = self.create_invoice(self.appointment())
         invoice_id = created.data["data"]["id_invoice"]
@@ -204,6 +271,48 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(response.data["meta"], {"count": 3, "limit": 1, "offset": 1})
         self.assertEqual(len(response.data["data"]), 1)
         self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invoice_uses_confirmed_services_and_ready_queue(self):
+        second_service = Service.objects.create(
+            organization=self.organization,
+            code="EXAM",
+            name="Dental examination",
+            standard_duration_minutes=20,
+            standard_price=Decimal("150000"),
+        )
+        second_branch_service = BranchService.objects.create(
+            branch=self.branch,
+            service=second_service,
+            price=Decimal("150000"),
+        )
+        appointment = self.appointment(
+            "APT-ACTUAL-SERVICES",
+            service_rows=[
+                (self.branch_service, self.service, Decimal("500000"), 1),
+                (second_branch_service, second_service, Decimal("150000"), 2),
+            ],
+        )
+        self.client.force_authenticate(self.admin)
+
+        queue = self.client.get(
+            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk})
+        )
+        created = self.create_invoice(appointment)
+
+        self.assertEqual(queue.status_code, status.HTTP_200_OK)
+        self.assertEqual(queue.data["data"][0]["appointment_code"], appointment.public_code)
+        self.assertEqual(queue.data["data"][0]["estimated_total"], Decimal("800000.00"))
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(created.data["data"]["subtotal"], "800000.00")
+        self.assertEqual(len(created.data["data"]["lines"]), 2)
+
+    def test_invoice_rejects_completed_visit_without_confirmed_actual_services(self):
+        appointment = self.appointment("APT-NO-ACTUAL-SERVICES", confirmed=False)
+
+        response = self.create_invoice(appointment)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("xác nhận dịch vụ", response.data["message"])
 
     def test_issued_invoice_line_and_posted_payment_are_database_immutable(self):
         created = self.create_invoice(self.appointment())

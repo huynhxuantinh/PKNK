@@ -32,6 +32,7 @@ export function OrganizationServicesPage() {
   const [notice, setNotice] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingService, setEditingService] = useState<OrganizationService | null>(null)
+  const [modalOrganizationId, setModalOrganizationId] = useState<number | null>(null)
   const [form, setForm] = useState<ServiceFormState>(emptyServiceForm)
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -39,6 +40,7 @@ export function OrganizationServicesPage() {
   const [comparing, setComparing] = useState<OrganizationService | null>(null)
   const [comparisonBranches, setComparisonBranches] = useState<OrganizationBranch[]>([])
   const [branchServiceMap, setBranchServiceMap] = useState<Record<number, ManagedBranchService | null>>({})
+  const [comparisonFailedBranchIds, setComparisonFailedBranchIds] = useState<number[]>([])
   const [comparisonLoading, setComparisonLoading] = useState(false)
   const [comparisonError, setComparisonError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
@@ -75,22 +77,40 @@ export function OrganizationServicesPage() {
   }, [scope.organizationId, reloadKey])
 
   useEffect(() => {
+    setModalOpen(false)
+    setModalOrganizationId(null)
+    setEditingService(null)
+    setConfirming(null)
+    setComparing(null)
+    setForm(emptyServiceForm())
+    setFormError('')
+    setComparisonBranches([])
+    setBranchServiceMap({})
+    setComparisonFailedBranchIds([])
+    setNotice('')
+  }, [scope.organizationId])
+
+  useEffect(() => {
     if (!comparing || !scope.organizationId) return
     const controller = new AbortController()
     setComparisonLoading(true)
     setComparisonError('')
     setComparisonBranches([])
     setBranchServiceMap({})
+    setComparisonFailedBranchIds([])
     listOrganizationBranches(scope.organizationId, controller.signal)
       .then(async (branchResponse) => {
         const branches = branchResponse.data.filter((branch) => branch.is_active)
-        const results = await Promise.all(branches.map(async (branch) => {
+        const results = await Promise.allSettled(branches.map(async (branch) => {
           const response = await listManagedBranchServices(branch.id_branch, controller.signal)
           return [branch.id_branch, response.data.find((item) => item.service_id === comparing.id_service) || null] as const
         }))
         if (controller.signal.aborted) return
         setComparisonBranches(branches)
-        setBranchServiceMap(Object.fromEntries(results))
+        setBranchServiceMap(Object.fromEntries(results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])))
+        const failedBranchIds = results.flatMap((result, index) => result.status === 'rejected' ? [branches[index].id_branch] : [])
+        setComparisonFailedBranchIds(failedBranchIds)
+        if (failedBranchIds.length > 0) setComparisonError(`Không tải được cấu hình dịch vụ của ${failedBranchIds.length} chi nhánh. Các chi nhánh còn lại vẫn hiển thị.`)
       })
       .catch((caught) => {
         if (controller.signal.aborted) return
@@ -102,6 +122,7 @@ export function OrganizationServicesPage() {
 
   function openCreate() {
     setEditingService(null)
+    setModalOrganizationId(scope.organizationId)
     setForm(emptyServiceForm())
     setFormError('')
     setModalOpen(true)
@@ -109,13 +130,17 @@ export function OrganizationServicesPage() {
 
   function openEdit(service: OrganizationService) {
     setEditingService(service)
+    setModalOrganizationId(scope.organizationId)
     setForm(serviceToForm(service))
     setFormError('')
     setModalOpen(true)
   }
 
   async function submitService() {
-    if (!scope.organizationId) return
+    if (!scope.organizationId || modalOrganizationId !== scope.organizationId) {
+      setFormError('Phạm vi tổ chức đã thay đổi. Hãy mở lại biểu mẫu.')
+      return
+    }
     let input
     try {
       input = buildServiceInput(form)
@@ -136,6 +161,7 @@ export function OrganizationServicesPage() {
       }
       setModalOpen(false)
       setEditingService(null)
+      setModalOrganizationId(null)
       setReloadKey((current) => current + 1)
     } catch (caught) {
       setFormError(caught instanceof Error ? caught.message : 'Không thể lưu dịch vụ.')
@@ -223,6 +249,7 @@ export function OrganizationServicesPage() {
             if (!busy) {
               setModalOpen(false)
               setEditingService(null)
+              setModalOrganizationId(null)
             }
           }}
           onSubmit={() => void submitService()}
@@ -245,9 +272,9 @@ export function OrganizationServicesPage() {
         {comparisonError && <div className="dentist-error" role="alert">{comparisonError}</div>}
         {comparisonLoading ? <p role="status">Đang tải cấu hình ở các chi nhánh...</p> : <DataTable rows={comparisonBranches} rowKey={(branch) => branch.id_branch} empty={<EmptyState title="Chưa có chi nhánh hoạt động" />} columns={[
           { key: 'branch', header: 'Chi nhánh', cell: (branch) => <div className="organization-branch-cell"><strong>{branch.name}</strong><small>{branch.code} · {branch.address_line}</small></div> },
-          { key: 'price', header: 'Giá áp dụng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? formatVnd(service.price) : 'Chưa cấu hình' } },
-          { key: 'time', header: 'Thời lượng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? `${service.duration_minutes ?? comparing.standard_duration_minutes} phút${service.buffer_minutes ? ` · đệm ${service.buffer_minutes} phút` : ''}` : '—' } },
-          { key: 'status', header: 'Trạng thái', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return service ? <StatusBadge tone={service.is_active ? 'success' : 'neutral'}>{service.is_active ? 'Đang cung cấp' : 'Đã ngưng'}</StatusBadge> : <StatusBadge tone="warning">Chưa thêm</StatusBadge> } },
+          { key: 'price', header: 'Giá áp dụng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return comparisonFailedBranchIds.includes(branch.id_branch) ? 'Không tải được' : service ? formatVnd(service.price) : 'Chưa cấu hình' } },
+          { key: 'time', header: 'Thời lượng', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return comparisonFailedBranchIds.includes(branch.id_branch) ? '—' : service ? `${service.duration_minutes ?? comparing.standard_duration_minutes} phút${service.buffer_minutes ? ` · đệm ${service.buffer_minutes} phút` : ''}` : '—' } },
+          { key: 'status', header: 'Trạng thái', cell: (branch) => { const service = branchServiceMap[branch.id_branch]; return comparisonFailedBranchIds.includes(branch.id_branch) ? <StatusBadge tone="danger">Lỗi tải</StatusBadge> : service ? <StatusBadge tone={service.is_active ? 'success' : 'neutral'}>{service.is_active ? 'Đang cung cấp' : 'Đã ngưng'}</StatusBadge> : <StatusBadge tone="warning">Chưa thêm</StatusBadge> } },
           { key: 'open', header: '', cell: (branch) => <a className="organization-inline-link" href={`/quan-ly-chi-nhanh/cau-hinh?chi-nhanh=${branch.id_branch}`}>Cấu hình</a> },
         ]} />}
         <p className="organization-hint">Giá chuẩn là mức tham khảo của tổ chức. Giá hiển thị là cấu hình thực tế tại từng chi nhánh.</p>

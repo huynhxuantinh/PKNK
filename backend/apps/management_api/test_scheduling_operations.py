@@ -296,6 +296,20 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(response.data["data"][0]["public_code"], second.public_code)
         self.assertNotEqual(response.data["data"][0]["branch_id"], first.branch_id)
 
+        by_service = self.client.get(
+            reverse(
+                "management:organization-appointments",
+                kwargs={"organization_id": self.organization.pk},
+            ),
+            {
+                "date_from": self.at(0).isoformat(),
+                "date_to": self.at(23, 59).isoformat(),
+                "query": self.service.name,
+            },
+        )
+        self.assertEqual(by_service.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_service.data["meta"]["count"], 2)
+
         self.client.force_authenticate(self.branch_admin)
         forbidden = self.client.get(
             reverse(

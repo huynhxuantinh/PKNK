@@ -80,11 +80,13 @@ describe('invoice management UI', () => {
     act(() => { renderer!.root.findByProps({ name: 'line-quantity' }).props.onChange({ target: { value: '2' } }) })
     act(() => { renderer!.root.findByProps({ name: 'line-unit-price' }).props.onChange({ target: { value: '300000' } }) })
     act(() => { renderer!.root.findByProps({ name: 'invoice-discount' }).props.onChange({ target: { value: '10000' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'invoice-adjustment-reason' }).props.onChange({ target: { value: 'Điều chỉnh dịch vụ thực tế' } }) })
     act(() => { renderer!.root.findByProps({ 'aria-label': 'Chỉnh sửa hóa đơn nháp' }).props.onSubmit({ preventDefault() {} }) })
 
     expect(onSubmit).toHaveBeenCalledWith({
       discount: '10000',
       lines: [{ service: 3, description: 'Điều trị tổng quát', quantity: 2, unit_price: '300000' }],
+      adjustment_reason: 'Điều chỉnh dịch vụ thực tế',
     })
     expect(JSON.stringify(renderer!.toJSON())).toContain('600.000')
   })

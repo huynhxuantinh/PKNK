@@ -50,6 +50,8 @@ export function BranchReportsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const loadedBranchRef = useRef<number | null>(null);
+  const requestIdRef = useRef(0);
+  const reportAbortRef = useRef<AbortController | null>(null);
   const branchName =
     managedBranches.branches.find((branch) => branch.id_branch === branchId)
       ?.name || `Chi nhánh #${branchId}`;
@@ -58,12 +60,20 @@ export function BranchReportsPage() {
     const rangeError = validateReportDateRange(from, to);
 
     if (rangeError) {
+      requestIdRef.current += 1;
+      reportAbortRef.current?.abort();
       setLoading(false);
       setData(null);
       setLoadedRange(null);
       setError(rangeError);
       return;
     }
+
+    reportAbortRef.current?.abort();
+    const controller = new AbortController();
+    reportAbortRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
     setLoading(true);
     setData(null);
@@ -72,10 +82,12 @@ export function BranchReportsPage() {
 
     try {
       const [revenue, appointments, chairs] = await Promise.all([
-        branchReport(branchId, "revenue", from, to),
-        branchReport(branchId, "appointments", from, to),
-        branchReport(branchId, "chair-utilization", from, to),
+        branchReport(branchId, "revenue", from, to, controller.signal),
+        branchReport(branchId, "appointments", from, to, controller.signal),
+        branchReport(branchId, "chair-utilization", from, to, controller.signal),
       ]);
+
+      if (controller.signal.aborted || requestId !== requestIdRef.current) return;
 
       setData({
         revenue: revenue.data as unknown as BranchReportData["revenue"],
@@ -85,13 +97,14 @@ export function BranchReportsPage() {
       });
       setLoadedRange({ branchId, from, to });
     } catch (caught) {
+      if (controller.signal.aborted || requestId !== requestIdRef.current) return;
       setData(null);
       setLoadedRange(null);
       setError(
         caught instanceof Error ? caught.message : "Không thể tải báo cáo.",
       );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [branchId, from, to]);
 
@@ -107,6 +120,8 @@ export function BranchReportsPage() {
       void load();
     }
   }, [branchId, load]);
+
+  useEffect(() => () => reportAbortRef.current?.abort(), []);
 
   if (!canAccessArea(user, "MANAGEMENT")) {
     return <Navigate to="/quan-ly-chi-nhanh" replace />;
