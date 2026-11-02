@@ -1,10 +1,6 @@
 /* Scoped to .branch-report-page so this route cannot affect other roles. */
 @scope (.branch-report-page) {
 /* Legacy selectors isolated to the branch reports route. */
-.branch-report-loading {
-  color: #638095;
-}
-
 .branch-report-daily {
   overflow: hidden;
   margin-top: 1.25rem;

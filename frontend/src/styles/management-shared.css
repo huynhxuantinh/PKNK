@@ -66,6 +66,10 @@
 }
 
 /* Reusable report/table primitives used by both branch and organization screens. */
+.branch-report-loading {
+  color: #638095;
+}
+
 .branch-report-eyebrow {
   color: #638095;
   font-size: 0.7rem;
