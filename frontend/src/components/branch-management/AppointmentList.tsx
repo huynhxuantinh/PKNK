@@ -7,8 +7,7 @@ import {
   hcmDate,
   hcmTime,
 } from "./appointmentPresentation";
-import "./appointment-list.css";
-import "./appointment-detail-drawer.css";
+import styles from "./AppointmentList.module.css";
 
 type AppointmentAction = "confirm" | "check-in" | "no-show";
 
@@ -72,7 +71,7 @@ export function AppointmentList({
   if (!items) return <div className="dentist-empty">Đang tải lịch hẹn...</div>;
 
   return (
-    <div className="appointment-list">
+    <div className={styles.root}>
       <div className="appointment-list__toolbar">
         <label>
           <span>Tìm nhanh</span>
@@ -203,13 +202,13 @@ export function AppointmentList({
       />
       {selected && (
         <div
-          className="appointment-detail-drawer__backdrop"
+          className={styles.drawerBackdrop}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setSelected(null);
           }}
         >
           <aside
-            className="appointment-detail-drawer"
+            className={styles.drawer}
             role="dialog"
             aria-modal="true"
             aria-labelledby="appointment-detail-title"
@@ -229,8 +228,8 @@ export function AppointmentList({
                 ×
               </button>
             </header>
-            <div className="appointment-detail-drawer__body">
-              <div className="appointment-detail-drawer__status">
+            <div className={styles.drawerBody}>
+              <div className={styles.drawerStatus}>
                 <StatusBadge tone={statusTone(selected.status)}>
                   {appointmentStatusLabels[selected.status]}
                 </StatusBadge>
@@ -254,7 +253,7 @@ export function AppointmentList({
               </section>
               <section>
                 <h3>Người liên hệ khi đặt lịch</h3>
-                <p className="appointment-detail-drawer__hint">
+                <p className={styles.drawerHint}>
                   Thông tin này có thể khác bệnh nhân khi đặt lịch hộ.
                 </p>
                 <dl>
@@ -299,12 +298,12 @@ export function AppointmentList({
               </section>
               <section>
                 <h3>Ghi chú của người đặt</h3>
-                <p className="appointment-detail-drawer__note">
+                <p className={styles.drawerNote}>
                   {selected.patient_note || "Không có ghi chú."}
                 </p>
               </section>
               {selected.cancel_reason && (
-                <section className="appointment-detail-drawer__cancel">
+                <section className={styles.drawerCancel}>
                   <h3>Lý do hủy lịch</h3>
                   <p>{selected.cancel_reason}</p>
                 </section>

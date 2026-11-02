@@ -13,8 +13,7 @@ import { ManagedBranchSelector } from "../components/branch-management/ManagedBr
 import { resolveScopedManagedBranchId } from "../components/branch-management/managedBranchSelection";
 import { useManagedBranches } from "../components/branch-management/useManagedBranches";
 import { printBranchReport } from "../components/branch-management/reportPdf";
-import "./branch-reports.css";
-import "./branch-report-print.css";
+import styles from "./BranchReportsPage.module.css";
 
 const iso = (date: Date) =>
   new Intl.DateTimeFormat("en-CA", {
@@ -84,10 +83,17 @@ export function BranchReportsPage() {
       const [revenue, appointments, chairs] = await Promise.all([
         branchReport(branchId, "revenue", from, to, controller.signal),
         branchReport(branchId, "appointments", from, to, controller.signal),
-        branchReport(branchId, "chair-utilization", from, to, controller.signal),
+        branchReport(
+          branchId,
+          "chair-utilization",
+          from,
+          to,
+          controller.signal,
+        ),
       ]);
 
-      if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+      if (controller.signal.aborted || requestId !== requestIdRef.current)
+        return;
 
       setData({
         revenue: revenue.data as unknown as BranchReportData["revenue"],
@@ -97,7 +103,8 @@ export function BranchReportsPage() {
       });
       setLoadedRange({ branchId, from, to });
     } catch (caught) {
-      if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+      if (controller.signal.aborted || requestId !== requestIdRef.current)
+        return;
       setData(null);
       setLoadedRange(null);
       setError(
@@ -146,7 +153,7 @@ export function BranchReportsPage() {
 
   return (
     <div className="branch-management-page">
-      <main className="branch-management-main branch-reports-page">
+      <main className={`branch-management-main ${styles.page}`}>
         <Link
           className="staff-schedule-back"
           to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}
@@ -159,8 +166,21 @@ export function BranchReportsPage() {
             className="branch-report-print-button"
             type="button"
             disabled={!data || loading || hasUnappliedDateRange}
-            title={hasUnappliedDateRange ? "Hãy xem báo cáo với khoảng ngày mới trước khi xuất PDF." : undefined}
-            onClick={() => data && loadedRange && printBranchReport({ branchName, from: loadedRange.from, to: loadedRange.to, data })}
+            title={
+              hasUnappliedDateRange
+                ? "Hãy xem báo cáo với khoảng ngày mới trước khi xuất PDF."
+                : undefined
+            }
+            onClick={() =>
+              data &&
+              loadedRange &&
+              printBranchReport({
+                branchName,
+                from: loadedRange.from,
+                to: loadedRange.to,
+                data,
+              })
+            }
           >
             Xuất PDF
           </button>

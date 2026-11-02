@@ -1,0 +1,682 @@
+.page {
+  min-height: 100vh;
+  background: #f7fbfc;
+}
+.page :global(.examination-main) {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 38px 0 72px;
+}
+.page :global(.examination-back) {
+  color: #08738b;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.page :global(.dentist-error) {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid #f0c7c4;
+  border-radius: 10px;
+  background: #fff6f5;
+  color: #ad3f38;
+  font-size: 12px;
+}
+.page :global(.examination-patient) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  margin-top: 19px;
+  padding: 27px 30px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #123d50, #0d6479);
+  color: #fff;
+}
+.page :global(.examination-patient .eyebrow) {
+  color: #9de0e7;
+}
+.page :global(.examination-patient h1) {
+  margin: 10px 0 0;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+.page :global(.examination-patient > div > p:last-child) {
+  margin: 9px 0 0;
+  color: #c3e2e7;
+  font-size: 12px;
+}
+.page :global(.examination-patient dl) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  align-content: center;
+  gap: 18px;
+  margin: 0;
+}
+.page :global(.examination-patient dt) {
+  color: #d1eef2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.page :global(.examination-patient dd) {
+  max-width: 180px;
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+}
+.page :global(.examination-layout) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 285px;
+  align-items: start;
+  gap: 18px;
+  margin-top: 18px;
+}
+.page :global(.examination-form-card),
+.page :global(.examination-summary),
+.page :global(.examination-history),
+.page :global(.performed-services),
+.page :global(.clinical-attachments) {
+  padding: 27px;
+  border: 1px solid #d8e8eb;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 15px 34px rgb(17 74 85 / 0.05);
+}
+.page :global(.examination-form-card header) {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #dce9eb;
+}
+.page :global(.examination-form-card h2),
+.page :global(.examination-summary h2),
+.page :global(.examination-history h2),
+.page :global(.performed-services h2),
+.page :global(.clinical-attachments h2) {
+  margin: 7px 0 0;
+  color: #123d50;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+.page :global(.examination-form-card header > span),
+.page :global(.examination-history > header > span),
+.page :global(.clinical-attachments > header > span) {
+  height: max-content;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: #e9f5f6;
+  color: #08738b;
+  font-size: 9px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.page :global(.examination-form-card label) {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  color: #34525f;
+  font-size: 11px;
+  font-weight: 750;
+}
+.page :global(.examination-form-card label b) {
+  color: #c94b43;
+}
+.page :global(.examination-form-card textarea),
+.page :global(.performed-services select),
+.page :global(.performed-services input),
+.page :global(.clinical-upload-fields input),
+.page :global(.clinical-upload-fields select) {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #cfe1e5;
+  border-radius: 9px;
+  background: #fbfeff;
+  color: #173d4d;
+  font: inherit;
+  font-size: 12px;
+}
+.page :global(.examination-form-card textarea) {
+  min-height: 82px;
+  padding: 11px 12px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.page :global(.examination-form-card textarea:focus),
+.page :global(.performed-services select:focus),
+.page :global(.performed-services input:focus) {
+  border-color: #1595af;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(21 149 175 / 0.1);
+}
+.page :global(.examination-readonly-fields) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.page :global(.examination-readonly-field) {
+  padding: 14px 15px;
+  border: 1px solid #dce9eb;
+  border-radius: 10px;
+  background: #f8fcfd;
+}
+.page :global(.examination-readonly-field:nth-child(3)),
+.page :global(.examination-readonly-field:nth-child(4)),
+.page :global(.examination-readonly-field:nth-child(5)) {
+  grid-column: 1 / -1;
+}
+.page :global(.examination-readonly-field > span),
+.page :global(.examination-profile-summary dt),
+.page :global(.examination-history-list dt),
+.page :global(.performed-services label) {
+  color: #728a93;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.page :global(.examination-readonly-field > p) {
+  margin: 7px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #173f50;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.page :global(.examination-form-card footer),
+.page :global(.performed-services-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #dce9eb;
+}
+.page :global(.examination-form-card footer button),
+.page :global(.clinical-upload-submit),
+.page :global(.performed-service-add),
+.page :global(.performed-services-save) {
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.page :global(.examination-save),
+.page :global(.performed-service-add) {
+  border: 1px solid #bcd9df;
+  background: #fff;
+  color: #0d6e83;
+}
+.page :global(.examination-complete),
+.page :global(.performed-services-save),
+.page :global(.clinical-upload-submit) {
+  border: 0;
+  background: #1492ab;
+  color: #fff;
+}
+.page :global(.examination-local-draft) {
+  margin-right: auto;
+  align-self: center;
+  color: #66808a;
+  font-size: 10px;
+  font-weight: 700;
+}
+.page :global(.examination-pending-attachments),
+.page :global(.examination-notice) {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid #efd49b;
+  border-radius: 9px;
+  background: #fff9e9;
+  color: #7c5a13;
+  font-size: 11px;
+  font-weight: 750;
+}
+.page :global(.examination-notice) {
+  border-color: #bee8d5;
+  background: #f1fbf6;
+  color: #08745c;
+  font-size: 12px;
+}
+.page :global(.examination-history) {
+  margin-top: 18px;
+}
+.page :global(.examination-history > header),
+.page :global(.clinical-attachments > header) {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.page :global(.examination-profile-summary) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0 0;
+  border: 1px solid #dce9eb;
+  border-radius: 11px;
+  background: #f8fcfd;
+}
+.page :global(.examination-profile-summary > div) {
+  min-width: 0;
+  padding: 13px 15px;
+  border-right: 1px solid #dce9eb;
+}
+.page :global(.examination-profile-summary > div:last-child) {
+  border-right: 0;
+}
+.page :global(.examination-profile-summary dd) {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  color: #173f50;
+  font-size: 11px;
+  font-weight: 750;
+}
+.page :global(.examination-history-list),
+.page :global(.performed-services-list),
+.page :global(.clinical-upload-drafts),
+.page :global(.clinical-attachment-files) {
+  display: grid;
+  gap: 10px;
+  margin-top: 15px;
+}
+.page :global(.examination-history-list > article),
+.page :global(.performed-services-list article),
+.page :global(.clinical-upload-drafts article),
+.page :global(.clinical-attachment-file) {
+  padding: 12px;
+  border: 1px solid #dce9eb;
+  border-radius: 11px;
+  background: #fbfeff;
+}
+.page :global(.examination-history-list article > header) {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.page :global(.examination-history-list article > dl) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 13px 0 0;
+}
+.page :global(.examination-history-list article > dl > div) {
+  padding-top: 10px;
+  border-top: 1px solid #e1ecee;
+}
+.page :global(.examination-summary) {
+  display: grid;
+  gap: 10px;
+}
+.page :global(.examination-summary > p:not(.eyebrow)) {
+  margin: 0;
+  color: #627b85;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.page :global(.examination-summary hr) {
+  width: 100%;
+  margin: 9px 0;
+  border: 0;
+  border-top: 1px solid #dce9eb;
+}
+.page :global(.examination-summary > span) {
+  color: #7b929b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.page :global(.examination-summary > strong) {
+  margin-top: -5px;
+  color: #234a5a;
+  font-size: 11px;
+}
+.page :global(.examination-loading),
+.page :global(.examination-history-loading),
+.page :global(.examination-history-empty) {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  padding: 20px;
+  color: #718892;
+  font-size: 11px;
+  text-align: center;
+}
+.page :global(.examination-history-list article > header div),
+.page :global(.performed-service-snapshot) {
+  display: grid;
+  gap: 4px;
+}
+.page :global(.examination-history-list article > header strong),
+.page :global(.performed-service-snapshot strong) {
+  color: #173f50;
+  font-size: 12px;
+}
+.page :global(.examination-history-list article > header span),
+.page :global(.examination-history-list time) {
+  color: #718892;
+  font-size: 9px;
+}
+.page
+  :global(
+    .examination-history-list article > dl > div:last-child:nth-child(3)
+  ) {
+  grid-column: 1 / -1;
+}
+.page :global(.examination-history-list dd) {
+  margin: 5px 0 0;
+  white-space: pre-wrap;
+  color: #385763;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.page :global(.performed-services),
+.page :global(.clinical-attachments) {
+  margin-top: 18px;
+}
+.page :global(.performed-services > header) {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.page :global(.performed-services > header p:not(.eyebrow)) {
+  max-width: 590px;
+  margin: 7px 0 0;
+  color: #657d87;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.page :global(.performed-services-list article) {
+  display: grid;
+  grid-template-columns:
+    29px minmax(180px, 1.25fr) 88px minmax(120px, 0.8fr)
+    minmax(150px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+.page :global(.performed-service-number) {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e5f4f6;
+  color: #08738b;
+  font-size: 9px;
+  font-weight: 900;
+}
+.page :global(.performed-services label) {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: #58717c;
+}
+.page :global(.performed-service-remove) {
+  min-height: 37px;
+  padding: 0 9px;
+  border: 1px solid #f0c8c5;
+  border-radius: 8px;
+  background: #fff;
+  color: #b34842;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.page :global(.performed-services-actions) {
+  justify-content: initial;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.page :global(.performed-services-save) {
+  margin-left: auto;
+}
+.page :global(.performed-services-confirmation) {
+  margin-right: auto;
+  display: flex !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px !important;
+  color: #264b59 !important;
+  font-size: 10px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+.page :global(.performed-services-confirmation input) {
+  width: 15px;
+  min-height: 15px;
+  padding: 0;
+  accent-color: #1492ab;
+}
+.page :global(.performed-services-error) {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #efc8c5;
+  border-radius: 9px;
+  background: #fff5f4;
+  color: #a2423c;
+  font-size: 11px;
+  font-weight: 700;
+}
+.page :global(.performed-services-list-readonly article) {
+  grid-template-columns: 29px minmax(190px, 0.9fr) minmax(0, 1.5fr);
+  align-items: center;
+}
+.page :global(.performed-service-snapshot span) {
+  color: #08765d;
+  font-size: 10px;
+  font-weight: 850;
+}
+.page :global(.performed-services-list-readonly dl) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.page :global(.performed-services-list-readonly dt) {
+  color: #728a93;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.page :global(.performed-services-list-readonly dd) {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: #294d5b;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.page :global(.clinical-attachment-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+.page :global(.clinical-attachment-card) {
+  display: grid;
+  grid-template-rows: 150px 1fr auto;
+  overflow: hidden;
+  border: 1px solid #dce9eb;
+  border-radius: 12px;
+  background: #fbfeff;
+}
+.page :global(.clinical-attachment-preview) {
+  display: grid;
+  min-height: 110px;
+  place-items: center;
+  overflow: hidden;
+  background: #eaf3f5;
+  color: #70858d;
+  font-size: 10px;
+}
+.page :global(.clinical-attachment-preview img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.page :global(.clinical-attachment-card > div:nth-child(2)) {
+  padding: 12px;
+}
+.page :global(.clinical-attachment-card strong),
+.page :global(.clinical-attachment-file strong) {
+  color: #173f50;
+  font-size: 11px;
+}
+.page :global(.clinical-attachment-card p),
+.page :global(.clinical-attachment-file p) {
+  margin: 4px 0 0;
+  color: #70858d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.page :global(.clinical-attachment-card > button),
+.page :global(.clinical-upload-drafts article > button) {
+  justify-self: start;
+  margin: 0 12px 12px;
+  border: 0;
+  background: transparent;
+  color: #b34842;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.page :global(.clinical-attachment-files) {
+  margin: -4px 0 18px;
+}
+.page :global(.clinical-attachment-file) {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+}
+.page :global(.clinical-attachment-file-type) {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e8f4f6;
+  color: #08738b;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.page :global(.clinical-attachment-file-actions) {
+  display: flex;
+  gap: 7px;
+}
+.page :global(.clinical-attachment-file-actions button) {
+  padding: 7px 9px;
+  border: 1px solid #c9dfe3;
+  border-radius: 7px;
+  background: #fff;
+  color: #08738b;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.page :global(.clinical-attachment-file-actions button:last-child) {
+  color: #b34842;
+}
+.page :global(.clinical-upload-picker span) {
+  font-size: 12px;
+  font-weight: 850;
+}
+.page :global(.clinical-upload-picker small) {
+  color: #789098;
+  font-size: 9px;
+}
+.page :global(.clinical-upload-picker) {
+  display: grid;
+  min-height: 90px;
+  place-content: center;
+  justify-items: center;
+  gap: 5px;
+  border: 1px dashed #9bcbd4;
+  border-radius: 12px;
+  background: #f5fbfc;
+  color: #08738b;
+  cursor: pointer;
+}
+.page :global(.clinical-upload-picker input) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+.page :global(.clinical-upload-drafts article) {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+.page :global(.clinical-upload-fields) {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+}
+@media (max-width: 760px) {
+  .page :global(.examination-main) {
+    width: calc(100% - 24px);
+    padding: 28px 0 50px;
+  }
+  .page :global(.examination-patient),
+  .page :global(.examination-layout) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.examination-patient dl) {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+  .page :global(.examination-readonly-fields) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.examination-readonly-field:nth-child(n)) {
+    grid-column: auto;
+  }
+  .page :global(.examination-profile-summary) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page :global(.examination-profile-summary > div) {
+    border-right: 0;
+    border-bottom: 1px solid #dce9eb;
+  }
+  .page :global(.clinical-attachments),
+  .page :global(.performed-services) {
+    padding: 20px;
+  }
+  .page :global(.clinical-upload-drafts article) {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+  .page :global(.clinical-upload-fields) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.performed-services > header) {
+    display: grid;
+  }
+  .page :global(.performed-services-list article) {
+    grid-template-columns: 30px 1fr;
+    align-items: start;
+  }
+  .page :global(.performed-services-list article > label),
+  .page :global(.performed-service-remove) {
+    grid-column: 2;
+  }
+  .page :global(.performed-services-actions) {
+    align-items: start;
+    flex-direction: column;
+  }
+  .page :global(.performed-services-save),
+  .page :global(.performed-services-confirmation) {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}

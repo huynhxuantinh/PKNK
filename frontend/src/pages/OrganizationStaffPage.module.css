@@ -1,0 +1,42 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1rem 0 1.15rem;
+}
+
+.tabs button {
+  display: grid;
+  min-width: 190px;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d5e6eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #264f64;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tabs button strong {
+  font-size: 0.86rem;
+}
+
+.tabs button small {
+  color: #78909b;
+  font-size: 0.7rem;
+}
+
+.tabs button.isActive {
+  border-color: #078fad;
+  background: #eaf7f9;
+  color: #086c84;
+}
+
+@media (max-width: 720px) {
+  .tabs button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}

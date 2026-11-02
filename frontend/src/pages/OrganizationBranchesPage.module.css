@@ -1,0 +1,85 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin: 1.15rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #dcebed;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fbfeff, #f4fafb);
+}
+
+.toolbar label {
+  display: grid;
+  flex: 1 1 230px;
+  gap: 0.35rem;
+  color: #264f64;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.toolbar label:nth-child(2) {
+  flex-basis: 180px;
+  max-width: 230px;
+}
+
+.toolbar input,
+.toolbar select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #cbdfe7;
+  border-radius: 8px;
+  background: #fff;
+  color: #082d4a;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.toolbar small {
+  margin: 0 0 0.55rem auto;
+  color: #638095;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.branchCell {
+  display: grid;
+  min-width: 150px;
+  gap: 0.22rem;
+}
+
+.branchCell strong {
+  color: #163c54;
+  font-size: 0.84rem;
+}
+
+.branchCell small {
+  color: #6d8795;
+  font-size: 0.74rem;
+  line-height: 1.42;
+}
+
+.actionsCell {
+  min-width: 220px;
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    align-items: stretch;
+    padding: 0.8rem;
+  }
+
+  .toolbar label,
+  .toolbar label:nth-child(2) {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .toolbar small {
+    margin: 0;
+  }
+}

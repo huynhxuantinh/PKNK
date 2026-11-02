@@ -1,88 +1,159 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, type FormEvent, type ReactNode } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { apiRequest } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
-import { destinationAfterLogin } from '../auth/authRedirect'
-import { Seo } from '../seo/Seo'
+import { apiRequest } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+import { destinationAfterLogin } from "../auth/authRedirect";
+import { Seo } from "../seo/Seo";
+import "./AuthPages.css";
 
-export function AuthShell({ children, title, description, seoPath }: { children: ReactNode; title: string; description: string; seoPath: string }) {
+export function AuthShell({
+  children,
+  title,
+  description,
+  seoPath,
+}: {
+  children: ReactNode;
+  title: string;
+  description: string;
+  seoPath: string;
+}) {
   return (
     <>
-      <Seo title={`${title} | DentaVie`} description={description} path={seoPath} noIndex />
+      <Seo
+        title={`${title} | DentaVie`}
+        description={description}
+        path={seoPath}
+        noIndex
+      />
       <main className="auth-page">
-      <section className="auth-page-aside">
-        <Link to="/" aria-label="Về trang chủ DentaVie">
-          <img src="/branding/dentavie-logo-horizontal-white.png" alt="DentaVie" />
-        </Link>
-        <div>
-          <span>Chăm sóc răng miệng liền mạch</span>
-          <h1>Một tài khoản,<br />mọi thông tin cần thiết.</h1>
-          <p>Theo dõi hồ sơ khám, ghi chú của bác sĩ, đơn thuốc và kế hoạch điều trị trên hệ thống DentaVie.</p>
-        </div>
-        <small>Thông tin sức khỏe của bạn được bảo vệ và chỉ hiển thị cho người có quyền truy cập.</small>
-      </section>
-      <section className="auth-page-content">
-        <div className="auth-page-card">
-          <Link className="auth-back-link" to="/">← Về trang chủ</Link>
-          <div className="auth-page-heading">
-            <h2>{title}</h2>
-            <p>{description}</p>
+        <section className="auth-page-aside">
+          <Link to="/" aria-label="Về trang chủ DentaVie">
+            <img
+              src="/branding/dentavie-logo-horizontal-white.png"
+              alt="DentaVie"
+            />
+          </Link>
+          <div>
+            <span>Chăm sóc răng miệng liền mạch</span>
+            <h1>
+              Một tài khoản,
+              <br />
+              mọi thông tin cần thiết.
+            </h1>
+            <p>
+              Theo dõi hồ sơ khám, ghi chú của bác sĩ, đơn thuốc và kế hoạch
+              điều trị trên hệ thống DentaVie.
+            </p>
           </div>
-          {children}
-        </div>
-      </section>
+          <small>
+            Thông tin sức khỏe của bạn được bảo vệ và chỉ hiển thị cho người có
+            quyền truy cập.
+          </small>
+        </section>
+        <section className="auth-page-content">
+          <div className="auth-page-card">
+            <Link className="auth-back-link" to="/">
+              ← Về trang chủ
+            </Link>
+            <div className="auth-page-heading">
+              <h2>{title}</h2>
+              <p>{description}</p>
+            </div>
+            {children}
+          </div>
+        </section>
       </main>
     </>
-  )
+  );
 }
 
 export function LoginPage() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const returnTo = searchParams.get('returnTo')
-  const isInvitationLogin = returnTo?.startsWith('/accept-invitation?token=')
-  const passwordChanged = searchParams.get('passwordChanged') === '1'
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const returnTo = searchParams.get("returnTo");
+  const isInvitationLogin = returnTo?.startsWith("/accept-invitation?token=");
+  const passwordChanged = searchParams.get("passwordChanged") === "1";
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setIsSubmitting(true)
-    setError('')
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
     try {
-      const user = await login(email, password)
-      navigate(destinationAfterLogin(user, searchParams.get('returnTo')), { replace: true })
+      const user = await login(email, password);
+      navigate(destinationAfterLogin(user, searchParams.get("returnTo")), {
+        replace: true,
+      });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể đăng nhập.')
+      setError(
+        reason instanceof Error ? reason.message : "Không thể đăng nhập.",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Chào mừng trở lại" description="Đăng nhập để xem hồ sơ và lịch sử chăm sóc của bạn." seoPath="/dang-nhap">
+    <AuthShell
+      title="Chào mừng trở lại"
+      description="Đăng nhập để xem hồ sơ và lịch sử chăm sóc của bạn."
+      seoPath="/dang-nhap"
+    >
       {isInvitationLogin && (
         <p className="auth-page-message" role="status">
-          Hãy đăng nhập bằng đúng email được mời. Nếu chưa có tài khoản, đăng ký và xác minh email đó trước khi quay lại lời mời.
+          Hãy đăng nhập bằng đúng email được mời. Nếu chưa có tài khoản, đăng ký
+          và xác minh email đó trước khi quay lại lời mời.
         </p>
       )}
-      {passwordChanged && <p className="auth-page-message" role="status">Đã đổi mật khẩu. Vui lòng đăng nhập lại.</p>}
+      {passwordChanged && (
+        <p className="auth-page-message" role="status">
+          Đã đổi mật khẩu. Vui lòng đăng nhập lại.
+        </p>
+      )}
       <form className="auth-page-form" onSubmit={handleSubmit}>
-        <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
+        <label>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+          />
+        </label>
         <label>
           Mật khẩu
           <span className="auth-password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Nhập mật khẩu" required />
-            <button type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPassword} onClick={() => setShowPassword((current) => !current)}>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="Nhập mật khẩu"
+              required
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((current) => !current)}
+            >
               {showPassword ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.9 10.9 0 0 1 12 4c5.1 0 8.9 4.2 10 8-0.5 1.6-1.5 3-2.8 4.2M6.2 6.2C4.4 7.7 3.3 9.8 2 12c1.1 3.8 4.9 8 10 8 1.5 0 2.9-.4 4.1-1" /></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.9 10.9 0 0 1 12 4c5.1 0 8.9 4.2 10 8-0.5 1.6-1.5 3-2.8 4.2M6.2 6.2C4.4 7.7 3.3 9.8 2 12c1.1 3.8 4.9 8 10 8 1.5 0 2.9-.4 4.1-1" />
+                </svg>
               ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
               )}
             </button>
           </span>
@@ -91,231 +162,463 @@ export function LoginPage() {
           <Link to="/quen-mat-khau">Quên mật khẩu?</Link>
         </div>
         {error && <p className="auth-page-error">{error}</p>}
-        <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>
+        <button className="auth-submit" disabled={isSubmitting}>
+          {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
+        </button>
       </form>
-      <p className="auth-switch">Chưa có tài khoản? <Link to={`/dang-ky${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}>Đăng ký ngay</Link></p>
+      <p className="auth-switch">
+        Chưa có tài khoản?{" "}
+        <Link
+          to={`/dang-ky${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+        >
+          Đăng ký ngay
+        </Link>
+      </p>
     </AuthShell>
-  )
+  );
 }
 
 export function RegisterPage() {
-  const { register } = useAuth()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [consented, setConsented] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [consented, setConsented] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const isInvitationRegister = searchParams
-    .get('returnTo')
-    ?.startsWith('/accept-invitation?token=')
+    .get("returnTo")
+    ?.startsWith("/accept-invitation?token=");
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setIsSubmitting(true)
-    setError('')
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
     try {
-      if (!consented) throw new Error('Bạn cần đồng ý xử lý dữ liệu cá nhân.')
-      const returnTo = searchParams.get('returnTo')
-      await register({ fullName, phone, email, returnTo: returnTo || undefined })
-      const next = new URLSearchParams({ email: email.trim() })
-      if (returnTo) next.set('returnTo', returnTo)
-      navigate(`/xac-minh-email?${next}`, { replace: true })
+      if (!consented) throw new Error("Bạn cần đồng ý xử lý dữ liệu cá nhân.");
+      const returnTo = searchParams.get("returnTo");
+      await register({
+        fullName,
+        phone,
+        email,
+        returnTo: returnTo || undefined,
+      });
+      const next = new URLSearchParams({ email: email.trim() });
+      if (returnTo) next.set("returnTo", returnTo);
+      navigate(`/xac-minh-email?${next}`, { replace: true });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể đăng ký.')
+      setError(reason instanceof Error ? reason.message : "Không thể đăng ký.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Tạo tài khoản" description="Đăng ký tài khoản bệnh nhân DentaVie bằng email của bạn." seoPath="/dang-ky">
+    <AuthShell
+      title="Tạo tài khoản"
+      description="Đăng ký tài khoản bệnh nhân DentaVie bằng email của bạn."
+      seoPath="/dang-ky"
+    >
       {isInvitationRegister && (
         <p className="auth-page-message" role="status">
-          Hãy đăng ký bằng đúng email được mời và xác minh email đó. Sau khi xác minh, bạn sẽ quay lại bước nhận lời mời.
+          Hãy đăng ký bằng đúng email được mời và xác minh email đó. Sau khi xác
+          minh, bạn sẽ quay lại bước nhận lời mời.
         </p>
       )}
       <form className="auth-page-form" onSubmit={handleSubmit}>
-        <label>Họ và tên<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" placeholder="Nguyễn Văn A" required /></label>
-        <label>Số điện thoại<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value.replace(/[\s-]/g, ''))} autoComplete="tel" inputMode="tel" pattern="\+?[0-9]{9,15}" placeholder="090 123 4567" required /></label>
-        <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
-        <label className="auth-consent"><input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} required /><span>Tôi đồng ý để DentaVie xử lý dữ liệu cá nhân theo <Link to="/chinh-sach-bao-mat" target="_blank">Chính sách bảo mật</Link> và chấp nhận <Link to="/dieu-khoan-su-dung" target="_blank">Điều khoản sử dụng</Link>.</span></label>
+        <label>
+          Họ và tên
+          <input
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            autoComplete="name"
+            placeholder="Nguyễn Văn A"
+            required
+          />
+        </label>
+        <label>
+          Số điện thoại
+          <input
+            type="tel"
+            value={phone}
+            onChange={(event) =>
+              setPhone(event.target.value.replace(/[\s-]/g, ""))
+            }
+            autoComplete="tel"
+            inputMode="tel"
+            pattern="\+?[0-9]{9,15}"
+            placeholder="090 123 4567"
+            required
+          />
+        </label>
+        <label>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+          />
+        </label>
+        <label className="auth-consent">
+          <input
+            type="checkbox"
+            checked={consented}
+            onChange={(event) => setConsented(event.target.checked)}
+            required
+          />
+          <span>
+            Tôi đồng ý để DentaVie xử lý dữ liệu cá nhân theo{" "}
+            <Link to="/chinh-sach-bao-mat" target="_blank">
+              Chính sách bảo mật
+            </Link>{" "}
+            và chấp nhận{" "}
+            <Link to="/dieu-khoan-su-dung" target="_blank">
+              Điều khoản sử dụng
+            </Link>
+            .
+          </span>
+        </label>
         {error && <p className="auth-page-error">{error}</p>}
-        <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang tạo tài khoản…' : 'Đăng ký'}</button>
+        <button className="auth-submit" disabled={isSubmitting}>
+          {isSubmitting ? "Đang tạo tài khoản…" : "Đăng ký"}
+        </button>
       </form>
-      <p className="auth-switch">Đã có tài khoản? <Link to={`/dang-nhap${searchParams.get('returnTo') ? `?returnTo=${encodeURIComponent(searchParams.get('returnTo') || '')}` : ''}`}>Đăng nhập</Link></p>
+      <p className="auth-switch">
+        Đã có tài khoản?{" "}
+        <Link
+          to={`/dang-nhap${searchParams.get("returnTo") ? `?returnTo=${encodeURIComponent(searchParams.get("returnTo") || "")}` : ""}`}
+        >
+          Đăng nhập
+        </Link>
+      </p>
     </AuthShell>
-  )
+  );
 }
 
 export function EmailVerificationPendingPage() {
-  const { user } = useAuth()
-  const [searchParams] = useSearchParams()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const email = searchParams.get('email') || user?.email || ''
-  const returnTo = searchParams.get('returnTo')
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const email = searchParams.get("email") || user?.email || "";
+  const returnTo = searchParams.get("returnTo");
 
   async function resend() {
-    if (!email) return
-    setIsSubmitting(true)
-    setError('')
+    if (!email) return;
+    setIsSubmitting(true);
+    setError("");
     try {
-      const response = await apiRequest<{ data: { message: string } }>('/auth/email-verification/resend/', {
-        method: 'POST',
-        body: JSON.stringify({ email, return_to: returnTo || '' }),
-      })
-      setMessage(response.data.message)
+      const response = await apiRequest<{ data: { message: string } }>(
+        "/auth/email-verification/resend/",
+        {
+          method: "POST",
+          body: JSON.stringify({ email, return_to: returnTo || "" }),
+        },
+      );
+      setMessage(response.data.message);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể gửi lại email xác minh.')
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Không thể gửi lại email xác minh.",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Xác minh email" description="Hoàn tất xác minh để bắt đầu đặt lịch khám." seoPath="/xac-minh-email">
+    <AuthShell
+      title="Xác minh email"
+      description="Hoàn tất xác minh để bắt đầu đặt lịch khám."
+      seoPath="/xac-minh-email"
+    >
       <div className="auth-page-success auth-verification-pending">
         <span>✉</span>
         <strong>Kiểm tra hộp thư của bạn</strong>
-        <p>Nếu thông tin hợp lệ, liên kết xác minh sẽ được gửi tới email bạn đã cung cấp. Mở liên kết trong email để kích hoạt chức năng đặt lịch.</p>
+        <p>
+          Nếu thông tin hợp lệ, liên kết xác minh sẽ được gửi tới email bạn đã
+          cung cấp. Mở liên kết trong email để kích hoạt chức năng đặt lịch.
+        </p>
         {message && <p className="auth-page-message">{message}</p>}
         {error && <p className="auth-page-error">{error}</p>}
-        {email ? <button className="auth-submit" type="button" onClick={resend} disabled={isSubmitting}>{isSubmitting ? 'Đang gửi…' : 'Gửi lại email xác minh'}</button> : <Link to="/dang-ky">Đăng ký tài khoản</Link>}
+        {email ? (
+          <button
+            className="auth-submit"
+            type="button"
+            onClick={resend}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Đang gửi…" : "Gửi lại email xác minh"}
+          </button>
+        ) : (
+          <Link to="/dang-ky">Đăng ký tài khoản</Link>
+        )}
       </div>
     </AuthShell>
-  )
+  );
 }
 
 export function VerifyEmailPage() {
-  const { updateUser } = useAuth()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') || ''
-  const returnTo = searchParams.get('returnTo')
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState(token ? '' : 'Liên kết xác minh không hợp lệ.')
-  const [isSuccess, setIsSuccess] = useState(false)
+  const { updateUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const returnTo = searchParams.get("returnTo");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState(
+    token ? "" : "Liên kết xác minh không hợp lệ.",
+  );
+  const [isSuccess, setIsSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (!token) return
-    setIsSubmitting(true)
-    setMessage('')
+    event.preventDefault();
+    if (!token) return;
+    setIsSubmitting(true);
+    setMessage("");
     try {
-      const response = await apiRequest<{ data: import('../types/api').User }>('/auth/email-verification/confirm/', {
-        method: 'POST', body: JSON.stringify({ token, new_password: password, new_password_confirm: passwordConfirm }),
-      })
-      updateUser(response.data)
-      setIsSuccess(true)
-      setMessage('Email đã được xác minh. Bạn có thể đăng nhập để đặt lịch khám.')
+      const response = await apiRequest<{ data: import("../types/api").User }>(
+        "/auth/email-verification/confirm/",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            token,
+            new_password: password,
+            new_password_confirm: passwordConfirm,
+          }),
+        },
+      );
+      updateUser(response.data);
+      setIsSuccess(true);
+      setMessage(
+        "Email đã được xác minh. Bạn có thể đăng nhập để đặt lịch khám.",
+      );
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : 'Không thể xác minh email.')
+      setMessage(
+        reason instanceof Error ? reason.message : "Không thể xác minh email.",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Xác minh email" description="Đặt mật khẩu để kích hoạt tài khoản của bạn." seoPath="/verify-email">
-      {isSuccess ? <div className="auth-page-success"><span>✓</span><strong>Xác minh thành công</strong><p>{message}</p><Link to={`/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}>Đăng nhập</Link></div> : (
+    <AuthShell
+      title="Xác minh email"
+      description="Đặt mật khẩu để kích hoạt tài khoản của bạn."
+      seoPath="/verify-email"
+    >
+      {isSuccess ? (
+        <div className="auth-page-success">
+          <span>✓</span>
+          <strong>Xác minh thành công</strong>
+          <p>{message}</p>
+          <Link
+            to={`/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+          >
+            Đăng nhập
+          </Link>
+        </div>
+      ) : (
         <form className="auth-page-form" onSubmit={handleSubmit}>
-          <label>Mật khẩu<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="Tạo mật khẩu" required /></label>
-          <label>Xác nhận mật khẩu<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="Nhập lại mật khẩu" required /></label>
-          <small className="password-hint">Mật khẩu không được quá giống thông tin cá nhân và không được quá phổ biến.</small>
+          <label>
+            Mật khẩu
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              placeholder="Tạo mật khẩu"
+              required
+            />
+          </label>
+          <label>
+            Xác nhận mật khẩu
+            <input
+              type="password"
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              autoComplete="new-password"
+              placeholder="Nhập lại mật khẩu"
+              required
+            />
+          </label>
+          <small className="password-hint">
+            Mật khẩu không được quá giống thông tin cá nhân và không được quá
+            phổ biến.
+          </small>
           {message && <p className="auth-page-error">{message}</p>}
-          <button className="auth-submit" disabled={isSubmitting || !token}>{isSubmitting ? 'Đang xác minh…' : 'Xác minh và kích hoạt'}</button>
+          <button className="auth-submit" disabled={isSubmitting || !token}>
+            {isSubmitting ? "Đang xác minh…" : "Xác minh và kích hoạt"}
+          </button>
         </form>
       )}
     </AuthShell>
-  )
+  );
 }
 
 export function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setIsSubmitting(true)
-    setError('')
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
     try {
-      const response = await apiRequest<{ data: { message: string } }>('/auth/password-reset/request/', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      })
-      setMessage(response.data.message)
+      const response = await apiRequest<{ data: { message: string } }>(
+        "/auth/password-reset/request/",
+        {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        },
+      );
+      setMessage(response.data.message);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể gửi yêu cầu.')
+      setError(
+        reason instanceof Error ? reason.message : "Không thể gửi yêu cầu.",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Quên mật khẩu?" description="Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu." seoPath="/quen-mat-khau">
+    <AuthShell
+      title="Quên mật khẩu?"
+      description="Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu."
+      seoPath="/quen-mat-khau"
+    >
       {message ? (
-        <div className="auth-page-success"><span>✓</span><strong>Kiểm tra hộp thư của bạn</strong><p>{message}</p><Link to="/dang-nhap">Quay lại đăng nhập</Link></div>
+        <div className="auth-page-success">
+          <span>✓</span>
+          <strong>Kiểm tra hộp thư của bạn</strong>
+          <p>{message}</p>
+          <Link to="/dang-nhap">Quay lại đăng nhập</Link>
+        </div>
       ) : (
         <>
           <form className="auth-page-form" onSubmit={handleSubmit}>
-            <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
             {error && <p className="auth-page-error">{error}</p>}
-            <button className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Đang gửi…' : 'Gửi liên kết đặt lại'}</button>
+            <button className="auth-submit" disabled={isSubmitting}>
+              {isSubmitting ? "Đang gửi…" : "Gửi liên kết đặt lại"}
+            </button>
           </form>
-          <p className="auth-switch"><Link to="/dang-nhap">← Quay lại đăng nhập</Link></p>
+          <p className="auth-switch">
+            <Link to="/dang-nhap">← Quay lại đăng nhập</Link>
+          </p>
         </>
       )}
     </AuthShell>
-  )
+  );
 }
 
 export function ResetPasswordPage() {
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState(token ? '' : 'Liên kết đặt lại mật khẩu không hợp lệ.')
-  const [message, setMessage] = useState('')
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(
+    token ? "" : "Liên kết đặt lại mật khẩu không hợp lệ.",
+  );
+  const [message, setMessage] = useState("");
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (!token) return
-    setIsSubmitting(true)
-    setError('')
+    event.preventDefault();
+    if (!token) return;
+    setIsSubmitting(true);
+    setError("");
     try {
-      const response = await apiRequest<{ data: { message: string } }>('/auth/password-reset/confirm/', {
-        method: 'POST',
-        body: JSON.stringify({ token, new_password: password, new_password_confirm: passwordConfirm }),
-      })
-      setMessage(response.data.message)
+      const response = await apiRequest<{ data: { message: string } }>(
+        "/auth/password-reset/confirm/",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            token,
+            new_password: password,
+            new_password_confirm: passwordConfirm,
+          }),
+        },
+      );
+      setMessage(response.data.message);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể đặt lại mật khẩu.')
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Không thể đặt lại mật khẩu.",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Đặt lại mật khẩu" description="Tạo mật khẩu mới cho tài khoản DentaVie của bạn." seoPath="/reset-password">
+    <AuthShell
+      title="Đặt lại mật khẩu"
+      description="Tạo mật khẩu mới cho tài khoản DentaVie của bạn."
+      seoPath="/reset-password"
+    >
       {message ? (
-        <div className="auth-page-success"><span>✓</span><strong>Đã đổi mật khẩu</strong><p>{message}</p><Link to="/dang-nhap">Đăng nhập ngay</Link></div>
+        <div className="auth-page-success">
+          <span>✓</span>
+          <strong>Đã đổi mật khẩu</strong>
+          <p>{message}</p>
+          <Link to="/dang-nhap">Đăng nhập ngay</Link>
+        </div>
       ) : (
         <form className="auth-page-form" onSubmit={handleSubmit}>
-          <label>Mật khẩu mới<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="Tạo mật khẩu mới" required /></label>
-          <label>Xác nhận mật khẩu<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="Nhập lại mật khẩu" required /></label>
-          <small className="password-hint">Liên kết chỉ sử dụng được một lần và có thời hạn.</small>
+          <label>
+            Mật khẩu mới
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              placeholder="Tạo mật khẩu mới"
+              required
+            />
+          </label>
+          <label>
+            Xác nhận mật khẩu
+            <input
+              type="password"
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              autoComplete="new-password"
+              placeholder="Nhập lại mật khẩu"
+              required
+            />
+          </label>
+          <small className="password-hint">
+            Liên kết chỉ sử dụng được một lần và có thời hạn.
+          </small>
           {error && <p className="auth-page-error">{error}</p>}
-          <button className="auth-submit" disabled={isSubmitting || !token}>{isSubmitting ? 'Đang cập nhật…' : 'Đặt lại mật khẩu'}</button>
+          <button className="auth-submit" disabled={isSubmitting || !token}>
+            {isSubmitting ? "Đang cập nhật…" : "Đặt lại mật khẩu"}
+          </button>
         </form>
       )}
     </AuthShell>
-  )
+  );
 }

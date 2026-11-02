@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
 
 import {
   createOrganizationMembership,
@@ -9,149 +9,170 @@ import {
   type OrganizationBranch,
   type OrganizationInvitation,
   type OrganizationMembership,
-} from '../../api/organization'
-import { ConfirmationModal } from '../ConfirmationModal'
+} from "../../api/organization";
+import { ConfirmationModal } from "../ConfirmationModal";
 import {
   OrganizationInviteModal,
   type InviteFormState,
-} from './OrganizationInviteModal'
-import { organizationRoleLabel } from '../../features/organization/organizationSelection'
-import { validateMembershipInvite } from '../../features/organization/organizationValidation'
+} from "./OrganizationInviteModal";
+import { organizationRoleLabel } from "../../features/organization/organizationSelection";
+import { validateMembershipInvite } from "../../features/organization/organizationValidation";
+import styles from "./OrganizationAdminPanel.module.css";
 
 const emptyInvite = (): InviteFormState => ({
-  email: '',
-  role: 'BRANCH_ADMIN',
-  branchId: '',
-})
+  email: "",
+  role: "BRANCH_ADMIN",
+  branchId: "",
+});
 
-const emailDeliveryLabels: Record<OrganizationInvitation['email_delivery_status'], string> = {
-  PENDING: 'Đang gửi',
-  SENT: 'Đã gửi',
-  FAILED: 'Gửi lỗi',
-}
+const emailDeliveryLabels: Record<
+  OrganizationInvitation["email_delivery_status"],
+  string
+> = {
+  PENDING: "Đang gửi",
+  SENT: "Đã gửi",
+  FAILED: "Gửi lỗi",
+};
 
 export function OrganizationAdminPanel({
   organizationId,
   branches,
   currentUserId,
 }: {
-  organizationId: number
-  branches: OrganizationBranch[]
-  currentUserId: number
+  organizationId: number;
+  branches: OrganizationBranch[];
+  currentUserId: number;
 }) {
-  const [memberships, setMemberships] = useState<OrganizationMembership[]>([])
-  const [invitations, setInvitations] = useState<OrganizationInvitation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<InviteFormState>(emptyInvite)
-  const [formError, setFormError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [confirming, setConfirming] = useState<OrganizationMembership | null>(null)
+  const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
+  const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<InviteFormState>(emptyInvite);
+  const [formError, setFormError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState<OrganizationMembership | null>(
+    null,
+  );
   const [revokingInvitation, setRevokingInvitation] =
-    useState<OrganizationInvitation | null>(null)
+    useState<OrganizationInvitation | null>(null);
   const [changingManager, setChangingManager] = useState<{
-    branch: OrganizationBranch
-    manager: OrganizationMembership
-  } | null>(null)
+    branch: OrganizationBranch;
+    manager: OrganizationMembership;
+  } | null>(null);
   const [managerTransfer, setManagerTransfer] = useState<{
-    branch: OrganizationBranch
-    manager: OrganizationMembership
-  } | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
+    branch: OrganizationBranch;
+    manager: OrganizationMembership;
+  } | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    setError('')
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
     listOrganizationMemberships(organizationId, controller.signal)
       .then((response) => setMemberships(response.data))
       .catch((caught) => {
-        if (controller.signal.aborted) return
-        setMemberships([])
-        setError(caught instanceof Error ? caught.message : 'Không thể tải quản trị viên.')
+        if (controller.signal.aborted) return;
+        setMemberships([]);
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Không thể tải quản trị viên.",
+        );
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
+        if (!controller.signal.aborted) setLoading(false);
+      });
     listOrganizationInvitations(organizationId, controller.signal)
       .then((response) => setInvitations(response.data))
       .catch((caught) => {
-        if (controller.signal.aborted) return
-        setInvitations([])
-        setError(caught instanceof Error ? caught.message : 'Không thể tải lời mời.')
-      })
-    return () => controller.abort()
-  }, [organizationId, reloadKey])
+        if (controller.signal.aborted) return;
+        setInvitations([]);
+        setError(
+          caught instanceof Error ? caught.message : "Không thể tải lời mời.",
+        );
+      });
+    return () => controller.abort();
+  }, [organizationId, reloadKey]);
 
   const adminMemberships = useMemo(
-    () => memberships.filter(
-      (membership) => (
-        membership.role === 'ORGANIZATION_ADMIN' || membership.role === 'BRANCH_ADMIN'
+    () =>
+      memberships.filter(
+        (membership) =>
+          membership.role === "ORGANIZATION_ADMIN" ||
+          membership.role === "BRANCH_ADMIN",
       ),
-    ),
     [memberships],
-  )
+  );
   const organizationAdmins = useMemo(
-    () => adminMemberships.filter(
-      (membership) => membership.role === 'ORGANIZATION_ADMIN',
-    ),
+    () =>
+      adminMemberships.filter(
+        (membership) => membership.role === "ORGANIZATION_ADMIN",
+      ),
     [adminMemberships],
-  )
+  );
   const activeBranchAdmins = useMemo(
-    () => adminMemberships.filter(
-      (membership) => membership.role === 'BRANCH_ADMIN' && membership.is_active,
-    ),
+    () =>
+      adminMemberships.filter(
+        (membership) =>
+          membership.role === "BRANCH_ADMIN" && membership.is_active,
+      ),
     [adminMemberships],
-  )
+  );
   const activeBranches = useMemo(
     () => branches.filter((branch) => branch.is_active),
     [branches],
-  )
+  );
   const managerByBranch = useMemo(
-    () => new Map(
-      activeBranchAdmins
-        .filter((membership) => membership.branch_id !== null)
-        .map((membership) => [membership.branch_id as number, membership]),
-    ),
+    () =>
+      new Map(
+        activeBranchAdmins
+          .filter((membership) => membership.branch_id !== null)
+          .map((membership) => [membership.branch_id as number, membership]),
+      ),
     [activeBranchAdmins],
-  )
+  );
   const missingManagerBranches = useMemo(
-    () => activeBranches.filter((branch) => !managerByBranch.has(branch.id_branch)),
+    () =>
+      activeBranches.filter((branch) => !managerByBranch.has(branch.id_branch)),
     [activeBranches, managerByBranch],
-  )
+  );
   const pendingInvitationCount = invitations.filter(
-    (invitation) => invitation.status === 'PENDING',
-  ).length
+    (invitation) => invitation.status === "PENDING",
+  ).length;
   const expiredInvitationCount = invitations.filter(
-    (invitation) => invitation.status === 'EXPIRED',
-  ).length
+    (invitation) => invitation.status === "EXPIRED",
+  ).length;
   const pendingTransferByBranch = useMemo(
-    () => new Map(
-      invitations
-        .filter(
-          (invitation) =>
-            invitation.status === 'PENDING'
-            && invitation.role === 'BRANCH_ADMIN'
-            && invitation.branch_id !== null
-            && invitation.replaces_membership_id !== null,
-        )
-        .map((invitation) => [invitation.branch_id as number, invitation]),
-    ),
+    () =>
+      new Map(
+        invitations
+          .filter(
+            (invitation) =>
+              invitation.status === "PENDING" &&
+              invitation.role === "BRANCH_ADMIN" &&
+              invitation.branch_id !== null &&
+              invitation.replaces_membership_id !== null,
+          )
+          .map((invitation) => [invitation.branch_id as number, invitation]),
+      ),
     [invitations],
-  )
+  );
   function branchName(branchId: number | null) {
-    if (!branchId) return 'Toàn tổ chức'
-    return branches.find((branch) => branch.id_branch === branchId)?.name
-      || `Chi nhánh #${branchId}`
+    if (!branchId) return "Toàn tổ chức";
+    return (
+      branches.find((branch) => branch.id_branch === branchId)?.name ||
+      `Chi nhánh #${branchId}`
+    );
   }
 
-  function openInvite(branchId = '') {
-    setForm({ ...emptyInvite(), branchId })
-    setFormError('')
-    setManagerTransfer(null)
-    setModalOpen(true)
+  function openInvite(branchId = "") {
+    setForm({ ...emptyInvite(), branchId });
+    setFormError("");
+    setManagerTransfer(null);
+    setModalOpen(true);
   }
 
   async function invite() {
@@ -159,57 +180,63 @@ export function OrganizationAdminPanel({
       email: form.email,
       role: form.role,
       branchId: form.branchId,
-    })
+    });
     if (validationError) {
-      setFormError(validationError)
-      return
+      setFormError(validationError);
+      return;
     }
-    setBusy(true)
-    setFormError('')
-    setNotice('')
+    setBusy(true);
+    setFormError("");
+    setNotice("");
     try {
       await createOrganizationMembership(organizationId, {
         email: form.email.trim(),
         role: form.role,
-        branch_id: form.role === 'BRANCH_ADMIN' ? Number(form.branchId) : null,
+        branch_id: form.role === "BRANCH_ADMIN" ? Number(form.branchId) : null,
         ...(managerTransfer
           ? { replaces_membership_id: managerTransfer.manager.id_membership }
           : {}),
-      })
-      setNotice(`Đã gửi lời mời tới ${form.email.trim()}.`)
-      setModalOpen(false)
-      setManagerTransfer(null)
-      setReloadKey((current) => current + 1)
+      });
+      setNotice(`Đã gửi lời mời tới ${form.email.trim()}.`);
+      setModalOpen(false);
+      setManagerTransfer(null);
+      setReloadKey((current) => current + 1);
     } catch (caught) {
-      setFormError(caught instanceof Error ? caught.message : 'Không thể mời quản trị viên.')
+      setFormError(
+        caught instanceof Error
+          ? caught.message
+          : "Không thể mời quản trị viên.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function revokeInvitation() {
-    if (!revokingInvitation) return
-    const invitation = revokingInvitation
-    setBusy(true)
-    setError('')
-    setNotice('')
+    if (!revokingInvitation) return;
+    const invitation = revokingInvitation;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
-      await revokeOrganizationInvitation(invitation.id_staff_invitation)
-      setRevokingInvitation(null)
-      setNotice(`Đã thu hồi lời mời tới ${invitation.email}.`)
-      setReloadKey((current) => current + 1)
+      await revokeOrganizationInvitation(invitation.id_staff_invitation);
+      setRevokingInvitation(null);
+      setNotice(`Đã thu hồi lời mời tới ${invitation.email}.`);
+      setReloadKey((current) => current + 1);
     } catch (caught) {
-      setRevokingInvitation(null)
-      setError(caught instanceof Error ? caught.message : 'Không thể thu hồi lời mời.')
+      setRevokingInvitation(null);
+      setError(
+        caught instanceof Error ? caught.message : "Không thể thu hồi lời mời.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function resendInvitation(invitation: OrganizationInvitation) {
-    setBusy(true)
-    setError('')
-    setNotice('')
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       await createOrganizationMembership(organizationId, {
         email: invitation.email,
@@ -218,85 +245,110 @@ export function OrganizationAdminPanel({
         ...(invitation.replaces_membership_id
           ? { replaces_membership_id: invitation.replaces_membership_id }
           : {}),
-      })
-      setNotice(`Đã gửi lại lời mời tới ${invitation.email}.`)
-      setReloadKey((current) => current + 1)
+      });
+      setNotice(`Đã gửi lại lời mời tới ${invitation.email}.`);
+      setReloadKey((current) => current + 1);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Không thể gửi lại lời mời.')
+      setError(
+        caught instanceof Error ? caught.message : "Không thể gửi lại lời mời.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function toggleMembership(membership: OrganizationMembership) {
-    setBusy(true)
-    setError('')
-    setNotice('')
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       await updateOrganizationMembership(membership.id_membership, {
         is_active: !membership.is_active,
-      })
-      setConfirming(null)
-      setNotice(membership.is_active ? 'Đã ngưng quyền quản trị.' : 'Đã kích hoạt quyền quản trị.')
-      setReloadKey((current) => current + 1)
+      });
+      setConfirming(null);
+      setNotice(
+        membership.is_active
+          ? "Đã ngưng quyền quản trị."
+          : "Đã kích hoạt quyền quản trị.",
+      );
+      setReloadKey((current) => current + 1);
     } catch (caught) {
-      setConfirming(null)
-      setError(caught instanceof Error ? caught.message : 'Không thể cập nhật quyền quản trị.')
+      setConfirming(null);
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Không thể cập nhật quyền quản trị.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   function beginManagerTransfer() {
-    if (!changingManager) return
-    const { branch, manager } = changingManager
-    setChangingManager(null)
-    setManagerTransfer({ branch, manager })
-    setForm({ ...emptyInvite(), branchId: String(branch.id_branch) })
-    setFormError('')
-    setModalOpen(true)
+    if (!changingManager) return;
+    const { branch, manager } = changingManager;
+    setChangingManager(null);
+    setManagerTransfer({ branch, manager });
+    setForm({ ...emptyInvite(), branchId: String(branch.id_branch) });
+    setFormError("");
+    setModalOpen(true);
   }
 
   return (
-    <section className="branch-management-schedule organization-report-section" aria-labelledby="organization-admins-title">
+    <section
+      className="branch-management-schedule organization-report-section"
+      aria-labelledby="organization-admins-title"
+    >
       <header>
         <div>
           <span className="branch-report-eyebrow">QUẢN TRỊ VIÊN</span>
           <h2 id="organization-admins-title">Đội ngũ quản trị</h2>
         </div>
-        <button type="button" className="organization-primary-button" onClick={() => openInvite()}>
+        <button
+          type="button"
+          className="organization-primary-button"
+          onClick={() => openInvite()}
+        >
           Mời quản trị viên
         </button>
       </header>
 
       <p className="organization-hint">
-        Chỉ hiển thị quản trị tổ chức và quản lý chi nhánh. Mỗi chi nhánh có đúng
-        một quản lý đang hoạt động. Lời mời chưa được chấp nhận nằm ở mục
+        Chỉ hiển thị quản trị tổ chức và quản lý chi nhánh. Mỗi chi nhánh có
+        đúng một quản lý đang hoạt động. Lời mời chưa được chấp nhận nằm ở mục
         “Đang chờ” bên dưới và có thể thu hồi bất cứ lúc nào.
       </p>
       {missingManagerBranches.length > 0 && (
         <p className="organization-warning">
-          {missingManagerBranches.length} chi nhánh chưa có quản lý:{' '}
+          {missingManagerBranches.length} chi nhánh chưa có quản lý:{" "}
           <strong>
-            {missingManagerBranches.map((branch) => branch.name).join(', ')}
+            {missingManagerBranches.map((branch) => branch.name).join(", ")}
           </strong>
           . Hãy mời quản lý cho các chi nhánh còn thiếu.
         </p>
       )}
 
-      {error && <div className="dentist-error" role="alert">{error}</div>}
-      {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
+      {error && (
+        <div className="dentist-error" role="alert">
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="staff-schedule-notice" role="status">
+          {notice}
+        </div>
+      )}
 
       {loading ? (
         <p role="status">Đang tải quản trị viên...</p>
       ) : organizationAdmins.length > 0 || activeBranches.length > 0 ? (
         <div
-          className="branch-report-table-wrap organization-staff-table-wrap"
+          className={`branch-report-table-wrap ${styles.tableWrap}`}
           role="region"
           aria-label="Danh sách quản trị viên"
           tabIndex={0}
         >
-          <table className="branch-report-table organization-report-table organization-admin-table">
+          <table className={`branch-report-table organization-report-table ${styles.table}`}>
             <thead>
               <tr>
                 <th>Thành viên</th>
@@ -310,56 +362,66 @@ export function OrganizationAdminPanel({
               {organizationAdmins.map((membership) => (
                 <tr key={membership.id_membership}>
                   <td>
-                    <strong>{membership.user_full_name || 'Chưa đặt tên'}</strong>
+                    <strong>
+                      {membership.user_full_name || "Chưa đặt tên"}
+                    </strong>
                     <small>{membership.user_email}</small>
                   </td>
                   <td>{organizationRoleLabel(membership.role)}</td>
                   <td>{branchName(membership.branch_id)}</td>
                   <td>
-                    <span className={`organization-status ${membership.is_active ? 'is-active' : 'is-inactive'}`}>
-                      {membership.is_active ? 'Đang hoạt động' : 'Đã ngưng'}
+                    <span
+                      className={`organization-status ${membership.is_active ? "is-active" : "is-inactive"}`}
+                    >
+                      {membership.is_active ? "Đang hoạt động" : "Đã ngưng"}
                     </span>
                   </td>
                   <td>
                     <div className="organization-row-actions">
                       <button
                         type="button"
-                        className={membership.is_active ? 'is-danger' : undefined}
+                        className={
+                          membership.is_active ? "is-danger" : undefined
+                        }
                         disabled={busy}
                         onClick={() => {
-                          if (membership.is_active) setConfirming(membership)
-                          else void toggleMembership(membership)
+                          if (membership.is_active) setConfirming(membership);
+                          else void toggleMembership(membership);
                         }}
                       >
-                        {membership.is_active ? 'Ngưng' : 'Kích hoạt'}
+                        {membership.is_active ? "Ngưng" : "Kích hoạt"}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {activeBranches.map((branch) => {
-                const manager = managerByBranch.get(branch.id_branch)
-                const pendingTransfer = pendingTransferByBranch.get(branch.id_branch)
+                const manager = managerByBranch.get(branch.id_branch);
+                const pendingTransfer = pendingTransferByBranch.get(
+                  branch.id_branch,
+                );
                 return (
                   <tr key={`branch-${branch.id_branch}`}>
                     <td>
                       <strong>
                         {manager
-                          ? manager.user_full_name || 'Chưa đặt tên'
-                          : 'Chưa có quản lý'}
+                          ? manager.user_full_name || "Chưa đặt tên"
+                          : "Chưa có quản lý"}
                       </strong>
                       <small>
                         {manager
                           ? manager.user_email
-                          : 'Chi nhánh chưa được phân công quản lý'}
+                          : "Chi nhánh chưa được phân công quản lý"}
                       </small>
                     </td>
-                    <td>{organizationRoleLabel('BRANCH_ADMIN')}</td>
+                    <td>{organizationRoleLabel("BRANCH_ADMIN")}</td>
                     <td>{branch.name}</td>
                     <td>
                       {manager ? (
-                        <span className={`organization-status ${pendingTransfer ? 'is-inactive' : 'is-active'}`}>
-                          {pendingTransfer ? 'Đang bàn giao' : 'Đang hoạt động'}
+                        <span
+                          className={`organization-status ${pendingTransfer ? "is-inactive" : "is-active"}`}
+                        >
+                          {pendingTransfer ? "Đang bàn giao" : "Đang hoạt động"}
                         </span>
                       ) : (
                         <span className="organization-status is-inactive">
@@ -373,7 +435,9 @@ export function OrganizationAdminPanel({
                           <button
                             type="button"
                             disabled={busy}
-                            onClick={() => setChangingManager({ branch, manager })}
+                            onClick={() =>
+                              setChangingManager({ branch, manager })
+                            }
                           >
                             Đổi người
                           </button>
@@ -389,7 +453,7 @@ export function OrganizationAdminPanel({
                       </div>
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
@@ -400,29 +464,33 @@ export function OrganizationAdminPanel({
 
       {!loading && (
         <section
-          className="organization-pending"
+          className={styles.pending}
           aria-labelledby="organization-pending-title"
         >
           <header>
             <div>
               <span className="branch-report-eyebrow">ĐANG CHỜ</span>
-              <h3 id="organization-pending-title">Lời mời chưa được chấp nhận</h3>
+              <h3 id="organization-pending-title">
+                Lời mời chưa được chấp nhận
+              </h3>
             </div>
             <span className="organization-status is-inactive">
               {pendingInvitationCount} đang chờ
-              {expiredInvitationCount > 0 ? ` · ${expiredInvitationCount} hết hạn` : ''}
+              {expiredInvitationCount > 0
+                ? ` · ${expiredInvitationCount} hết hạn`
+                : ""}
             </span>
           </header>
           {invitations.length === 0 ? (
             <p className="branch-report-empty">Không có lời mời đang chờ.</p>
           ) : (
             <div
-              className="branch-report-table-wrap organization-staff-table-wrap"
+              className={`branch-report-table-wrap ${styles.tableWrap}`}
               role="region"
               aria-label="Danh sách lời mời quản trị viên"
               tabIndex={0}
             >
-              <table className="branch-report-table organization-report-table organization-admin-table">
+              <table className={`branch-report-table organization-report-table ${styles.table}`}>
                 <thead>
                   <tr>
                     <th>Người được mời</th>
@@ -441,31 +509,51 @@ export function OrganizationAdminPanel({
                         <small>Mời bởi {invitation.invited_by_email}</small>
                       </td>
                       <td>{organizationRoleLabel(invitation.role)}</td>
-                      <td>{invitation.branch_name || branchName(invitation.branch_id)}</td>
                       <td>
-                        <span className={`organization-status ${invitation.email_delivery_status === 'SENT' ? 'is-active' : 'is-inactive'}`}>
-                          {emailDeliveryLabels[invitation.email_delivery_status]}
+                        {invitation.branch_name ||
+                          branchName(invitation.branch_id)}
+                      </td>
+                      <td>
+                        <span
+                          className={`organization-status ${invitation.email_delivery_status === "SENT" ? "is-active" : "is-inactive"}`}
+                        >
+                          {
+                            emailDeliveryLabels[
+                              invitation.email_delivery_status
+                            ]
+                          }
                         </span>
                       </td>
                       <td>
-                        {new Date(invitation.expires_at).toLocaleString('vi-VN')}
-                        {invitation.status === 'EXPIRED' && (
-                          <small className="organization-status is-inactive">Đã hết hạn</small>
+                        {new Date(invitation.expires_at).toLocaleString(
+                          "vi-VN",
+                        )}
+                        {invitation.status === "EXPIRED" && (
+                          <small className="organization-status is-inactive">
+                            Đã hết hạn
+                          </small>
                         )}
                       </td>
                       <td>
                         <div className="organization-row-actions">
-                          <button type="button" disabled={busy} onClick={() => void resendInvitation(invitation)}>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void resendInvitation(invitation)}
+                          >
                             Gửi lại
                           </button>
-                          {(invitation.status === 'PENDING' || invitation.status === 'EXPIRED') && (
+                          {(invitation.status === "PENDING" ||
+                            invitation.status === "EXPIRED") && (
                             <button
                               type="button"
                               className="is-danger"
                               disabled={busy}
                               onClick={() => setRevokingInvitation(invitation)}
                             >
-                              {invitation.status === 'EXPIRED' ? 'Ẩn' : 'Thu hồi'}
+                              {invitation.status === "EXPIRED"
+                                ? "Ẩn"
+                                : "Thu hồi"}
                             </button>
                           )}
                         </div>
@@ -488,16 +576,22 @@ export function OrganizationAdminPanel({
           )}
           busy={busy}
           error={formError}
-          requiresBranch={form.role === 'BRANCH_ADMIN'}
-          transfer={managerTransfer ? {
-            branchName: managerTransfer.branch.name,
-            managerEmail: managerTransfer.manager.user_email,
-          } : undefined}
-          onChange={(changes) => setForm((current) => ({ ...current, ...changes }))}
+          requiresBranch={form.role === "BRANCH_ADMIN"}
+          transfer={
+            managerTransfer
+              ? {
+                  branchName: managerTransfer.branch.name,
+                  managerEmail: managerTransfer.manager.user_email,
+                }
+              : undefined
+          }
+          onChange={(changes) =>
+            setForm((current) => ({ ...current, ...changes }))
+          }
           onClose={() => {
             if (!busy) {
-              setModalOpen(false)
-              setManagerTransfer(null)
+              setModalOpen(false);
+              setManagerTransfer(null);
             }
           }}
           onSubmit={() => void invite()}
@@ -517,13 +611,21 @@ export function OrganizationAdminPanel({
 
       {revokingInvitation && (
         <ConfirmationModal
-          title={revokingInvitation.status === 'EXPIRED' ? 'Ẩn lời mời hết hạn' : 'Thu hồi lời mời'}
+          title={
+            revokingInvitation.status === "EXPIRED"
+              ? "Ẩn lời mời hết hạn"
+              : "Thu hồi lời mời"
+          }
           description={
-            revokingInvitation.status === 'EXPIRED'
+            revokingInvitation.status === "EXPIRED"
               ? `Ẩn lời mời hết hạn tới ${revokingInvitation.email} khỏi danh sách?`
               : `Thu hồi lời mời tới ${revokingInvitation.email}? Link trong email sẽ không còn dùng được.`
           }
-          confirmLabel={revokingInvitation.status === 'EXPIRED' ? 'Ẩn lời mời' : 'Thu hồi lời mời'}
+          confirmLabel={
+            revokingInvitation.status === "EXPIRED"
+              ? "Ẩn lời mời"
+              : "Thu hồi lời mời"
+          }
           danger
           busy={busy}
           onCancel={() => setRevokingInvitation(null)}
@@ -547,5 +649,5 @@ export function OrganizationAdminPanel({
         />
       )}
     </section>
-  )
+  );
 }

@@ -1,51 +1,66 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-import { AuthBar } from '../auth/AuthBar'
-import { filterPriceGroups, priceGroups } from '../features/pricing/pricingData'
-import { Seo } from '../seo/Seo'
-import { SITE_URL, pricingSeo } from '../seo/seoConfig'
+import { AuthBar } from "../auth/AuthBar";
+import {
+  filterPriceGroups,
+  priceGroups,
+} from "../features/pricing/pricingData";
+import { Seo } from "../seo/Seo";
+import { SITE_URL, pricingSeo } from "../seo/seoConfig";
+import styles from "./PricingPage.module.css";
 
 const pricingStructuredData = [
   {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
+    "@context": "https://schema.org",
+    "@type": "WebPage",
     name: pricingSeo.title,
     description: pricingSeo.description,
     url: `${SITE_URL}/bang-gia`,
-    inLanguage: 'vi-VN',
+    inLanguage: "vi-VN",
   },
   {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Bảng giá', item: `${SITE_URL}/bang-gia` },
+      { "@type": "ListItem", position: 1, name: "Trang chủ", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Bảng giá",
+        item: `${SITE_URL}/bang-gia`,
+      },
     ],
   },
-]
+];
 
 export function PricingPage() {
-  const [query, setQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('all')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const visibleGroups = useMemo(() => {
-    const groups = activeCategory === 'all'
-      ? priceGroups
-      : priceGroups.filter((group) => group.id === activeCategory)
-    return filterPriceGroups(groups, query)
-  }, [activeCategory, query])
+    const groups =
+      activeCategory === "all"
+        ? priceGroups
+        : priceGroups.filter((group) => group.id === activeCategory);
+    return filterPriceGroups(groups, query);
+  }, [activeCategory, query]);
 
   return (
-    <div className="site-shell pricing-page">
+    <div className={`site-shell ${styles.page}`}>
       <Seo {...pricingSeo} jsonLd={pricingStructuredData} />
       <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
-          <img src="/branding/dentavie-logo-horizontal-color.png" alt="DentaVie" />
+          <img
+            src="/branding/dentavie-logo-horizontal-color.png"
+            alt="DentaVie"
+          />
         </Link>
         <nav className="main-nav" aria-label="Điều hướng bảng giá">
-          <Link className="active" to="/bang-gia">Bảng giá</Link>
+          <Link className="active" to="/bang-gia">
+            Bảng giá
+          </Link>
           <Link to="/ve-dentavie">Về DentaVie</Link>
           <Link to="/#chi-nhanh">Chi nhánh</Link>
           <Link to="/#lien-he">Liên hệ</Link>
@@ -53,18 +68,24 @@ export function PricingPage() {
         <div className="header-actions">
           <AuthBar />
           <button
-            className={`mobile-menu-btn ${mobileMenuOpen ? 'open' : ''}`}
+            className={`mobile-menu-btn ${mobileMenuOpen ? "open" : ""}`}
             type="button"
-            aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu điều hướng'}
+            aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu điều hướng"}
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            <span /><span /><span />
+            <span />
+            <span />
+            <span />
           </button>
         </div>
       </header>
 
-      <div className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`} role="dialog" aria-label="Menu di động">
+      <div
+        className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}
+        role="dialog"
+        aria-label="Menu di động"
+      >
         <nav className="mobile-nav-links">
           <Link to="/bang-gia">Bảng giá</Link>
           <Link to="/ve-dentavie">Về DentaVie</Link>
@@ -76,7 +97,9 @@ export function PricingPage() {
       <main className="pricing-main">
         <section className="pricing-hero">
           <nav className="clinic-breadcrumb" aria-label="Đường dẫn trang">
-            <Link to="/">Trang chủ</Link><span>/</span><strong>Bảng giá</strong>
+            <Link to="/">Trang chủ</Link>
+            <span>/</span>
+            <strong>Bảng giá</strong>
           </nav>
           <div className="pricing-hero-grid">
             <div>
@@ -86,7 +109,10 @@ export function PricingPage() {
             </div>
             <div className="pricing-hero-note">
               <strong>Giá minh bạch, tư vấn trước điều trị</strong>
-              <p>Chi phí cuối cùng được xác nhận sau khi bác sĩ thăm khám và lập kế hoạch phù hợp.</p>
+              <p>
+                Chi phí cuối cùng được xác nhận sau khi bác sĩ thăm khám và lập
+                kế hoạch phù hợp.
+              </p>
             </div>
           </div>
         </section>
@@ -109,9 +135,20 @@ export function PricingPage() {
           </div>
 
           <div className="pricing-tabs" aria-label="Lọc nhóm dịch vụ">
-            <button className={activeCategory === 'all' ? 'active' : ''} type="button" onClick={() => setActiveCategory('all')}>Tất cả</button>
+            <button
+              className={activeCategory === "all" ? "active" : ""}
+              type="button"
+              onClick={() => setActiveCategory("all")}
+            >
+              Tất cả
+            </button>
             {priceGroups.map((group) => (
-              <button className={activeCategory === group.id ? 'active' : ''} type="button" key={group.id} onClick={() => setActiveCategory(group.id)}>
+              <button
+                className={activeCategory === group.id ? "active" : ""}
+                type="button"
+                key={group.id}
+                onClick={() => setActiveCategory(group.id)}
+              >
                 {group.title}
               </button>
             ))}
@@ -122,15 +159,31 @@ export function PricingPage() {
               {visibleGroups.map((group, index) => (
                 <article className="price-group" id={group.id} key={group.id}>
                   <header>
-                    <span>{String(index + 1).padStart(2, '0')}</span>
-                    <div><h3>{group.title}</h3><p>{group.description}</p></div>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <h3>{group.title}</h3>
+                      <p>{group.description}</p>
+                    </div>
                   </header>
                   <div className="price-table-wrap">
                     <table>
-                      <thead><tr><th>Dịch vụ</th><th>Đơn vị</th><th>Giá tham khảo</th></tr></thead>
+                      <thead>
+                        <tr>
+                          <th>Dịch vụ</th>
+                          <th>Đơn vị</th>
+                          <th>Giá tham khảo</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {group.items.map((item) => (
-                          <tr key={item.name}><td>{item.name}</td><td>{item.unit}</td><td><strong>{item.price}</strong>{item.note && <small>{item.note}</small>}</td></tr>
+                          <tr key={item.name}>
+                            <td>{item.name}</td>
+                            <td>{item.unit}</td>
+                            <td>
+                              <strong>{item.price}</strong>
+                              {item.note && <small>{item.note}</small>}
+                            </td>
+                          </tr>
                         ))}
                       </tbody>
                     </table>
@@ -138,11 +191,16 @@ export function PricingPage() {
                 </article>
               ))}
             </div>
-          ) : <p className="pricing-empty">Không tìm thấy dịch vụ phù hợp.</p>}
+          ) : (
+            <p className="pricing-empty">Không tìm thấy dịch vụ phù hợp.</p>
+          )}
 
           <aside className="pricing-disclaimer">
             <strong>Lưu ý về chi phí điều trị</strong>
-            <p>Giá mang tính tham khảo. Bác sĩ sẽ xác nhận chi phí sau thăm khám và trước khi điều trị.</p>
+            <p>
+              Giá mang tính tham khảo. Bác sĩ sẽ xác nhận chi phí sau thăm khám
+              và trước khi điều trị.
+            </p>
             <Link to="/#chi-nhanh">Chọn chi nhánh để được tư vấn</Link>
           </aside>
         </section>
@@ -150,12 +208,31 @@ export function PricingPage() {
 
       <footer className="site-footer" id="lien-he">
         <div className="footer-main">
-          <div className="footer-brand"><img src="/branding/dentavie-logo-horizontal-white.png" alt="DentaVie" /><p>Chăm sóc nụ cười bằng sự rõ ràng, thuận tiện và tôn trọng.</p></div>
-          <div><strong>Liên hệ</strong><a href="tel:19002102">Hotline: 1900 2102</a><a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a><span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span></div>
-          <div><strong>Khám phá</strong><Link to="/#dich-vu">Dịch vụ</Link><Link to="/bang-gia">Bảng giá</Link><Link to="/#chi-nhanh">Chi nhánh</Link></div>
+          <div className="footer-brand">
+            <img
+              src="/branding/dentavie-logo-horizontal-white.png"
+              alt="DentaVie"
+            />
+            <p>Chăm sóc nụ cười bằng sự rõ ràng, thuận tiện và tôn trọng.</p>
+          </div>
+          <div>
+            <strong>Liên hệ</strong>
+            <a href="tel:19002102">Hotline: 1900 2102</a>
+            <a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a>
+            <span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span>
+          </div>
+          <div>
+            <strong>Khám phá</strong>
+            <Link to="/#dich-vu">Dịch vụ</Link>
+            <Link to="/bang-gia">Bảng giá</Link>
+            <Link to="/#chi-nhanh">Chi nhánh</Link>
+          </div>
         </div>
-        <div className="footer-bottom"><span>© 2026 DentaVie</span><span>Thời gian hiển thị theo Asia/Ho_Chi_Minh</span></div>
+        <div className="footer-bottom">
+          <span>© 2026 DentaVie</span>
+          <span>Thời gian hiển thị theo Asia/Ho_Chi_Minh</span>
+        </div>
       </footer>
     </div>
-  )
+  );
 }

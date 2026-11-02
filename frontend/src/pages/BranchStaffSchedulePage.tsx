@@ -44,9 +44,7 @@ import {
   StatusBadge,
 } from "../components/admin/ui";
 import { hcmDate } from "../components/branch-management/appointmentPresentation";
-import "./branch-staff-schedule.css";
-import "./branch-staff-filters.css";
-import "./branch-staff-pagination.css";
+import styles from "./BranchStaffSchedulePage.module.css";
 
 interface TimeOffForm {
   dentist_id: string;
@@ -131,28 +129,29 @@ export function BranchStaffSchedulePage() {
   const [shiftModalBranchId, setShiftModalBranchId] = useState<number | null>(
     null,
   );
-  const [offModalBranchId, setOffModalBranchId] = useState<number | null>(
-    null,
-  );
+  const [offModalBranchId, setOffModalBranchId] = useState<number | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    if (!branchId) return;
-    try {
-      const [dentistData, shiftData, offData] = await Promise.all([
-        listManagedBranchDentists(branchId, signal),
-        listManagedWorkShifts(branchId, signal),
-        listManagedTimeOffs(branchId, signal),
-      ]);
-      if (signal?.aborted || branchIdRef.current !== branchId) return;
-      setDentists(dentistData.data);
-      setShifts(shiftData.data);
-      setOffs(offData.data);
-      setError("");
-    } catch (caught) {
-      if (signal?.aborted || branchIdRef.current !== branchId) return;
-      setError(message(caught, "Không thể tải ca làm và lịch nghỉ."));
-    }
-  }, [branchId]);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!branchId) return;
+      try {
+        const [dentistData, shiftData, offData] = await Promise.all([
+          listManagedBranchDentists(branchId, signal),
+          listManagedWorkShifts(branchId, signal),
+          listManagedTimeOffs(branchId, signal),
+        ]);
+        if (signal?.aborted || branchIdRef.current !== branchId) return;
+        setDentists(dentistData.data);
+        setShifts(shiftData.data);
+        setOffs(offData.data);
+        setError("");
+      } catch (caught) {
+        if (signal?.aborted || branchIdRef.current !== branchId) return;
+        setError(message(caught, "Không thể tải ca làm và lịch nghỉ."));
+      }
+    },
+    [branchId],
+  );
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
@@ -300,7 +299,11 @@ export function BranchStaffSchedulePage() {
     setShiftOpen(true);
   };
   const openOff = (item?: ManagedTimeOff) => {
-    if (!branchId || (item && item.branch_id !== null && item.branch_id !== branchId)) return;
+    if (
+      !branchId ||
+      (item && item.branch_id !== null && item.branch_id !== branchId)
+    )
+      return;
     if (item?.branch_id === null && !canManageOrganizationTimeOffs) return;
     if (item) {
       setOff({
@@ -348,7 +351,10 @@ export function BranchStaffSchedulePage() {
       const payload = buildWorkShiftPayload(shift);
       if (editingShiftId) await patchManagedWorkShift(editingShiftId, payload);
       else
-        await createManagedWorkShift(submittingBranchId, { ...payload, is_active: true });
+        await createManagedWorkShift(submittingBranchId, {
+          ...payload,
+          is_active: true,
+        });
       if (branchIdRef.current !== submittingBranchId) return;
       setNotice(editingShiftId ? "Đã cập nhật ca làm." : "Đã thêm ca làm.");
       resetShift();
@@ -400,7 +406,10 @@ export function BranchStaffSchedulePage() {
     try {
       if (editingOffId) await patchManagedTimeOff(editingOffId, payload);
       else
-        await createManagedTimeOff(submittingBranchId, { ...payload, is_active: true });
+        await createManagedTimeOff(submittingBranchId, {
+          ...payload,
+          is_active: true,
+        });
       if (branchIdRef.current !== submittingBranchId) return;
       setNotice(editingOffId ? "Đã cập nhật lịch nghỉ." : "Đã thêm lịch nghỉ.");
       resetOff();
@@ -424,7 +433,9 @@ export function BranchStaffSchedulePage() {
     if (
       !submittingBranchId ||
       !isInCurrentScope ||
-      (kind === "time-off" && item.branch_id === null && !canManageOrganizationTimeOffs)
+      (kind === "time-off" &&
+        item.branch_id === null &&
+        !canManageOrganizationTimeOffs)
     ) {
       setPendingToggle(null);
       setError("Chi nhánh đã thay đổi. Hãy mở lại mục cần cập nhật.");
@@ -467,7 +478,7 @@ export function BranchStaffSchedulePage() {
 
   return (
     <div className="branch-management-page">
-      <main className="branch-management-main branch-staff-page">
+      <main className={`branch-management-main ${styles.page}`}>
         <header className="branch-staff-page__heading">
           <div>
             <p className="eyebrow">Nhân sự chi nhánh</p>
@@ -653,22 +664,23 @@ export function BranchStaffSchedulePage() {
               {
                 key: "action",
                 header: "",
-                cell: (item) => item.branch_id === null && !canManageOrganizationTimeOffs ? (
-                  <span className="branch-staff-page__organization-scope">
-                    Toàn tổ chức
-                  </span>
-                ) : (
-                  <div className="branch-staff-page__actions">
-                    <button onClick={() => openOff(item)}>Sửa</button>
-                    <button
-                      onClick={() =>
-                        setPendingToggle({ kind: "time-off", item })
-                      }
-                    >
-                      {item.is_active ? "Ngừng" : "Kích hoạt"}
-                    </button>
-                  </div>
-                ),
+                cell: (item) =>
+                  item.branch_id === null && !canManageOrganizationTimeOffs ? (
+                    <span className="branch-staff-page__organization-scope">
+                      Toàn tổ chức
+                    </span>
+                  ) : (
+                    <div className="branch-staff-page__actions">
+                      <button onClick={() => openOff(item)}>Sửa</button>
+                      <button
+                        onClick={() =>
+                          setPendingToggle({ kind: "time-off", item })
+                        }
+                      >
+                        {item.is_active ? "Ngừng" : "Kích hoạt"}
+                      </button>
+                    </div>
+                  ),
               },
             ]}
           />
@@ -759,8 +771,15 @@ export function BranchStaffSchedulePage() {
             </FormField>
           </FormRow>
           <div className="branch-staff-page__modal-actions">
-            <AdminButton disabled={savingKind !== null}>{savingKind === "shift" ? "Đang lưu..." : "Lưu ca làm"}</AdminButton>
-            <AdminButton tone="secondary" type="button" disabled={savingKind !== null} onClick={resetShift}>
+            <AdminButton disabled={savingKind !== null}>
+              {savingKind === "shift" ? "Đang lưu..." : "Lưu ca làm"}
+            </AdminButton>
+            <AdminButton
+              tone="secondary"
+              type="button"
+              disabled={savingKind !== null}
+              onClick={resetShift}
+            >
               Hủy
             </AdminButton>
           </div>
@@ -822,8 +841,15 @@ export function BranchStaffSchedulePage() {
             />
           </FormField>
           <div className="branch-staff-page__modal-actions">
-            <AdminButton disabled={savingKind !== null}>{savingKind === "off" ? "Đang lưu..." : "Lưu lịch nghỉ"}</AdminButton>
-            <AdminButton tone="secondary" type="button" disabled={savingKind !== null} onClick={resetOff}>
+            <AdminButton disabled={savingKind !== null}>
+              {savingKind === "off" ? "Đang lưu..." : "Lưu lịch nghỉ"}
+            </AdminButton>
+            <AdminButton
+              tone="secondary"
+              type="button"
+              disabled={savingKind !== null}
+              onClick={resetOff}
+            >
               Hủy
             </AdminButton>
           </div>

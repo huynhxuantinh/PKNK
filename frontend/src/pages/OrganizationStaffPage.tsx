@@ -1,72 +1,77 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
 
 import {
   listOrganizationBranches,
   listOrganizationServices,
   type OrganizationBranch,
   type OrganizationService,
-} from '../api/organization'
-import { OrganizationAdminPanel } from '../components/organization-management/OrganizationAdminPanel'
-import { OrganizationDentistPanel } from '../components/organization-management/OrganizationDentistPanel'
-import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
-import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
+} from "../api/organization";
+import { OrganizationAdminPanel } from "../components/organization-management/OrganizationAdminPanel";
+import { OrganizationDentistPanel } from "../components/organization-management/OrganizationDentistPanel";
+import { OrganizationPageLayout } from "../components/organization-management/OrganizationPageLayout";
+import { useOrganizationScope } from "../components/organization-management/useOrganizationScope";
+import styles from "./OrganizationStaffPage.module.css";
 
-type StaffTab = 'admins' | 'dentists'
+type StaffTab = "admins" | "dentists";
 
 const tabs: Array<{ id: StaffTab; label: string; description: string }> = [
   {
-    id: 'admins',
-    label: 'Quản trị viên',
-    description: 'Quản trị tổ chức và quản lý chi nhánh',
+    id: "admins",
+    label: "Quản trị viên",
+    description: "Quản trị tổ chức và quản lý chi nhánh",
   },
   {
-    id: 'dentists',
-    label: 'Nha sĩ',
-    description: 'Hồ sơ, chi nhánh và dịch vụ',
+    id: "dentists",
+    label: "Nha sĩ",
+    description: "Hồ sơ, chi nhánh và dịch vụ",
   },
-]
+];
 
 export function OrganizationStaffPage() {
-  const scope = useOrganizationScope()
-  const [tab, setTab] = useState<StaffTab>('admins')
-  const [branches, setBranches] = useState<OrganizationBranch[]>([])
-  const [services, setServices] = useState<OrganizationService[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const scope = useOrganizationScope();
+  const [tab, setTab] = useState<StaffTab>("admins");
+  const [branches, setBranches] = useState<OrganizationBranch[]>([]);
+  const [services, setServices] = useState<OrganizationService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const organizationName =
-    scope.options.find((option) => option.id === scope.organizationId)?.name
-    || 'Quản trị tổ chức'
+    scope.options.find((option) => option.id === scope.organizationId)?.name ||
+    "Quản trị tổ chức";
 
   useEffect(() => {
-    if (!scope.organizationId) return
-    const controller = new AbortController()
-    setLoading(true)
-    setError('')
+    if (!scope.organizationId) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
     Promise.all([
       listOrganizationBranches(scope.organizationId, controller.signal),
       listOrganizationServices(scope.organizationId, controller.signal),
     ])
       .then(([branchResponse, serviceResponse]) => {
-        if (controller.signal.aborted) return
-        setBranches(branchResponse.data)
-        setServices(serviceResponse.data)
+        if (controller.signal.aborted) return;
+        setBranches(branchResponse.data);
+        setServices(serviceResponse.data);
       })
       .catch((caught) => {
-        if (controller.signal.aborted) return
-        setBranches([])
-        setServices([])
-        setError(caught instanceof Error ? caught.message : 'Không thể tải dữ liệu nhân sự.')
+        if (controller.signal.aborted) return;
+        setBranches([]);
+        setServices([]);
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Không thể tải dữ liệu nhân sự.",
+        );
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [scope.organizationId])
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [scope.organizationId]);
 
   const activeBranches = useMemo(
     () => branches.filter((branch) => branch.is_active),
     [branches],
-  )
+  );
 
   return (
     <OrganizationPageLayout
@@ -80,16 +85,24 @@ export function OrganizationStaffPage() {
         </span>
       }
     >
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && (
+        <div className="dentist-error" role="alert">
+          {error}
+        </div>
+      )}
 
-      <div className="organization-tabs" role="tablist" aria-label="Nhóm nhân sự">
+      <div
+        className={styles.tabs}
+        role="tablist"
+        aria-label="Nhóm nhân sự"
+      >
         {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
-            className={tab === item.id ? 'is-active' : undefined}
+            className={tab === item.id ? styles.isActive : undefined}
             onClick={() => setTab(item.id)}
           >
             <strong>{item.label}</strong>
@@ -99,9 +112,11 @@ export function OrganizationStaffPage() {
       </div>
 
       {loading ? (
-        <p className="branch-report-loading" role="status">Đang tải dữ liệu nhân sự...</p>
+        <p className="branch-report-loading" role="status">
+          Đang tải dữ liệu nhân sự...
+        </p>
       ) : scope.organizationId ? (
-        tab === 'admins' ? (
+        tab === "admins" ? (
           <OrganizationAdminPanel
             organizationId={scope.organizationId}
             branches={branches}
@@ -116,5 +131,5 @@ export function OrganizationStaffPage() {
         )
       ) : null}
     </OrganizationPageLayout>
-  )
+  );
 }

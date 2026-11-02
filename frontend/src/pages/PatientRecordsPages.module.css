@@ -1,0 +1,562 @@
+.page {
+  min-height: 100vh;
+  background: #f7fbfc;
+}
+.page :global(.patient-records-main) {
+  width: min(920px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 58px 0 72px;
+}
+.page :global(.patient-records-heading) {
+  margin-bottom: 24px;
+}
+.page :global(.patient-records-heading h1) {
+  margin: 8px 0;
+  color: var(--ink);
+  font-size: clamp(30px, 4vw, 42px);
+  letter-spacing: -0.035em;
+}
+.page :global(.patient-records-heading > p:last-child) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.page :global(.patient-record-state) {
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  padding: 36px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--muted);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.page :global(.patient-record-list) {
+  display: grid;
+  gap: 14px;
+}
+.page :global(.patient-record-tabs) {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.page :global(.patient-record-tabs button) {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.page :global(.patient-record-tabs button.is-active) {
+  border-bottom-color: var(--primary);
+  color: var(--primary-dark);
+}
+.page :global(.patient-record-pagination) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.page :global(.patient-record-pagination button) {
+  min-width: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page :global(.patient-record-card) {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.page :global(.appointment-record) {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  overflow: hidden;
+}
+.page :global(.appointment-record > time) {
+  display: grid;
+  min-height: 190px;
+  place-content: center;
+  align-content: center;
+  gap: 2px;
+  background: var(--soft);
+  color: var(--primary-dark);
+  text-align: center;
+  text-transform: uppercase;
+}
+.page :global(.appointment-record > time strong) {
+  font-size: 31px;
+  line-height: 1;
+}
+.page :global(.appointment-record > time span) {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+.page :global(.patient-record-content),
+.page :global(.history-record) {
+  padding: 24px;
+}
+.page :global(.patient-record-title-row) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.page :global(.patient-record-title-row h2) {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.page :global(.record-status) {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e6f5f8;
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.page :global(.status-confirmed),
+.page :global(.status-completed) {
+  background: #e7f7f1;
+  color: #08745c;
+}
+.page :global(.status-cancelled),
+.page :global(.status-no_show) {
+  background: #fff0ef;
+  color: #ae3f37;
+}
+.page :global(.status-overdue) {
+  background: #fff5df;
+  color: #9a6410;
+}
+.page :global(.record-branch) {
+  margin: 7px 0 17px;
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 750;
+}
+.page :global(.record-meta) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 24px;
+  margin: 0;
+}
+.page :global(.record-meta div) {
+  min-width: 0;
+}
+.page :global(.record-meta dt) {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.page :global(.record-meta dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.page :global(.appointment-record-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.page :global(.appointment-record-actions button) {
+  min-height: 38px;
+  padding: 9px 14px;
+  border: 1px solid #e8bbb8;
+  border-radius: 8px;
+  background: #fff;
+  color: #b3423b;
+  font-size: 12px;
+  font-weight: 750;
+}
+.page :global(.appointment-record-actions button + button) {
+  border-color: #9fd8e4;
+  color: var(--primary-dark);
+}
+.page :global(.reschedule-panel) {
+  display: grid;
+  gap: 20px;
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #cfe2e7;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fff 0%, #fbfeff 100%);
+  box-shadow: 0 10px 28px rgb(23 73 88 / 0.06);
+}
+.page :global(.reschedule-panel-header) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.page :global(.reschedule-panel-header > div) {
+  display: grid;
+  gap: 5px;
+}
+.page :global(.reschedule-panel-header span) {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.page :global(.reschedule-panel-header strong) {
+  color: var(--ink);
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+.page :global(.reschedule-close) {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #c9dce1;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.page :global(.reschedule-controls) {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #dcecef;
+  border-radius: 12px;
+  background: #f5fbfc;
+}
+.page :global(.reschedule-controls label) {
+  display: grid;
+  flex: 0 1 230px;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+.page :global(.reschedule-controls input) {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #c9dfe5;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.page :global(.reschedule-controls > button) {
+  min-height: 42px;
+  padding: 9px 18px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.page :global(.reschedule-availability) {
+  display: grid;
+  gap: 12px;
+}
+.page :global(.reschedule-slots) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.page :global(.reschedule-slots button) {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #a8d8e2;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.page :global(.record-aftercare) {
+  position: relative;
+  margin-top: 18px;
+  padding: 16px 18px 16px 46px;
+  overflow: hidden;
+  border: 1px solid #b9e4d1;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #effbf5, #f8fdfb);
+}
+.page :global(.record-aftercare::before) {
+  position: absolute;
+  top: 16px;
+  left: 17px;
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: #15966f;
+  color: #fff;
+  content: "✓";
+  font-size: 11px;
+  font-weight: 900;
+}
+.page :global(.record-aftercare strong) {
+  color: #087258;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.page :global(.record-aftercare p) {
+  margin: 7px 0 0;
+  color: #365f54;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.page :global(.record-attachments) {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.page :global(.record-thumbnail-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 11px;
+}
+.page :global(.record-thumbnail-grid article) {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fbfeff;
+}
+.page :global(.record-attachments .record-thumbnail) {
+  display: grid;
+  width: 100%;
+  height: 118px;
+  place-items: center;
+  overflow: hidden;
+  background: #eaf3f5;
+}
+.page :global(.record-thumbnail img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.page :global(.invoice-record) {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+}
+.page :global(.invoice-record h2) {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+.page :global(.invoice-record p) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.page :global(.invoice-payos-button) {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+.page :global(.appointment-modal-backdrop) {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(8 29 44 / 0.42);
+}
+.page :global(.appointment-modal) {
+  display: grid;
+  width: min(100%, 440px);
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgb(8 29 44 / 0.22);
+}
+.page :global(.appointment-modal h2),
+.page :global(.appointment-modal p) {
+  margin: 0;
+}
+.page :global(.appointment-modal p),
+.page :global(.appointment-action-note),
+.page :global(.appointment-overdue-note),
+.page :global(.reschedule-availability > p),
+.page :global(.reschedule-empty) {
+  color: var(--muted);
+  font-size: 13px;
+}
+.page :global(.appointment-modal label) {
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.page :global(.appointment-modal textarea) {
+  min-height: 105px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+.page :global(.appointment-modal > div) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.page :global(.appointment-modal button) {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page :global(.appointment-modal button[type="submit"]) {
+  border-color: #b3423b;
+  background: #b3423b;
+  color: #fff;
+}
+.page :global(.patient-record-error) {
+  margin: 0;
+  color: #b3423b;
+  font-size: 12px;
+}
+.page :global(.notification-record) {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.page :global(.notification-record.is-unread) {
+  border-color: #8ed9e8;
+  background: #f3fcfe;
+}
+.page :global(.notification-record span),
+.page :global(.notification-record small),
+.page :global(.record-date) {
+  color: var(--muted);
+  font-size: 12px;
+}
+.page :global(.history-meta) {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.page :global(.record-notes) {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.page :global(.record-notes summary) {
+  width: fit-content;
+  color: var(--primary-dark);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 750;
+}
+.page :global(.record-notes p) {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+@media (max-width: 640px) {
+  .page :global(.patient-records-main) {
+    width: calc(100% - 24px);
+    padding: 32px 0 50px;
+  }
+  .page :global(.appointment-record) {
+    grid-template-columns: 66px minmax(0, 1fr);
+  }
+  .page :global(.appointment-record > time) {
+    min-height: 100%;
+  }
+  .page :global(.appointment-record > time strong) {
+    font-size: 24px;
+  }
+  .page :global(.patient-record-content),
+  .page :global(.history-record) {
+    padding: 18px;
+  }
+  .page :global(.patient-record-title-row),
+  .page :global(.reschedule-controls) {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .page :global(.record-meta) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.reschedule-panel) {
+    gap: 16px;
+    padding: 18px;
+  }
+  .page :global(.reschedule-slots) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .page :global(.invoice-record) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.invoice-payos-button) {
+    justify-self: start;
+  }
+}

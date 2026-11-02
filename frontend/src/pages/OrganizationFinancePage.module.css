@@ -1,0 +1,4 @@
+.reportActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.45rem; }
+.reportActions button { padding: 0.48rem 0.72rem; border: 1px solid #bddae2; border-radius: 8px; background: #fff; color: #087c9d; font: inherit; font-size: 0.74rem; font-weight: 800; cursor: pointer; }
+.reportActions button:hover:not(:disabled) { border-color: #078fad; background: #effafd; }
+.reportActions button:disabled { cursor: not-allowed; opacity: 0.5; }

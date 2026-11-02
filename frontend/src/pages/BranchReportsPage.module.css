@@ -1,0 +1,60 @@
+.page > h1 {
+  margin: 12px 0 18px;
+  color: var(--admin-navy-900);
+  font-size: clamp(28px, 4vw, 38px);
+}
+.page > :global(.branch-management-filters) {
+  align-items: end;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: #fff;
+  box-shadow: var(--admin-shadow-sm);
+}
+.page > :global(.branch-management-filters button) {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-teal-700);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.page :global(.branch-report-loading) {
+  padding: 26px;
+  border: 1px dashed var(--admin-border-strong);
+  border-radius: var(--admin-radius-lg);
+  color: var(--admin-muted);
+  text-align: center;
+}
+.page :global(.branch-management-summary) {
+  margin-top: 0;
+}
+.page :global(.branch-report-print-button) {
+  order: 4;
+  border: 1px solid #a4d4de !important;
+  background: #fff !important;
+  color: #087c9d !important;
+  box-shadow: none;
+}
+.page :global(.branch-report-print-button:not(:disabled):hover) {
+  background: #eef9fa !important;
+}
+.page :global(.branch-report-print-button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+@media (max-width: 700px) {
+  .page > :global(.branch-management-filters) {
+    width: 100%;
+    align-items: stretch;
+  }
+  .page > :global(.branch-management-filters button) {
+    width: 100%;
+  }
+  .page :global(.branch-report-print-button) {
+    order: 0;
+  }
+}

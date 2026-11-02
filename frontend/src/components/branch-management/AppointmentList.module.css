@@ -1,0 +1,290 @@
+.root {
+  display: grid;
+  gap: 14px;
+}
+
+.root :global(.appointment-list__toolbar) {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.root :global(.appointment-list__toolbar label) {
+  display: grid;
+  min-width: min(380px, 100%);
+  gap: 5px;
+  color: var(--admin-muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.root :global(.appointment-list__toolbar input) {
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: #fff;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.root :global(.appointment-list__toolbar small) {
+  padding-bottom: 10px;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.root :global(.appointment-list__time strong),
+.root :global(.appointment-list__time span),
+.root :global(.appointment-list__patient strong),
+.root :global(.appointment-list__patient small),
+.root :global(.appointment-list__patient em),
+.root :global(.appointment-list__service strong),
+.root :global(.appointment-list__service small) {
+  display: block;
+}
+
+.root :global(.appointment-list__time strong) {
+  color: var(--admin-teal-700);
+  font-size: 13px;
+}
+
+.root :global(.appointment-list__time span),
+.root :global(.appointment-list__patient small),
+.root :global(.appointment-list__service small) {
+  margin-top: 3px;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.root :global(.appointment-list__patient strong),
+.root :global(.appointment-list__service strong) {
+  color: var(--admin-navy-900);
+  font-size: 13px;
+}
+
+.root :global(.appointment-list__patient em) {
+  margin-top: 4px;
+  color: #557a88;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.root :global(.appointment-list__actions) {
+  display: flex;
+  min-width: 200px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.root :global(.appointment-list__actions button) {
+  min-height: 29px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--admin-teal-700);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.root :global(.appointment-list__actions .is-detail) {
+  border: 1px solid #9fd5df;
+  background: #fff;
+  color: #087c9d;
+}
+
+.root :global(.appointment-list__actions .is-quiet) {
+  background: #e9f4f6;
+  color: var(--admin-teal-700);
+}
+
+.root :global(.appointment-list__actions .is-danger) {
+  border: 1px solid #efbbc0;
+  background: #fff;
+  color: #b84950;
+}
+
+.drawerBackdrop {
+  position: fixed;
+  z-index: 75;
+  inset: 0;
+  background: rgb(7 35 48 / 0.38);
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(510px, 100%);
+  height: 100%;
+  overflow: auto;
+  background: #fff;
+  box-shadow: -16px 0 38px rgb(7 35 48 / 0.18);
+  outline: 0;
+}
+
+.drawer > header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #dce9ed;
+  background: rgb(255 255 255 / 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.drawer h2 {
+  margin: 4px 0 0;
+  color: #082d4a;
+  font-size: 20px;
+}
+
+.drawer > header > button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #cfe0e5;
+  border-radius: 8px;
+  background: #fff;
+  color: #54727d;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.drawerBody {
+  display: grid;
+  gap: 18px;
+  padding: 20px 24px 32px;
+}
+
+.drawerStatus {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #d7e8ec;
+  border-radius: 10px;
+  background: #f7fcfd;
+}
+
+.drawerStatus > span {
+  color: #5c7480;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.drawer section {
+  padding-top: 17px;
+  border-top: 1px solid #e3edef;
+}
+
+.drawer section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.drawer h3 {
+  margin: 0 0 8px;
+  color: #0b566d;
+  font-size: 13px;
+}
+
+.drawer dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.drawer dl > div {
+  display: grid;
+  gap: 2px;
+}
+
+.drawer dt {
+  color: #778e98;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.drawer dd {
+  margin: 0;
+  color: #173f51;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.drawerHint {
+  margin: -2px 0 10px;
+  color: #708791;
+  font-size: 11px;
+}
+
+.drawerNote,
+.drawerCancel p {
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: #f3fafb;
+  color: #385765;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.drawerCancel {
+  border-top-color: #f0c7cb !important;
+}
+
+.drawerCancel h3 {
+  color: #b84950;
+}
+
+@media (max-width: 700px) {
+  .root :global(.appointment-list__toolbar) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .root :global(.appointment-list__toolbar label) {
+    min-width: 0;
+  }
+
+  .root :global(.appointment-list__toolbar small) {
+    padding: 0;
+  }
+
+  .root :global(.appointment-list__actions) {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .drawer {
+    width: 100%;
+  }
+
+  .drawer > header,
+  .drawerBody {
+    padding-inline: 18px;
+  }
+
+  .drawer dl {
+    grid-template-columns: 1fr;
+  }
+}

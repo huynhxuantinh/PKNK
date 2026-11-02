@@ -1,0 +1,64 @@
+.root :global(.organization-report-section) {
+  margin-top: 1rem;
+}
+
+.tableWrap {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #8fcbd6 #edf6f8;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tableWrap:focus-visible {
+  outline: 2px solid #078fad;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.table {
+  min-width: 780px;
+}
+
+.table th:first-child,
+.table td:first-child {
+  min-width: 220px;
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  min-width: 145px;
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  min-width: 160px;
+}
+
+.table th:nth-child(4),
+.table td:nth-child(4) {
+  min-width: 145px;
+}
+
+.table th:last-child,
+.table td:last-child {
+  min-width: 90px;
+}
+
+.pending {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e0edf1;
+}
+
+.pending > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pending > header h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+}

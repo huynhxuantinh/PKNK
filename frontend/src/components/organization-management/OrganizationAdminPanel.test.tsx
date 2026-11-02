@@ -87,8 +87,6 @@ describe('OrganizationAdminPanel', () => {
     expect(markup).toContain('branch@example.com')
     expect(markup).not.toContain('dentist@example.com')
     expect(markup).not.toContain('patient@example.com')
-    expect(markup).toContain('organization-staff-table-wrap')
-    expect(markup).toContain('organization-admin-table')
     expect(markup).toContain('Danh sách quản trị viên')
   })
 

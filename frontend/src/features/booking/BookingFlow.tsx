@@ -13,6 +13,7 @@ import {
 import { apiRequest, ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { isStaffUser } from "../../auth/roles";
+import styles from "./BookingFlow.module.css";
 import successStyles from "./BookingSuccess.module.css";
 import type {
   Appointment,
@@ -48,11 +49,13 @@ const fullDateTime = new Intl.DateTimeFormat("vi-VN", {
 });
 
 function LoadingState({ label }: { label: string }) {
-  return <p className="state-message state-loading">{label}</p>;
+  return (
+    <p className={`${styles.stateMessage} ${styles.stateLoading}`}>{label}</p>
+  );
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <p className="state-message">{label}</p>;
+  return <p className={styles.stateMessage}>{label}</p>;
 }
 
 function holdIsNoLongerUsable(reason: unknown) {
@@ -422,7 +425,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
   if (isStaff) {
     return (
-      <section className="booking-role-blocked" role="alert">
+      <section className={styles.blocked} role="alert">
         <h2>Tài khoản nhân viên không thể đặt lịch</h2>
         <p>Vui lòng sử dụng tài khoản bệnh nhân để đặt lịch khám.</p>
         <Link to="/">Về trang phù hợp</Link>
@@ -503,10 +506,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   }
 
   return (
-    <div className="booking-layout booking-layout--refined">
+    <div className={`${styles.flow} booking-layout booking-layout--refined`}>
       <div className="booking-main">
         {error && (
-          <div className="error-banner" role="alert">
+          <div className={styles.errorBanner} role="alert">
             {error}
           </div>
         )}

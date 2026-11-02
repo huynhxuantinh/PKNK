@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import type { ManagementAppointment } from '../../api/management'
 import type { BranchDentist, BranchOpeningHour } from '../../types/api'
 import { appointmentStatusLabels, hcmDate, hcmTime } from './appointmentPresentation'
-import './appointment-calendar.css'
+import styles from './AppointmentCalendar.module.css'
 
 type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
 
@@ -87,7 +87,7 @@ export function AppointmentCalendar({ items, dentists, openingHours, selectedDat
   const calendarHeight = ((calendarHours.end - calendarHours.start) / 60) * PIXELS_PER_HOUR
 
   return (
-    <div className="appointment-calendar">
+    <div className={styles.root}>
       <div className="appointment-calendar__legend" aria-label="Trạng thái lịch hẹn">
         <span className="is-pending">Chờ xác nhận</span><span className="is-confirmed">Đã xác nhận</span><span className="is-checked-in">Đã check-in / đang khám</span><span className="is-cancelled">Đã hủy / không đến</span>
       </div>

@@ -1,0 +1,584 @@
+.page {
+  min-height: 100vh;
+  background: #f7fbfc;
+}
+.page :global(.dentist-main) {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 52px 0 76px;
+}
+.page :global(.dentist-welcome) {
+  position: relative;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+  padding: 34px 38px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 91% 12%, rgb(94 212 220 / 0.3), transparent 21%),
+    linear-gradient(135deg, #123d50, #0d6479);
+  color: #fff;
+}
+.page :global(.dentist-welcome::after) {
+  position: absolute;
+  right: -80px;
+  bottom: -175px;
+  width: 270px;
+  height: 270px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 45px rgb(255 255 255 / 0.045);
+  content: "";
+}
+.page :global(.dentist-welcome > *) {
+  position: relative;
+  z-index: 1;
+}
+.page :global(.dentist-welcome .eyebrow) {
+  color: #fff;
+  font-size: 12px;
+}
+.page :global(.dentist-welcome h1) {
+  margin: 11px 0 0;
+  font-size: clamp(29px, 4vw, 43px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+}
+.page :global(.dentist-welcome p:last-child) {
+  margin: 10px 0 0;
+  color: #fff;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+.page :global(.dentist-error) {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid #f0c7c4;
+  border-radius: 10px;
+  background: #fff6f5;
+  color: #ad3f38;
+  font-size: 12px;
+}
+.page :global(.dentist-branches),
+.page :global(.dentist-schedule-panel) {
+  overflow: hidden;
+  border: 1px solid #d8e8eb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 15px 34px rgb(17 74 85 / 0.05);
+}
+.page :global(.dentist-branches) {
+  margin-top: 22px;
+}
+.page :global(.dentist-branches > header),
+.page :global(.dentist-schedule-panel > header) {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 23px 27px 19px;
+  border-bottom: 1px solid #dce9eb;
+  background: #fbfeff;
+}
+.page :global(.dentist-schedule-panel > header) {
+  padding: 25px 28px;
+}
+.page :global(.dentist-branches h2),
+.page :global(.dentist-schedule-panel > header h2) {
+  margin: 7px 0 0;
+  color: #123d50;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+.page :global(.dentist-schedule-panel > header h2) {
+  font-size: 23px;
+}
+.page :global(.dentist-branches > header > span),
+.page :global(.dentist-schedule-panel > header > span) {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e9f5f6;
+  color: #0b7187;
+  font-size: 11px;
+  font-weight: 800;
+}
+.page :global(.dentist-branches-error) {
+  margin: 0;
+  padding: 10px 27px;
+  border-bottom: 1px solid #f0d9bf;
+  background: #fff9f0;
+  color: #96651e;
+  font-size: 11px;
+}
+.page :global(.dentist-branches-loading) {
+  display: grid;
+  min-height: 94px;
+  place-items: center;
+  padding: 24px;
+  color: #728892;
+  font-size: 12px;
+  text-align: center;
+}
+.page :global(.dentist-branch-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+}
+.page :global(.dentist-branch-card) {
+  position: relative;
+  min-width: 0;
+  padding: 23px 27px;
+  border-right: 1px solid #e0edef;
+}
+.page :global(.dentist-branch-card.is-selected) {
+  background: #f0fbfc;
+  box-shadow: inset 0 3px 0 #1595af;
+}
+.page :global(.dentist-branch-card:last-child) {
+  border-right: 0;
+}
+.page :global(.dentist-branch-code) {
+  display: inline-block;
+  margin-bottom: 11px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #e5f5f7;
+  color: #0a7187;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+}
+.page :global(.dentist-branch-card h3) {
+  margin: 0;
+  color: #143d4e;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+}
+.page :global(.dentist-branch-card > p) {
+  min-height: 40px;
+  margin: 7px 0 17px;
+  color: #526d79;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.page :global(.dentist-branch-card dl) {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 17px;
+}
+.page :global(.dentist-branch-card dl > div) {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px;
+}
+.page :global(.dentist-branch-card dt) {
+  color: #627d88;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.page :global(.dentist-branch-card dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #315262;
+  font-size: 13px;
+  font-weight: 700;
+}
+.page :global(.dentist-branch-card a),
+.page :global(.dentist-appointment-action > a) {
+  color: #08738b;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.page :global(.dentist-branch-card a) {
+  color: #0a7289;
+  font-size: 12px;
+}
+.page :global(.dentist-branch-card a:hover),
+.page :global(.dentist-appointment-action > a:hover) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.page :global(.dentist-branch-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.page :global(.dentist-branch-actions > span) {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #087493;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.page :global(.dentist-branch-actions button) {
+  padding: 8px 10px;
+  border: 1px solid #1492ab;
+  border-radius: 8px;
+  background: #fff;
+  color: #08738b;
+  font-size: 10px;
+  font-weight: 800;
+}
+.page :global(.dentist-branch-actions button:hover),
+.page :global(.dentist-branch-card.is-selected .dentist-branch-actions button) {
+  background: #1492ab;
+  color: #fff;
+}
+.page :global(.dentist-stat-grid) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 22px 0;
+}
+.page :global(.dentist-stat-grid article) {
+  display: grid;
+  min-height: 124px;
+  align-content: start;
+  gap: 4px;
+  padding: 20px 22px;
+  border: 1px solid #dce9eb;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 10px 25px rgb(18 73 84 / 0.04);
+}
+.page :global(.dentist-stat-grid span) {
+  color: #46616d;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.page :global(.dentist-stat-grid strong) {
+  margin-top: 4px;
+  color: #103d50;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.page :global(.dentist-stat-grid small) {
+  color: #4d6874;
+  font-size: 13px;
+}
+.page :global(.dentist-schedule-tabs),
+.page :global(.dentist-schedule-filters),
+.page :global(.dentist-branch-filter) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 13px 28px;
+  border-bottom: 1px solid #dce9eb;
+  background: #f8fcfd;
+}
+.page :global(.dentist-schedule-tabs) {
+  gap: 4px;
+  padding: 14px 28px 0;
+}
+.page :global(.dentist-schedule-tabs button) {
+  position: relative;
+  padding: 10px 16px 12px;
+  border: 0;
+  background: transparent;
+  color: #6e858e;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.page :global(.dentist-schedule-tabs button::after) {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  content: "";
+}
+.page :global(.dentist-schedule-tabs button:hover),
+.page :global(.dentist-schedule-tabs button.is-active) {
+  color: #08738b;
+}
+.page :global(.dentist-schedule-tabs button.is-active::after) {
+  background: #1492ab;
+}
+.page :global(.dentist-schedule-filters label) {
+  display: grid;
+  gap: 5px;
+  color: #46616d;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.page :global(.dentist-schedule-filters select),
+.page :global(.dentist-schedule-filters input) {
+  min-width: 156px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #cfe1e5;
+  border-radius: 8px;
+  background: #fff;
+  color: #234958;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-transform: none;
+}
+.page :global(.dentist-schedule-filters select) {
+  padding-right: 28px;
+}
+.page :global(.dentist-schedule-filters select:focus),
+.page :global(.dentist-schedule-filters input:focus) {
+  border-color: #1492ab;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(20 146 171 / 0.1);
+}
+.page :global(.dentist-branch-filter) {
+  gap: 8px;
+}
+.page :global(.dentist-branch-filter button) {
+  max-width: 100%;
+  padding: 8px 10px;
+  overflow: hidden;
+  border: 1px solid #cfe1e5;
+  border-radius: 999px;
+  background: #fff;
+  color: #52707b;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page :global(.dentist-branch-filter button:hover),
+.page :global(.dentist-branch-filter button.is-active) {
+  border-color: #1492ab;
+  background: #e8f8fa;
+  color: #08738b;
+}
+.page :global(.dentist-empty) {
+  display: grid;
+  min-height: 225px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px;
+  color: #718892;
+  font-size: 12px;
+  text-align: center;
+}
+.page :global(.dentist-empty strong) {
+  color: #183f4f;
+  font-size: 15px;
+}
+.page :global(.dentist-appointment-list) {
+  display: grid;
+}
+.page :global(.dentist-appointment) {
+  display: grid;
+  grid-template-columns: 65px 43px minmax(0, 1fr) auto;
+  min-height: 106px;
+  align-items: center;
+  gap: 17px;
+  padding: 17px 28px;
+  border-bottom: 1px solid #e2edef;
+}
+.page :global(.dentist-appointment:last-child) {
+  border-bottom: 0;
+}
+.page :global(.dentist-appointment > time) {
+  display: grid;
+  gap: 3px;
+  color: #104e64;
+  font-size: 15px;
+  font-weight: 800;
+}
+.page :global(.dentist-appointment > time strong) {
+  font-size: 15px;
+}
+.page :global(.dentist-appointment > time span) {
+  color: #4d6874;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.page :global(.dentist-patient-initials) {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dff3f5;
+  color: #0b6981;
+  font-size: 11px;
+  font-weight: 850;
+}
+.page :global(.dentist-appointment-main) {
+  min-width: 0;
+}
+.page :global(.dentist-appointment-branch) {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: #08748b;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.page :global(.dentist-appointment-title) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page :global(.dentist-appointment-title h3) {
+  margin: 0;
+  overflow: hidden;
+  color: #143d4e;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page :global(.dentist-appointment-main p) {
+  margin: 5px 0;
+  color: #12708a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.page :global(.dentist-appointment-main small) {
+  color: #4d6874;
+  font-size: 13px;
+}
+.page :global(.dentist-appointment-main .dentist-appointment-note) {
+  margin: 6px 0 0;
+  color: #617982;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.page :global(.dentist-appointment-note strong) {
+  color: #375564;
+}
+.page :global(.dentist-status) {
+  flex: none;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: #eef3f4;
+  color: #627983;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.page :global(.dentist-status.is-held) {
+  background: #fff7df;
+  color: #8c671b;
+}
+.page :global(.dentist-status.is-expired) {
+  background: #f2f4f5;
+  color: #687b84;
+}
+.page :global(.dentist-status.is-checked_in) {
+  background: #fff3dc;
+  color: #936018;
+}
+.page :global(.dentist-status.is-in_progress) {
+  background: #e2f6f8;
+  color: #08778c;
+}
+.page :global(.dentist-status.is-completed) {
+  background: #e8f7ef;
+  color: #08765c;
+}
+.page :global(.dentist-status.is-cancelled),
+.page :global(.dentist-status.is-no_show) {
+  background: #fff0ef;
+  color: #ad4540;
+}
+.page :global(.dentist-appointment-action) {
+  min-width: 118px;
+  text-align: right;
+}
+.page :global(.dentist-appointment-action > span) {
+  color: #4d6874;
+  font-size: 13px;
+  font-weight: 700;
+}
+.page :global(.dentist-start-button) {
+  padding: 10px 13px;
+  border-radius: 8px;
+  background: #0f91ac;
+  color: #fff;
+  font-size: 10px;
+}
+.page :global(.dentist-start-button:hover) {
+  background: #0a7089;
+}
+@media (max-width: 760px) {
+  .page :global(.dentist-main) {
+    width: calc(100% - 24px);
+    padding: 28px 0 48px;
+  }
+  .page :global(.dentist-welcome) {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 27px 23px;
+  }
+  .page :global(.dentist-branches > header),
+  .page :global(.dentist-schedule-panel > header) {
+    padding: 20px;
+  }
+  .page :global(.dentist-stat-grid) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .page :global(.dentist-stat-grid article) {
+    grid-template-columns: 1fr auto;
+    min-height: 0;
+    align-items: center;
+  }
+  .page :global(.dentist-stat-grid strong) {
+    grid-row: 1 / 3;
+    grid-column: 2;
+  }
+  .page :global(.dentist-schedule-tabs) {
+    padding-inline: 20px;
+  }
+  .page :global(.dentist-schedule-filters) {
+    padding: 12px 20px;
+  }
+  .page :global(.dentist-branch-filter) {
+    flex-wrap: nowrap;
+    padding: 12px 20px;
+    overflow-x: auto;
+  }
+  .page :global(.dentist-branch-grid) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.dentist-branch-card) {
+    padding: 20px;
+    border-right: 0;
+    border-bottom: 1px solid #e0edef;
+  }
+  .page :global(.dentist-branch-card:last-child) {
+    border-bottom: 0;
+  }
+  .page :global(.dentist-appointment) {
+    grid-template-columns: 49px 39px minmax(0, 1fr);
+    gap: 11px;
+    padding: 17px 20px;
+  }
+  .page :global(.dentist-patient-initials) {
+    width: 39px;
+    height: 39px;
+  }
+  .page :global(.dentist-appointment-action) {
+    grid-column: 3;
+    min-width: 0;
+    margin-top: 5px;
+    text-align: left;
+  }
+}

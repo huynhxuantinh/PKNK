@@ -1,0 +1,43 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin: 1.15rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #dcebed;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fbfeff, #f4fafb);
+}
+
+.toolbar label {
+  display: grid;
+  flex: 1 1 230px;
+  gap: 0.35rem;
+  color: #264f64;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.toolbar label:nth-child(2) { flex-basis: 180px; max-width: 230px; }
+.toolbar input, .toolbar select { box-sizing: border-box; width: 100%; min-height: 38px; padding: 0.55rem 0.7rem; border: 1px solid #cbdfe7; border-radius: 8px; background: #fff; color: #082d4a; font: inherit; font-size: 0.8rem; }
+.toolbar small { margin: 0 0 0.55rem auto; color: #638095; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
+
+.detailPanel { margin-top: 1rem; padding: 1.35rem; border: 1px solid #d9e8ed; border-radius: 16px; background: #f9fdfe; }
+.detailPanel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.detailPanel h3 { margin: 0.2rem 0 0.15rem; font-size: 1.2rem; }
+.detailPanel header p { margin: 0; color: #638095; font-size: 0.82rem; }
+.detailPanel header button { padding: 0.42rem 0.65rem; border: 1px solid #cbdfe7; border-radius: 7px; background: #fff; color: #087c9d; font: inherit; font-size: 0.72rem; font-weight: 750; cursor: pointer; }
+.detailPanel dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem 1.5rem; margin: 1rem 0 0; }
+.detailPanel dt { color: #78909b; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.detailPanel dd { margin: 0.2rem 0 0; color: #264f64; font-size: 0.82rem; line-height: 1.5; }
+.detailActions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; }
+.detailActions button { padding: 0.55rem 0.8rem; border: 1px solid #cbdfe7; border-radius: 8px; background: #fff; color: #087c9d; font: inherit; font-size: 0.76rem; font-weight: 750; cursor: pointer; }
+.detailActions :global(.is-danger) { border-color: #ecc8c4; color: #b3423b; }
+
+@media (max-width: 720px) {
+  .toolbar { align-items: stretch; padding: 0.8rem; }
+  .toolbar label, .toolbar label:nth-child(2) { flex-basis: 100%; max-width: none; }
+  .toolbar small { margin: 0; }
+  .detailPanel dl { grid-template-columns: 1fr; }
+}

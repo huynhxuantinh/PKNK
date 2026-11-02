@@ -1,0 +1,128 @@
+.page :global(.branch-management-main) {
+  max-width: 1280px;
+}
+.page :global(.branch-config-heading) {
+  position: relative;
+  overflow: hidden;
+  margin: 16px 0 20px;
+  padding: 28px 30px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--admin-radius-xl);
+  background: linear-gradient(120deg, #103e55 0%, #0f7188 58%, #1299a9 100%);
+}
+.page :global(.branch-config-heading::after) {
+  position: absolute;
+  right: -80px;
+  bottom: -150px;
+  width: 310px;
+  height: 310px;
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 42px rgb(255 255 255 / 5%),
+    0 0 0 84px rgb(255 255 255 / 4%);
+  content: "";
+  pointer-events: none;
+}
+.page :global(.branch-config-heading > *) {
+  position: relative;
+  z-index: 1;
+}
+.page :global(.branch-config-heading h1) {
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.08;
+}
+.page :global(.branch-config-grid) {
+  gap: 18px;
+}
+.page :global(.branch-config-section) {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: #fff;
+  box-shadow: var(--admin-shadow-sm);
+}
+.page :global(.branch-config-section > header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #fff, #f7fcfd);
+}
+.page :global(.branch-config-section > header h2) {
+  margin: 0;
+  color: var(--admin-navy-900);
+  font-size: 18px;
+}
+.page :global(.branch-config-section > header small) {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #e8f7f7;
+  color: var(--admin-teal-800);
+}
+.page :global(.config-opening-hours) {
+  gap: 8px;
+  padding: 18px 20px 20px;
+}
+.page :global(.config-opening-row) {
+  min-height: 48px;
+  border: 1px solid #deebef;
+  border-radius: 10px;
+  background: #fbfeff;
+}
+.page :global(.config-opening-row:focus-within) {
+  border-color: #75c9d5;
+  box-shadow: 0 0 0 3px rgb(18 153 169 / 10%);
+}
+.page :global(.config-inline-form) {
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom-color: #e7eff2;
+  background: #f8fbfc;
+}
+.page :global(.config-inline-form label) {
+  color: #456372;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.page :global(.config-inline-form input),
+.page :global(.config-inline-form select) {
+  min-height: 40px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.page :global(.config-inline-form > button) {
+  min-height: 40px;
+  border-radius: 9px;
+}
+.page :global(.config-item-list) {
+  padding: 8px 12px 12px;
+}
+.page :global(.config-item-list article) {
+  margin: 0;
+  padding: 14px 8px;
+  border-bottom-color: #edf2f4;
+}
+.page :global(.config-item-list article:last-child) {
+  border-bottom: 0;
+}
+.page :global(.config-item-list h3) {
+  color: var(--admin-navy-900);
+}
+.page :global(.config-item-list span) {
+  border-radius: 999px;
+}
+@media (max-width: 700px) {
+  .page :global(.branch-config-heading) {
+    padding: 22px 20px;
+  }
+  .page :global(.branch-config-section > header) {
+    align-items: flex-start;
+    padding: 16px;
+  }
+  .page :global(.config-opening-hours),
+  .page :global(.config-inline-form) {
+    padding: 14px 16px;
+  }
+}

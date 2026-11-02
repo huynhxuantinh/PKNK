@@ -1,0 +1,231 @@
+.page {
+  display: grid;
+  gap: 20px;
+}
+.page :global(.branch-staff-page__heading) {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px 28px;
+  border-radius: var(--admin-radius-xl);
+  background: linear-gradient(
+    115deg,
+    var(--admin-navy-900),
+    var(--admin-teal-600)
+  );
+  color: #fff;
+}
+.page :global(.branch-staff-page__heading .eyebrow) {
+  color: #afeefa;
+}
+.page :global(.branch-staff-page__heading h1) {
+  margin: 6px 0;
+  font-size: clamp(27px, 4vw, 38px);
+}
+.page :global(.branch-staff-page__heading p:not(.eyebrow)) {
+  max-width: 620px;
+  margin: 0;
+  color: #d6f2f6;
+  font-size: 13px;
+}
+.page :global(.branch-staff-page__heading > div:last-child) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.page :global(.branch-staff-page__section) {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: #fff;
+  box-shadow: var(--admin-shadow-sm);
+}
+.page :global(.branch-staff-page__section > header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.page :global(.branch-staff-page__section h2) {
+  margin: 4px 0 0;
+  color: var(--admin-navy-900);
+  font-size: 20px;
+}
+.page :global(.branch-staff-page__hint) {
+  margin: -6px 0 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+.page :global(.branch-staff-page__actions) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.page :global(.branch-staff-page__actions button) {
+  padding: 6px 8px;
+  border: 1px solid #a8d5df;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--admin-teal-700);
+  font-size: 11px;
+  font-weight: 800;
+}
+.page :global(.branch-staff-page__actions button + button) {
+  border-color: #d4e0e4;
+  color: #617b87;
+}
+.page :global(.branch-staff-page__notice) {
+  padding: 11px 13px;
+  border: 1px solid #b5e7d5;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-success-bg);
+  color: var(--admin-success);
+  font-size: 13px;
+  font-weight: 700;
+}
+.page :global(.branch-staff-page__modal-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.page :global(.branch-staff-page__filters) {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: #fff;
+  box-shadow: var(--admin-shadow-sm);
+}
+.page :global(.branch-staff-page__filters label) {
+  display: grid;
+  gap: 5px;
+  min-width: 190px;
+  color: var(--admin-muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.page :global(.branch-staff-page__filters select) {
+  min-height: 39px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-navy-800);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.page :global(.branch-staff-page__filters button) {
+  min-height: 39px;
+  padding: 8px 11px;
+  border: 1px solid #b8dce3;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-teal-700);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.page :global(.branch-staff-page__filters small) {
+  margin-left: auto;
+  padding-bottom: 10px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.page :global(.branch-staff-page__pagination) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+.page :global(.branch-staff-page__pagination small) {
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.page :global(.branch-staff-page__pagination > div) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.page :global(.branch-staff-page__pagination button) {
+  min-width: 62px;
+  min-height: 33px;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--admin-teal-700);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.page :global(.branch-staff-page__pagination button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.page :global(.branch-staff-page__pagination span) {
+  min-width: 44px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .page :global(.branch-staff-page__heading) {
+    align-items: start;
+    flex-direction: column;
+  }
+  .page :global(.branch-staff-page__heading > div:last-child) {
+    justify-content: flex-start;
+  }
+  .page :global(.branch-staff-page__section) {
+    padding: 16px;
+  }
+  .page :global(.branch-staff-page__section > header) {
+    align-items: start;
+    flex-direction: column;
+  }
+  .page :global(.branch-staff-page__section > header .admin-button) {
+    width: 100%;
+  }
+  .page :global(.branch-staff-page__filters) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .page :global(.branch-staff-page__filters label) {
+    min-width: 0;
+  }
+  .page :global(.branch-staff-page__filters small) {
+    margin-left: 0;
+    padding-bottom: 0;
+  }
+  .page :global(.branch-staff-page__filters button) {
+    width: 100%;
+  }
+}
+@media (max-width: 560px) {
+  .page :global(.branch-staff-page__pagination) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page :global(.branch-staff-page__pagination > div) {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .page :global(.branch-staff-page__pagination button) {
+    flex: 1;
+  }
+}

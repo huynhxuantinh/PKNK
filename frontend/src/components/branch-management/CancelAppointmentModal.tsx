@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { ManagementAppointment } from '../../api/management'
+import styles from './CancelAppointmentModal.module.css'
 
 interface CancelAppointmentModalProps {
   appointment: ManagementAppointment
@@ -24,9 +25,9 @@ export function CancelAppointmentModal({
   }
 
   return (
-    <div className="branch-management-modal-backdrop">
+    <div className={styles.backdrop}>
       <form
-        className="branch-management-modal"
+        className={styles.modal}
         onSubmit={submit}
         role="dialog"
         aria-modal="true"
