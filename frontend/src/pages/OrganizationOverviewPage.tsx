@@ -318,7 +318,7 @@ export function OrganizationOverviewPage() {
       }
     >
       {error && (
-        <div className="dentist-error" role="alert">
+        <div className="app-error" role="alert">
           {error}
         </div>
       )}

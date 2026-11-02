@@ -401,7 +401,7 @@ export function BranchConfigurationPage() {
             <strong>4 nhóm cấu hình</strong>
           </header>
           {error && (
-            <div className="dentist-error" role="alert">
+            <div className="app-error" role="alert">
               {error}
               <button
                 type="button"

@@ -124,7 +124,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
         <small>Áp dụng cho toàn bộ chi nhánh</small>
       </header>
 
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="app-error" role="alert">{error}</div>}
       {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
       {loading ? (

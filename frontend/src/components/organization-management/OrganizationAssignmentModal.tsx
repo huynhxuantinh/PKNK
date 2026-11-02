@@ -55,7 +55,7 @@ export function OrganizationAssignmentModal({
         </header>
         <p>{description}</p>
         <p className="organization-warning">{warning}</p>
-        {error && <div className="dentist-error" role="alert">{error}</div>}
+        {error && <div className="app-error" role="alert">{error}</div>}
 
         {options.length > 0 ? (
           <div className="organization-checkbox-grid">

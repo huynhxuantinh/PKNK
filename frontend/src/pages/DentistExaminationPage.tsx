@@ -438,7 +438,7 @@ export function DentistExaminationPage() {
           ← Quay lại lịch khám
         </Link>
         {error && (
-          <div className="dentist-error" role="alert">
+          <div className="app-error" role="alert">
             {error}
           </div>
         )}
@@ -644,7 +644,7 @@ export function DentistExaminationPage() {
               </aside>
             </section>
             {branchServicesError ? (
-              <div className="dentist-error" role="alert">
+              <div className="app-error" role="alert">
                 {branchServicesError}
               </div>
             ) : (
@@ -679,7 +679,7 @@ export function DentistExaminationPage() {
                 <span>Chỉ xem tại chi nhánh này</span>
               </header>
               {patientSummaryError ? (
-                <div className="dentist-error" role="alert">
+                <div className="app-error" role="alert">
                   {patientSummaryError}
                 </div>
               ) : !patientSummary ? (

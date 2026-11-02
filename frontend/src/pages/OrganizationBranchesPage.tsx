@@ -313,7 +313,7 @@ export function OrganizationBranchesPage() {
       }
     >
       {error && (
-        <div className="dentist-error" role="alert">
+        <div className="app-error" role="alert">
           {error}
         </div>
       )}
@@ -513,7 +513,7 @@ export function OrganizationBranchesPage() {
           onClose={() => setSelectedBranch(null)}
         >
           {detailsError && (
-            <div className="dentist-error" role="alert">
+            <div className="app-error" role="alert">
               {detailsError}
             </div>
           )}

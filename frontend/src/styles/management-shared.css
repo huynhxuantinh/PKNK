@@ -65,7 +65,89 @@
   text-align: center;
 }
 
+/* Reusable report/table primitives used by both branch and organization screens. */
+.branch-report-eyebrow {
+  color: #638095;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.branch-report-table-wrap {
+  overflow-x: auto;
+}
+
+.branch-report-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.branch-report-table th,
+.branch-report-table td {
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid #e8f0f3;
+  text-align: left;
+}
+
+.branch-report-table th {
+  color: #638095;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.branch-report-table th:last-child,
+.branch-report-table td:last-child {
+  text-align: right;
+}
+
+.branch-report-table td:last-child {
+  color: #087c9d;
+  font-weight: 800;
+}
+
+.branch-report-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.branch-report-empty {
+  margin: 0;
+  padding: 1.5rem;
+  color: #638095;
+}
+
+/* Shared success notices and empty states across management features. */
+.staff-schedule-notice {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #a9ddd2;
+  border-radius: 10px;
+  background: #effbf7;
+  color: #176c59;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.staff-schedule-empty {
+  padding: 2rem 1.5rem;
+  color: #718a96;
+  text-align: center;
+}
+
+/* Cross-role error alert. */
+.app-error {
+  margin-top: 1.125rem;
+  padding: 0.8125rem 0.9375rem;
+  border: 1px solid #f0c7c4;
+  border-radius: 10px;
+  background: #fff6f5;
+  color: #ad3f38;
+  font-size: 0.75rem;
+}
+
 @media (max-width: 760px) {
   .management-section-nav { grid-template-columns: 1fr; }
   .management-section-nav a { padding: 0.85rem 1rem; }
+
+  .branch-report-table th,
+  .branch-report-table td { padding: 0.8rem 1rem; }
 }

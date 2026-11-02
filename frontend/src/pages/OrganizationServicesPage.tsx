@@ -277,7 +277,7 @@ export function OrganizationServicesPage() {
       }
     >
       {error && (
-        <div className="dentist-error" role="alert">
+        <div className="app-error" role="alert">
           {error}
         </div>
       )}
@@ -477,7 +477,7 @@ export function OrganizationServicesPage() {
           onClose={() => setComparing(null)}
         >
           {comparisonError && (
-            <div className="dentist-error" role="alert">
+            <div className="app-error" role="alert">
               {comparisonError}
             </div>
           )}

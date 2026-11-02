@@ -56,7 +56,7 @@ export function OrganizationInviteModal({
         {transfer && <p className="organization-warning">
           Đang chuyển giao quản lý chi nhánh {transfer.branchName}. Quyền cũ chỉ được ngừng khi người mới nhận lời mời.
         </p>}
-        {error && <div className="dentist-error" role="alert">{error}</div>}
+        {error && <div className="app-error" role="alert">{error}</div>}
 
         <form className="organization-form-grid" onSubmit={submit}>
           <label className="organization-span-2">

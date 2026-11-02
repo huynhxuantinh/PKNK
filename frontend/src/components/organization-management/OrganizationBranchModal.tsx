@@ -56,7 +56,7 @@ export function OrganizationBranchModal({
       className="organization-modal"
       onClose={() => { if (!busy) onClose() }}
     >
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="app-error" role="alert">{error}</div>}
 
         <form className="organization-form-grid" onSubmit={submit}>
           <label>

@@ -147,7 +147,7 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
         <span>{attachments.length} tệp đã lưu</span>
       </header>
 
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="app-error" role="alert">{error}</div>}
 
       {attachments.length > 0 && <div className="clinical-attachment-grid">
         {attachments.filter((item) => item.content_type.startsWith('image/')).map((attachment) => (

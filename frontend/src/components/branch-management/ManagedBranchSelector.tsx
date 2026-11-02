@@ -39,7 +39,7 @@ export function ManagedBranchSelector({
       <h1 id="branch-selector-title">Chọn chi nhánh làm việc</h1>
       <p>Chọn chi nhánh để xem ca làm hoặc báo cáo tương ứng.</p>
 
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="app-error" role="alert">{error}</div>}
       {loading ? (
         <p role="status">Đang tải danh sách chi nhánh...</p>
       ) : activeBranches.length > 0 ? (

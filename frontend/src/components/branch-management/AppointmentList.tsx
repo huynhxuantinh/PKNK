@@ -34,7 +34,7 @@ function statusTone(status: ManagementAppointment["status"]) {
 
 export function ManagementErrorBanner({ message }: { message: string }) {
   return (
-    <div className="dentist-error" role="alert">
+    <div className="app-error" role="alert">
       {message}
     </div>
   );

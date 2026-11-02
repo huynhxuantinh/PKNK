@@ -55,16 +55,6 @@
   color: #fff;
   font-size: 1.55rem;
 }
-.staff-schedule-notice {
-  margin-bottom: 1rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid #a9ddd2;
-  border-radius: 10px;
-  background: #effbf7;
-  color: #176c59;
-  font-size: 0.86rem;
-  font-weight: 700;
-}
 .staff-schedule-section {
   margin-top: 1.25rem;
   padding: 0;
@@ -216,11 +206,6 @@
 .staff-schedule-status.is-inactive {
   background: #eef2f3;
   color: #70838a;
-}
-.staff-schedule-empty {
-  padding: 2rem 1.5rem;
-  color: #718a96;
-  text-align: center;
 }
 @media (max-width: 980px) {
   .staff-schedule-heading {

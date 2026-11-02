@@ -119,7 +119,7 @@ export function OrganizationAuditPage() {
         data ? <span className="organization-hero-stat">{data.count} sự kiện</span> : undefined
       }
     >
-      {error && <div className="dentist-error" role="alert">{error}</div>}
+      {error && <div className="app-error" role="alert">{error}</div>}
 
       <section className="branch-management-schedule organization-report-section" aria-labelledby="organization-audit-filters-title">
         <header>

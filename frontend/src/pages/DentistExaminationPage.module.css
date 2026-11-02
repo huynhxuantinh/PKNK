@@ -13,7 +13,7 @@
   font-weight: 750;
   text-decoration: none;
 }
-.page :global(.dentist-error) {
+.page :global(.app-error) {
   margin-top: 18px;
   padding: 13px 15px;
   border: 1px solid #f0c7c4;
