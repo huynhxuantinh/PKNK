@@ -760,59 +760,6 @@ main section[id] {
   }
 }
 
-.home-section {
-  width: min(1160px, calc(100% - 40px));
-  margin: 80px auto;
-  padding: 64px 40px;
-}
-.section-intro {
-  margin-bottom: 46px;
-  display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: 80px;
-  align-items: end;
-}
-.section-intro.compact {
-  margin-bottom: 38px;
-}
-.section-intro h1,
-.section-intro h2,
-.care-copy h2 {
-  margin: 12px 0 0;
-  font-family: var(--font-display);
-  color: var(--ink);
-  font-size: clamp(34px, 4vw, 46px);
-  line-height: 1.18;
-  letter-spacing: -0.025em;
-  font-weight: 700;
-}
-.section-intro > p,
-.section-intro > .text-link {
-  margin: 0 0 4px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.section-intro > .text-link {
-  justify-self: end;
-  color: var(--primary-dark);
-}
-
-.services-section {
-  border-radius: 16px;
-  background: var(--soft);
-}
-.services-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-.branches-section {
-  width: 100%;
-  max-width: none;
-  padding: 88px max(24px, calc((100% - 1160px) / 2));
-  border-block: 1px solid #ebebec;
-  background: #ffffff;
-}
 .branch-showcase {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -932,105 +879,11 @@ main section[id] {
   font-size: 12px;
   line-height: 1.6;
 }
-.home-state {
-  margin: 0;
-  padding: 35px;
-  border: 1px dashed #abc2b6;
-  color: var(--muted);
-  text-align: center;
-}
-
-.branch-map-layout {
-  display: grid;
-  grid-template-columns: minmax(310px, 0.78fr) minmax(0, 1.35fr);
-  gap: 20px;
-  align-items: stretch;
-}
 .branch-map-column {
   min-width: 0;
   display: grid;
   align-content: start;
   gap: 12px;
-}
-.branch-list {
-  max-height: 600px;
-  padding-right: 7px;
-  display: grid;
-  grid-auto-rows: max-content;
-  align-content: start;
-  gap: 10px;
-  overflow-y: auto;
-}
-.branch-list-card {
-  width: 100%;
-  min-height: 138px;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink);
-  text-align: left;
-  transition:
-    border 0.18s,
-    background 0.18s;
-}
-.branch-list-card:hover {
-  transform: none;
-  border-color: #b7ecda;
-  box-shadow: none;
-}
-.branch-list-card.selected {
-  border-color: var(--primary);
-  background: var(--soft);
-  box-shadow: inset 4px 0 0 var(--primary);
-}
-.branch-list-card > img {
-  width: 150px;
-  height: 100%;
-  min-height: 138px;
-  display: block;
-  object-fit: cover;
-}
-.branch-list-content {
-  min-width: 0;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.branch-list-content > strong {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--aurelia-ink);
-}
-.branch-list-content > span:not(.open-status) {
-  color: var(--aurelia-body);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.branch-list-content small {
-  color: var(--aurelia-body);
-  font-size: 12px;
-}
-.branch-detail-link {
-  margin-top: auto;
-  padding-top: 4px;
-  align-self: flex-start;
-  color: var(--aurelia-blue-dark);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.branch-detail-link span {
-  margin-left: 5px;
-  transition: margin-left 0.18s ease;
-}
-.branch-detail-link:hover span {
-  margin-left: 9px;
 }
 .open-status {
   font-size: 11px;
@@ -1045,22 +898,6 @@ main section[id] {
 .open-status.is-open i {
   background: #2ca675;
   box-shadow: 0 0 0 4px #e0f1e8;
-}
-.map-panel {
-  min-height: 600px;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--soft);
-  box-shadow: none;
-}
-.map-panel iframe {
-  width: 100%;
-  height: 100%;
-  min-height: 600px;
-  display: block;
-  border: 0;
 }
 .branch-map-canvas {
   width: 100%;
@@ -1544,19 +1381,6 @@ main section[id] {
   .branch-card:last-child {
     display: none;
   }
-  .branch-map-layout {
-    grid-template-columns: 1fr;
-  }
-  .branch-list {
-    max-height: none;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    overflow: visible;
-  }
-  .map-panel,
-  .map-panel iframe,
-  .branch-map-canvas {
-    min-height: 480px;
-  }
   .care-copy {
     padding: 55px;
   }
@@ -1612,29 +1436,6 @@ main section[id] {
     top: 112px;
     width: auto;
   }
-  .hero-slider {
-    width: calc(100% - 16px);
-    aspect-ratio: 1.7 / 1;
-    margin-top: 8px;
-    border-radius: 8px;
-  }
-  .hero-slides img {
-    object-position: center;
-  }
-  .slider-arrow {
-    width: 36px;
-    height: 36px;
-    font-size: 25px;
-  }
-  .slider-prev {
-    left: 9px;
-  }
-  .slider-next {
-    right: 9px;
-  }
-  .slider-dots {
-    bottom: 10px;
-  }
   .hero-copy h1 {
     margin-top: 15px;
     font-size: clamp(43px, 14vw, 59px);
@@ -1684,64 +1485,14 @@ main section[id] {
     bottom: 18px;
     left: -10px;
   }
-  .trust-strip {
-    grid-template-columns: 1fr;
-    padding: 12px 0;
-  }
-  .trust-strip p,
-  .trust-strip p:first-child,
-  .trust-strip p:last-child {
-    padding: 15px 0;
-    border-right: 0;
-    border-bottom: 1px solid #d2dcd7;
-  }
-  .trust-strip p:last-child {
-    border-bottom: 0;
-  }
-  .home-section {
-    padding: 78px 0;
-  }
-  .section-intro,
-  .section-intro.compact {
-    margin-bottom: 30px;
-    grid-template-columns: 1fr;
-    gap: 17px;
-  }
-  .section-intro > .text-link {
-    justify-self: start;
-  }
-  .section-intro h1,
-  .section-intro h2 {
-    font-size: 34px;
-  }
-  .services-grid {
-    grid-template-columns: 1fr;
-  }
   .service-card {
     min-height: 240px;
-  }
-  .branches-section {
-    padding-block: 75px;
   }
   .branch-showcase {
     grid-template-columns: 1fr;
   }
   .branch-card:last-child {
     display: block;
-  }
-  .branch-list {
-    grid-template-columns: 1fr;
-  }
-  .branch-list-card {
-    grid-template-columns: 105px 1fr;
-  }
-  .branch-list-card > img {
-    width: 105px;
-  }
-  .map-panel,
-  .map-panel iframe,
-  .branch-map-canvas {
-    min-height: 420px;
   }
   .branch-contact-grid {
     grid-template-columns: 1fr;
