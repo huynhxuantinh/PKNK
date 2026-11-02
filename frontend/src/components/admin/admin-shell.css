@@ -74,6 +74,8 @@
 .admin-workspace { min-width: 0; }
 .admin-topbar { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; gap: var(--admin-space-4); min-height: 64px; padding: 0 30px; border-bottom: 1px solid #e6eef1; background: rgba(255, 255, 255, .94); backdrop-filter: blur(14px); }
 .admin-topbar > .auth-user, .admin-topbar > .auth-actions { margin-left: auto; }
+.admin-topbar > .admin-notification-menu + .auth-user,
+.admin-topbar > .admin-notification-menu + .auth-actions { margin-left: 0; }
 .admin-breadcrumb { display: flex; align-items: center; gap: 9px; color: var(--admin-muted); font-size: 12px; }
 .admin-breadcrumb b { color: #aac0c8; font-weight: 600; }
 .admin-breadcrumb strong { color: var(--admin-navy-800); }
@@ -85,6 +87,25 @@
 .admin-menu-toggle:focus-visible, .admin-sidebar a:focus-visible { outline: 3px solid rgba(17, 141, 168, .28); outline-offset: 3px; }
 .admin-shell-content > .branch-management-page { min-height: calc(100vh - 70px); }
 .admin-sidebar-backdrop { display: none; }
+
+.admin-notification-menu { position: relative; flex: 0 0 auto; }
+.admin-notification-trigger { position: relative; display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--admin-border); border-radius: 10px; background: #fff; color: #50717e; cursor: pointer; }
+.admin-notification-trigger:hover, .admin-notification-trigger[aria-expanded="true"] { border-color: #a8d9e2; background: #eff9fa; color: var(--admin-teal-700); }
+.admin-notification-trigger svg { width: 18px; height: 18px; }
+.admin-notification-count { position: absolute; top: -6px; right: -6px; display: grid; min-width: 18px; height: 18px; padding: 0 4px; place-items: center; border: 2px solid #fff; border-radius: 999px; background: #d64e59; color: #fff; font-size: 9px; font-weight: 850; }
+.admin-notification-popover { position: absolute; top: calc(100% + 10px); right: 0; z-index: 30; width: min(360px, calc(100vw - 28px)); overflow: hidden; border: 1px solid var(--admin-border); border-radius: 14px; background: #fff; box-shadow: var(--admin-shadow-md); }
+.admin-notification-popover > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 15px; border-bottom: 1px solid #edf3f5; }
+.admin-notification-popover header div { display: grid; gap: 2px; }
+.admin-notification-popover header strong { color: var(--admin-navy-800); font-size: 14px; }
+.admin-notification-popover header span { color: var(--admin-muted); font-size: 11px; }
+.admin-notification-popover header button, .admin-notification-state button { border: 0; background: transparent; color: var(--admin-teal-700); font-size: 11px; font-weight: 800; cursor: pointer; }
+.admin-notification-item { display: grid; width: 100%; gap: 4px; padding: 13px 15px; border: 0; border-bottom: 1px solid #edf3f5; background: #fff; color: inherit; text-align: left; cursor: pointer; }
+.admin-notification-item:hover { background: #f5fbfc; }
+.admin-notification-item strong { color: var(--admin-navy-800); font-size: 12px; }
+.admin-notification-item span { overflow: hidden; color: var(--admin-muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.admin-notification-item time { color: #91a4ac; font-size: 10px; }
+.admin-notification-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 74px; margin: 0; padding: 15px; color: var(--admin-muted); font-size: 12px; }
+.admin-notification-state.is-error { color: var(--admin-danger); }
 
 .admin-shell.is-sidebar-compact { grid-template-columns: 76px minmax(0, 1fr); }
 .admin-shell.is-sidebar-compact .admin-sidebar { align-items: center; padding-inline: 10px; }

@@ -18,6 +18,7 @@ export function InvoiceAppointmentHint() {
 export function InvoiceReadyAppointmentQueue({
   appointments,
   loading,
+  error,
   count,
   limit,
   offset,
@@ -29,9 +30,11 @@ export function InvoiceReadyAppointmentQueue({
   onClearFilters,
   onPageChange,
   onCreate,
+  onRetry,
 }: {
   appointments: InvoiceReadyAppointment[]
   loading: boolean
+  error: string
   count: number
   limit: number
   offset: number
@@ -43,6 +46,7 @@ export function InvoiceReadyAppointmentQueue({
   onClearFilters: () => void
   onPageChange: (offset: number) => void
   onCreate: (appointment: InvoiceReadyAppointment) => void
+  onRetry: () => void
 }) {
   return <section className="invoice-ready-queue" aria-labelledby="invoice-ready-title">
     <header>
@@ -59,7 +63,7 @@ export function InvoiceReadyAppointmentQueue({
       <button type="submit">Lọc</button>
       {(dateFrom || dateTo) && <button type="button" className="button-secondary" onClick={onClearFilters}>Xóa lọc</button>}
     </form>
-    {loading ? <p className="invoice-ready-loading">Đang tải lượt khám hoàn tất...</p> : appointments.length === 0 ? <p className="invoice-ready-empty">Không có lượt khám nào đang chờ lập hóa đơn.</p> : <div className="invoice-ready-list">
+    {loading ? <p className="invoice-ready-loading">Đang tải lượt khám hoàn tất...</p> : error ? <div className="invoice-ready-empty" role="alert"><p>{error}</p><button type="button" className="button-secondary" onClick={onRetry}>Thử tải lại</button></div> : appointments.length === 0 ? <p className="invoice-ready-empty">Không có lượt khám nào đang chờ lập hóa đơn.</p> : <div className="invoice-ready-list">
       {appointments.map((appointment) => <article key={appointment.appointment_code}>
         <div className="invoice-ready-main">
           <strong>{appointment.patient_name}</strong>
@@ -71,7 +75,7 @@ export function InvoiceReadyAppointmentQueue({
         <div className="invoice-ready-action"><strong>{money(appointment.estimated_total)}</strong><button type="button" onClick={() => onCreate(appointment)}>Lập hóa đơn</button></div>
       </article>)}
     </div>}
-    {!loading && <InvoicePagination count={count} limit={limit} offset={offset} onChange={onPageChange} />}
+    {!loading && !error && <InvoicePagination count={count} limit={limit} offset={offset} onChange={onPageChange} />}
   </section>
 }
 

@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
+from django.db.models import DecimalField, F, OuterRef, Q, Subquery, Sum
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from apps.access_control.scopes import branch_ids_for
 from apps.audit.services import AuditService
+from apps.clinical.models import ClinicalPerformedService
 from apps.management_api.exceptions import ManagementConflict
 from apps.management_api.views import BRANCH_MANAGERS, ManagementAPIView
 from apps.scheduling.models import Appointment
@@ -108,11 +109,26 @@ class BranchInvoiceReadyAppointmentListAPIView(ManagementAPIView):
                 status=Appointment.Status.COMPLETED,
                 clinical_encounter__status="FINALIZED",
             )
+            .annotate(
+                performed_total=Subquery(
+                    ClinicalPerformedService.objects.filter(
+                        encounter_id=OuterRef("clinical_encounter__pk")
+                    )
+                    .values("encounter_id")
+                    .annotate(total=Sum(F("unit_price_snapshot") * F("quantity")))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=14, decimal_places=2),
+                )
+            )
             .filter(
-                Q(clinical_encounter__legacy_billing_allowed=True)
+                Q(
+                    clinical_encounter__legacy_billing_allowed=True,
+                    service_price_snapshot__gt=0,
+                )
                 | Q(
                     clinical_encounter__performed_services_confirmed=True,
                     clinical_encounter__performed_services__isnull=False,
+                    performed_total__gt=0,
                 )
             )
             .exclude(invoices__status__in=[Invoice.Status.DRAFT, Invoice.Status.ISSUED, Invoice.Status.PAID])

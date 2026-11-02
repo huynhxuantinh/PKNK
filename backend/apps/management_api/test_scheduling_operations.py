@@ -164,6 +164,39 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(valid.status_code, status.HTTP_201_CREATED)
         self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_duplicate_or_overlapping_work_shift_is_rejected(self):
+        self.create_shift()
+        self.client.force_authenticate(self.branch_admin)
+        url = reverse("management:branch-work-shifts", kwargs={"branch_id": self.branch.pk})
+
+        response = self.client.post(url, {
+            "dentist_id": self.dentist.pk,
+            "weekday": self.target_date.isoweekday(),
+            "start_time": "16:00",
+            "end_time": "18:00",
+            "valid_from": self.target_date.isoformat(),
+        }, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(WorkShift.objects.filter(branch=self.branch).count(), 1)
+
+    def test_duplicate_time_off_is_rejected(self):
+        self.client.force_authenticate(self.branch_admin)
+        url = reverse("management:branch-time-offs", kwargs={"branch_id": self.branch.pk})
+        payload = {
+            "dentist_id": self.dentist.pk,
+            "starts_at": self.at(12).isoformat(),
+            "ends_at": self.at(13).isoformat(),
+            "reason": "Leave",
+        }
+
+        first = self.client.post(url, payload, format="json")
+        second = self.client.post(url, payload, format="json")
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(TimeOff.objects.count(), 1)
+
     def test_branch_dentist_list_only_returns_active_assignments(self):
         inactive_user = self.make_user("inactive-dentist@example.com", "Inactive Dentist")
         inactive_dentist = Dentist.objects.create(

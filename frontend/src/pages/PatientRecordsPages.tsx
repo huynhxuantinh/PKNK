@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { createPayosPayment } from '../api/billing'
@@ -6,6 +6,7 @@ import { apiRequest, downloadAuthenticatedFile } from '../api/client'
 import { listPatientRescheduleSlots } from '../api/booking'
 import { AuthBar } from '../auth/AuthBar'
 import { useAuth } from '../auth/AuthContext'
+import { hcmDate } from '../components/branch-management/appointmentPresentation'
 import { AuthenticatedThumbnail } from '../components/clinical/AuthenticatedThumbnail'
 import { ClinicalImageLightbox } from '../components/clinical/ClinicalImageLightbox'
 import { PatientInvoiceActions } from '../components/billing/PatientInvoiceActions'
@@ -116,20 +117,48 @@ export function PatientAppointmentsPage() {
   const [slotOptions, setSlotOptions] = useState<Slot[] | null>(null)
   const [rescheduleError, setRescheduleError] = useState('')
   const [rescheduleIdempotencyKey, setRescheduleIdempotencyKey] = useState('')
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [submittingReschedule, setSubmittingReschedule] = useState(false)
+  const appointmentRequestId = useRef(0)
+  const appointmentRequestController = useRef<AbortController | null>(null)
+  const slotRequestId = useRef(0)
+  const slotRequestController = useRef<AbortController | null>(null)
+
+  function clearRescheduleSlots() {
+    slotRequestId.current += 1
+    slotRequestController.current?.abort()
+    slotRequestController.current = null
+    setSlotOptions(null)
+    setLoadingSlots(false)
+    setRescheduleError('')
+  }
+
+  useEffect(() => () => {
+    appointmentRequestId.current += 1
+    appointmentRequestController.current?.abort()
+    slotRequestId.current += 1
+    slotRequestController.current?.abort()
+  }, [])
 
   const loadAppointments = useCallback(async () => {
     if (!isAuthenticated) return
+    const requestId = ++appointmentRequestId.current
+    appointmentRequestController.current?.abort()
+    const controller = new AbortController()
+    appointmentRequestController.current = controller
     setAppointments(null)
     setError('')
     try {
       const response = await apiRequest<PatientAppointmentsResponse>(
         `/patients/me/appointments/?scope=${scope}&page=${page}&page_size=10`,
-        {},
+        { signal: controller.signal },
         { auth: true },
       )
+      if (controller.signal.aborted || requestId !== appointmentRequestId.current) return
       setAppointments(response.data)
       setMeta(response.meta)
     } catch {
+      if (controller.signal.aborted || requestId !== appointmentRequestId.current) return
       setError('Không thể tải lịch hẹn. Vui lòng thử lại.')
     }
   }, [isAuthenticated, page, scope])
@@ -139,6 +168,11 @@ export function PatientAppointmentsPage() {
   }, [loadAppointments])
 
   function changeScope(nextScope: 'UPCOMING' | 'HISTORY') {
+    appointmentRequestId.current += 1
+    appointmentRequestController.current?.abort()
+    appointmentRequestController.current = null
+    setAppointments(null)
+    setMeta(null)
     setScope(nextScope)
     setPage(1)
     setNotice('')
@@ -146,35 +180,54 @@ export function PatientAppointmentsPage() {
 
   async function findRescheduleSlots() {
     if (!rescheduling || !rescheduleDate) return
+    const requestId = ++slotRequestId.current
+    const requestedDate = rescheduleDate
+    const requestedCode = rescheduling.public_code
+    slotRequestController.current?.abort()
+    const controller = new AbortController()
+    slotRequestController.current = controller
     setRescheduleError('')
     setSlotOptions(null)
+    setLoadingSlots(true)
     try {
       const response = await listPatientRescheduleSlots(
-        rescheduling.public_code,
-        rescheduleDate,
+        requestedCode,
+        requestedDate,
+        controller.signal,
       )
+      if (requestId !== slotRequestId.current) return
       setSlotOptions(response.data)
     } catch (reason) {
+      if (controller.signal.aborted || requestId !== slotRequestId.current) return
       setRescheduleError(reason instanceof Error ? reason.message : 'Không thể tìm giờ trống.')
+    } finally {
+      if (requestId === slotRequestId.current) setLoadingSlots(false)
     }
   }
 
   async function rescheduleAppointment(slot: Slot) {
-    if (!rescheduling || !rescheduleIdempotencyKey) return
+    if (!rescheduling || !rescheduleIdempotencyKey || submittingReschedule) return
+    if (!rescheduleDate || hcmDate(new Date(slot.starts_at)) !== rescheduleDate) {
+      setRescheduleError('Khung giờ không thuộc ngày đang chọn. Hãy tìm lại giờ trống.')
+      return
+    }
     setRescheduleError('')
+    setSubmittingReschedule(true)
     try {
       await apiRequest<{ data: PatientAppointment }>(
         `/patients/me/appointments/${rescheduling.public_code}/reschedule/`,
         { method: 'POST', body: JSON.stringify({ starts_at: slot.starts_at, reason: 'Người bệnh chủ động đổi lịch.', idempotency_key: rescheduleIdempotencyKey }) },
         { auth: true },
       )
+      clearRescheduleSlots()
       setRescheduling(null)
-      setSlotOptions(null)
       setRescheduleIdempotencyKey('')
       setNotice('Đã tạo lịch hẹn mới theo thời gian bạn chọn.')
       await loadAppointments()
     } catch (reason) {
       setRescheduleError(reason instanceof Error ? reason.message : 'Không thể đổi lịch. Vui lòng thử lại.')
+    } finally {
+      setSubmittingReschedule(false)
     }
   }
 
@@ -258,7 +311,7 @@ export function PatientAppointmentsPage() {
                       </button>
                     )}
                     {appointment.can_reschedule && (
-                      <button type="button" onClick={() => { setRescheduling(appointment); setRescheduleDate(''); setSlotOptions(null); setRescheduleError(''); setRescheduleIdempotencyKey(`patient-${crypto.randomUUID()}`) }}>Đổi lịch</button>
+                      <button type="button" onClick={() => { clearRescheduleSlots(); setRescheduling(appointment); setRescheduleDate(''); setRescheduleIdempotencyKey(`patient-${crypto.randomUUID()}`) }}>Đổi lịch</button>
                     )}
                   </div>
                 )}
@@ -277,11 +330,11 @@ export function PatientAppointmentsPage() {
                     <span>Đổi lịch hẹn</span>
                     <strong>{rescheduling.service_name_snapshot}</strong>
                   </div>
-                  <button className="reschedule-close" type="button" onClick={() => { setRescheduling(null); setRescheduleIdempotencyKey('') }}>Đóng</button>
+                  <button className="reschedule-close" type="button" onClick={() => { clearRescheduleSlots(); setRescheduling(null); setRescheduleIdempotencyKey('') }}>Đóng</button>
                 </header>
                 <div className="reschedule-controls">
-                  <label>Chọn ngày<input type="date" value={rescheduleDate} min={dateInputValue()} onChange={(event) => setRescheduleDate(event.target.value)} /></label>
-                  <button type="button" disabled={!rescheduleDate} onClick={findRescheduleSlots}>Xem giờ trống</button>
+                  <label>Chọn ngày<input type="date" value={rescheduleDate} min={dateInputValue()} onChange={(event) => { setRescheduleDate(event.target.value); clearRescheduleSlots() }} /></label>
+                  <button type="button" disabled={!rescheduleDate || loadingSlots || submittingReschedule} onClick={findRescheduleSlots}>{loadingSlots ? 'Đang tìm...' : 'Xem giờ trống'}</button>
                 </div>
                 {rescheduleError && <p className="patient-record-error">{rescheduleError}</p>}
                 {slotOptions && (slotOptions.length ? (
@@ -289,7 +342,7 @@ export function PatientAppointmentsPage() {
                     <p>Chọn một khung giờ phù hợp</p>
                     <div className="reschedule-slots">
                       {slotOptions.map((slot) => (
-                        <button type="button" key={slot.starts_at} aria-label={`Đổi lịch sang ${formatDateTime(slot.starts_at)}`} onClick={() => rescheduleAppointment(slot)}>
+                        <button type="button" key={slot.starts_at} disabled={loadingSlots || submittingReschedule} aria-label={`Đổi lịch sang ${formatDateTime(slot.starts_at)}`} onClick={() => void rescheduleAppointment(slot)}>
                           {formatSlotTime(slot.starts_at)}
                         </button>
                       ))}

@@ -27,10 +27,20 @@ export function OrganizationStaffSchedulePage() {
   const organizationName = scope.options.find((option) => option.id === scope.organizationId)?.name || 'Quản trị tổ chức'
 
   useEffect(() => {
-    if (!scope.organizationId) return
+    setBranches([])
+    setDentists([])
+    setShifts([])
+    setOffs([])
+    setBranchId('')
+    setDentistId('')
+    setStatus('ALL')
+    setError('')
+    if (!scope.organizationId) {
+      setLoading(false)
+      return
+    }
     const controller = new AbortController()
     setLoading(true)
-    setError('')
     Promise.all([listOrganizationBranches(scope.organizationId, controller.signal), listOrganizationDentists(scope.organizationId, controller.signal)])
       .then(async ([branchResponse, dentistResponse]) => {
         if (controller.signal.aborted) return

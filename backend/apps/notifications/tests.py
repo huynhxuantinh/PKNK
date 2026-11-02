@@ -11,6 +11,7 @@ from apps.accounts.models import Dentist, PatientProfile, User
 from apps.billing.models import Invoice
 from apps.billing.services import BillingService
 from apps.catalog.models import BranchService, Service
+from apps.clinical.models import ClinicalEncounter, ClinicalPerformedService
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment, AppointmentStatusHistory
@@ -18,7 +19,7 @@ from apps.scheduling.services import AppointmentService
 
 from .models import Notification, NotificationDelivery
 from .services import NotificationService
-from .tasks import publish_due_appointment_reminders
+from .tasks import deliver_notification_email, publish_due_appointment_reminders
 
 
 class BillingNotificationTests(APITestCase):
@@ -65,6 +66,23 @@ class BillingNotificationTests(APITestCase):
             occupied_until=starts + timedelta(minutes=60), status=Appointment.Status.COMPLETED,
             completed_at=timezone.now(),
         )
+        encounter = ClinicalEncounter.objects.create(
+            appointment=self.appointment,
+            performed_services_confirmed=True,
+            created_by=self.dentist.user,
+        )
+        ClinicalPerformedService.objects.create(
+            encounter=encounter,
+            branch_service=self.branch_service,
+            service_code_snapshot=self.service.code,
+            service_name_snapshot=self.service.name,
+            unit_price_snapshot=Decimal("1000000"),
+            quantity=1,
+        )
+        encounter.status = ClinicalEncounter.Status.FINALIZED
+        encounter.finalized_by = self.dentist.user
+        encounter.finalized_at = timezone.now()
+        encounter.save(update_fields=["status", "finalized_by", "finalized_at"])
         self.invoice = BillingService.create_invoice(
             appointment_id=self.appointment.pk, actor_user=self.admin
         )
@@ -77,6 +95,8 @@ class BillingNotificationTests(APITestCase):
         invoice = self.issue()
         notification = Notification.objects.get(type=Notification.Type.INVOICE_ISSUED)
         email_delivery = notification.deliveries.get(channel=NotificationDelivery.Channel.EMAIL)
+        deliver_notification_email.run(email_delivery.pk)
+        email_delivery.refresh_from_db()
 
         self.assertEqual(notification.recipient, self.patient_user)
         self.assertEqual(notification.payload, {"invoice_id": invoice.pk, "status": Invoice.Status.ISSUED})
@@ -100,6 +120,10 @@ class BillingNotificationTests(APITestCase):
                 invoice_id=invoice.pk, method="CASH", amount=invoice.total,
                 idempotency_key="notify-payment-idempotency", actor_user=self.admin,
             )
+        email_delivery = Notification.objects.get(
+            type=Notification.Type.INVOICE_PAID
+        ).deliveries.get(channel=NotificationDelivery.Channel.EMAIL)
+        deliver_notification_email.run(email_delivery.pk)
 
         self.assertTrue(created)
         self.assertFalse(repeated_created)
@@ -236,6 +260,33 @@ class AppointmentWebNotificationTests(APITestCase):
         )
         self.assertTrue(manager_notification.payload["requires_confirmation"])
         self.assert_web_only(manager_notification)
+
+    def test_branch_manager_can_read_and_mark_own_pending_notification(self):
+        self.organization.auto_confirm = False
+        self.organization.save(update_fields=["auto_confirm"])
+        held = self.appointment(
+            "APT-WEB-MANAGER-INBOX",
+            starts_at=timezone.now() + timedelta(hours=30),
+            appointment_status=Appointment.Status.HELD,
+        )
+
+        AppointmentService.confirm_hold(appointment_id=held.pk, patient_user=self.patient_user)
+        notification = Notification.objects.get(
+            type=Notification.Type.APPOINTMENT_PENDING_REVIEW,
+            recipient=self.admin,
+            resource_id=str(held.pk),
+        )
+
+        self.client.force_authenticate(self.admin)
+        listed = self.client.get(reverse("notifications:list"), {"unread": "true"})
+        marked = self.client.post(
+            reverse("notifications:read", kwargs={"notification_id": notification.pk})
+        )
+
+        self.assertEqual(listed.status_code, status.HTTP_200_OK)
+        self.assertEqual(listed.data["meta"]["count"], 1)
+        self.assertEqual(marked.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(marked.data["data"]["read_at"])
 
     def test_rescheduled_pending_appointment_notifies_manager_idempotently(self):
         original = self.appointment(

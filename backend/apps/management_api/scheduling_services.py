@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.models import Dentist, PatientProfile
@@ -16,6 +17,7 @@ from apps.scheduling.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
     AppointmentStatusHistory,
+    TimeOff,
     WorkShift,
 )
 from apps.scheduling.services import AppointmentService
@@ -104,6 +106,46 @@ def ensure_shift_change_safe(*, shift, proposed):
             raise ManagementConflict(
                 f"Thay đổi ca làm sẽ làm lịch {appointment.public_code} không còn ca phù hợp."
             )
+
+
+def ensure_work_shift_not_overlapping(
+    *, dentist, branch, weekday, start_time, end_time, valid_from, valid_to,
+    is_active=True, exclude_id=None,
+):
+    """Reject active shift ranges that overlap for one dentist at one branch."""
+    if not is_active:
+        return
+    conflicts = WorkShift.objects.filter(
+        dentist=dentist,
+        branch=branch,
+        weekday=weekday,
+        is_active=True,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    ).filter(Q(valid_to__isnull=True) | Q(valid_to__gte=valid_from))
+    if valid_to is not None:
+        conflicts = conflicts.filter(valid_from__lte=valid_to)
+    if exclude_id is not None:
+        conflicts = conflicts.exclude(pk=exclude_id)
+    if conflicts.exists():
+        raise ManagementConflict(
+            "Ca làm trùng hoặc chồng lấn với một ca đang áp dụng của nha sĩ này."
+        )
+
+
+def ensure_time_off_not_duplicate(*, dentist, branch, starts_at, ends_at, exclude_id=None):
+    """A retry must not create the exact same absence twice."""
+    conflicts = TimeOff.objects.filter(
+        dentist=dentist,
+        branch=branch,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        is_active=True,
+    )
+    if exclude_id is not None:
+        conflicts = conflicts.exclude(pk=exclude_id)
+    if conflicts.exists():
+        raise ManagementConflict("Lịch nghỉ này đã tồn tại.")
 
 
 def ensure_time_off_safe(*, dentist, branch, starts_at, ends_at):

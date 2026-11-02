@@ -28,7 +28,9 @@ from .scheduling_serializers import (
 from .scheduling_services import (
     RescheduleService,
     ensure_dentist_assigned,
+    ensure_time_off_not_duplicate,
     ensure_shift_change_safe,
+    ensure_work_shift_not_overlapping,
     ensure_time_off_safe,
     lock_schedule_dentists,
 )
@@ -77,6 +79,16 @@ class BranchWorkShiftListCreateAPIView(ManagementAPIView):
         ]
         try:
             ensure_dentist_assigned(dentist=dentist, branch=branch)
+            ensure_work_shift_not_overlapping(
+                dentist=dentist,
+                branch=branch,
+                weekday=serializer.validated_data["weekday"],
+                start_time=serializer.validated_data["start_time"],
+                end_time=serializer.validated_data["end_time"],
+                valid_from=serializer.validated_data["valid_from"],
+                valid_to=serializer.validated_data.get("valid_to"),
+                is_active=serializer.validated_data.get("is_active", True),
+            )
         except DjangoValidationError as error:
             raise django_validation_to_drf(error)
         shift = serializer.save(branch=branch)
@@ -113,6 +125,17 @@ class WorkShiftDetailAPIView(ManagementAPIView):
         )[serializer.validated_data.get("dentist", shift.dentist).pk]
         try:
             ensure_dentist_assigned(dentist=dentist, branch=shift.branch)
+            ensure_work_shift_not_overlapping(
+                dentist=dentist,
+                branch=shift.branch,
+                weekday=serializer.validated_data.get("weekday", shift.weekday),
+                start_time=serializer.validated_data.get("start_time", shift.start_time),
+                end_time=serializer.validated_data.get("end_time", shift.end_time),
+                valid_from=serializer.validated_data.get("valid_from", shift.valid_from),
+                valid_to=serializer.validated_data.get("valid_to", shift.valid_to),
+                is_active=serializer.validated_data.get("is_active", shift.is_active),
+                exclude_id=shift.pk,
+            )
             ensure_shift_change_safe(shift=shift, proposed=serializer.validated_data)
         except DjangoValidationError as error:
             raise django_validation_to_drf(error)
@@ -155,6 +178,12 @@ class BranchTimeOffListCreateAPIView(ManagementAPIView):
         try:
             ensure_dentist_assigned(dentist=dentist, branch=branch)
             if data.get("is_active", True):
+                ensure_time_off_not_duplicate(
+                    dentist=dentist,
+                    branch=None if all_branches else branch,
+                    starts_at=data["starts_at"],
+                    ends_at=data["ends_at"],
+                )
                 ensure_time_off_safe(
                     dentist=dentist, branch=None if all_branches else branch,
                     starts_at=data["starts_at"], ends_at=data["ends_at"],
@@ -219,6 +248,13 @@ class TimeOffDetailAPIView(ManagementAPIView):
             except DjangoValidationError as error:
                 raise django_validation_to_drf(error)
         if data.get("is_active", item.is_active):
+            ensure_time_off_not_duplicate(
+                dentist=dentist,
+                branch=target_branch,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                exclude_id=item.pk,
+            )
             ensure_time_off_safe(
                 dentist=dentist, branch=target_branch,
                 starts_at=starts_at, ends_at=ends_at,

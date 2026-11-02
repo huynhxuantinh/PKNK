@@ -38,6 +38,7 @@ export function BranchInvoicesPage() {
   const [offset, setOffset] = useState(0)
   const [readyAppointments, setReadyAppointments] = useState<InvoiceReadyAppointment[]>([])
   const [loadingReadyAppointments, setLoadingReadyAppointments] = useState(true)
+  const [readyAppointmentsError, setReadyAppointmentsError] = useState('')
   const [readyAppointmentCount, setReadyAppointmentCount] = useState(0)
   const [readyAppointmentOffset, setReadyAppointmentOffset] = useState(0)
   const [readyDateFrom, setReadyDateFrom] = useState('')
@@ -107,6 +108,7 @@ export function BranchInvoicesPage() {
     setInvoiceCount(0)
     setReadyAppointments([])
     setLoadingReadyAppointments(true)
+    setReadyAppointmentsError('')
     setReadyAppointmentCount(0)
     setReadyAppointmentOffset(0)
     setReadyDateFrom('')
@@ -135,6 +137,8 @@ export function BranchInvoicesPage() {
   }, [loadInvoices])
   const loadReadyAppointments = useCallback(async (signal?: AbortSignal) => {
     if (!branchId) return
+    setLoadingReadyAppointments(true)
+    setReadyAppointmentsError('')
     try {
       const response = await listInvoiceReadyAppointments(branchId, {
         dateFrom: appliedReadyDateFrom || undefined,
@@ -150,10 +154,11 @@ export function BranchInvoicesPage() {
         setReadyAppointments(response.data)
         setReadyAppointmentCount(response.meta.count)
       }
-    } catch {
+    } catch (caught) {
       if (!signal?.aborted && isCurrentBranch()) {
         setReadyAppointments([])
         setReadyAppointmentCount(0)
+        setReadyAppointmentsError(caught instanceof Error ? caught.message : 'Không thể tải hàng đợi lập hóa đơn.')
       }
     } finally {
       if (!signal?.aborted && isCurrentBranch()) setLoadingReadyAppointments(false)
@@ -314,6 +319,7 @@ export function BranchInvoicesPage() {
     <InvoiceReadyAppointmentQueue
       appointments={readyAppointments}
       loading={loadingReadyAppointments}
+      error={readyAppointmentsError}
       count={readyAppointmentCount}
       limit={INVOICE_READY_PAGE_SIZE}
       offset={readyAppointmentOffset}
@@ -325,6 +331,7 @@ export function BranchInvoicesPage() {
       onClearFilters={clearReadyFilters}
       onPageChange={setReadyAppointmentOffset}
       onCreate={(appointment) => { setAppointmentCode(appointment.appointment_code); setShowCreate(true) }}
+      onRetry={() => void loadReadyAppointments()}
     />
     <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
       {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}

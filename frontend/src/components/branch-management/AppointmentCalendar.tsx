@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import type { ManagementAppointment } from '../../api/management'
-import type { BranchDentist } from '../../types/api'
+import type { BranchDentist, BranchOpeningHour } from '../../types/api'
 import { appointmentStatusLabels, hcmDate, hcmTime } from './appointmentPresentation'
 import './appointment-calendar.css'
 
@@ -10,6 +10,7 @@ type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
 type Props = {
   items: ManagementAppointment[] | null
   dentists: BranchDentist[]
+  openingHours: BranchOpeningHour[]
   selectedDate: string
   days: 1 | 7
   busyCode: string
@@ -18,8 +19,6 @@ type Props = {
   onReschedule: (item: ManagementAppointment) => void
 }
 
-const START_HOUR = 8
-const END_HOUR = 19
 const PIXELS_PER_HOUR = 68
 const dayTitle = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit' })
 
@@ -37,6 +36,17 @@ function localMinutes(startsAt: string) {
   return Number(values.hour) * 60 + Number(values.minute)
 }
 
+function minutesFromTime(value: string | null) {
+  if (!value) return null
+  const [hour, minute] = value.split(':').map(Number)
+  return Number.isFinite(hour) && Number.isFinite(minute) ? hour * 60 + minute : null
+}
+
+function weekdayForDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay() || 7
+}
+
 function tone(status: ManagementAppointment['status']) {
   if (status === 'PENDING' || status === 'HELD') return 'warning'
   if (status === 'CHECKED_IN' || status === 'IN_PROGRESS') return 'success'
@@ -44,8 +54,8 @@ function tone(status: ManagementAppointment['status']) {
   return 'info'
 }
 
-export function AppointmentCalendar({ items, dentists, selectedDate, days, busyCode, onAction, onCancel, onReschedule }: Props) {
-  const [selected, setSelected] = useState<ManagementAppointment | null>(null)
+export function AppointmentCalendar({ items, dentists, openingHours, selectedDate, days, busyCode, onAction, onCancel, onReschedule }: Props) {
+  const [selectedCode, setSelectedCode] = useState('')
   const columns = useMemo(() => {
     if (!items) return []
     const effectiveDentists = dentists.length ? dentists : items.map((item) => ({ id_dentist: item.dentist_id, full_name: item.dentist_name }))
@@ -53,12 +63,28 @@ export function AppointmentCalendar({ items, dentists, selectedDate, days, busyC
     const dates = dateRange(selectedDate, days)
     return dates.flatMap((date) => uniqueDentists.map((dentist) => ({ date, dentist })))
   }, [days, dentists, items, selectedDate])
+  const calendarHours = useMemo(() => {
+    const dates = dateRange(selectedDate, days)
+    const hoursForDates = dates.flatMap((date) => {
+      const row = openingHours.find((item) => item.weekday === weekdayForDate(date))
+      if (!row || row.is_closed) return []
+      const open = minutesFromTime(row.open_time)
+      const close = minutesFromTime(row.close_time)
+      return open !== null && close !== null && close > open ? [open, close] : []
+    })
+    const appointmentMinutes = (items || []).flatMap((item) => [localMinutes(item.starts_at), localMinutes(item.ends_at)])
+    const values = [...hoursForDates, ...appointmentMinutes]
+    const first = values.length ? Math.min(...values) : 8 * 60
+    const last = values.length ? Math.max(...values) : 19 * 60
+    return { start: Math.floor(first / 60) * 60, end: Math.max((Math.ceil(last / 60) * 60), Math.floor(first / 60) * 60 + 60) }
+  }, [days, items, openingHours, selectedDate])
+  const selected = items?.find((item) => item.public_code === selectedCode) || null
 
   if (!items) return <div className="dentist-empty">Đang tải lịch hẹn...</div>
   if (!columns.length) return <div className="dentist-empty">Chi nhánh chưa có nha sĩ để hiển thị lịch.</div>
 
-  const hourLabels = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => `${String(START_HOUR + index).padStart(2, '0')}:00`)
-  const calendarHeight = (END_HOUR - START_HOUR) * PIXELS_PER_HOUR
+  const hourLabels = Array.from({ length: (calendarHours.end - calendarHours.start) / 60 + 1 }, (_, index) => `${String((calendarHours.start / 60) + index).padStart(2, '0')}:00`)
+  const calendarHeight = ((calendarHours.end - calendarHours.start) / 60) * PIXELS_PER_HOUR
 
   return (
     <div className="appointment-calendar">
@@ -71,9 +97,9 @@ export function AppointmentCalendar({ items, dentists, selectedDate, days, busyC
           <div className="appointment-calendar__column-headers">{columns.map(({ date, dentist }) => <div key={`${date}-${dentist.id_dentist}`}><span>{dayTitle.format(new Date(`${date}T00:00:00+07:00`))}</span><strong>{dentist.full_name}</strong></div>)}</div>
           <div className="appointment-calendar__time-rail">{hourLabels.map((hour) => <span key={hour}>{hour}</span>)}</div>
           <div className="appointment-calendar__columns">{columns.map(({ date, dentist }) => <div className="appointment-calendar__column" key={`${date}-${dentist.id_dentist}`}>{items.filter((item) => item.dentist_id === dentist.id_dentist && hcmDate(new Date(item.starts_at)) === date).map((item) => {
-            const top = Math.max(0, (localMinutes(item.starts_at) - START_HOUR * 60) / 60 * PIXELS_PER_HOUR)
+            const top = Math.max(0, (localMinutes(item.starts_at) - calendarHours.start) / 60 * PIXELS_PER_HOUR)
             const duration = Math.max(30, (new Date(item.ends_at).getTime() - new Date(item.starts_at).getTime()) / 60000)
-            return <button key={item.public_code} type="button" className={`appointment-calendar__event is-${tone(item.status)} ${selected?.public_code === item.public_code ? 'is-selected' : ''}`} style={{ top, height: Math.max(33, duration / 60 * PIXELS_PER_HOUR) }} onClick={() => setSelected(item)}><b>{hcmTime(item.starts_at)}</b><strong>{item.patient_name}</strong><span>{item.service_name_snapshot}</span></button>
+            return <button key={item.public_code} type="button" className={`appointment-calendar__event is-${tone(item.status)} ${selected?.public_code === item.public_code ? 'is-selected' : ''}`} style={{ top, height: Math.max(33, duration / 60 * PIXELS_PER_HOUR) }} onClick={() => setSelectedCode(item.public_code)}><b>{hcmTime(item.starts_at)}</b><strong>{item.patient_name}</strong><span>{item.service_name_snapshot}</span></button>
           })}</div>)}</div>
         </div>
       </div>

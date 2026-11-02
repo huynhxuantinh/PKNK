@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { Seo } from '../../seo/Seo'
 import { useManagedBranchScope } from '../branch-management/useManagedBranches'
 import { useOrganizationScope } from '../organization-management/useOrganizationScope'
+import { AdminNotificationMenu } from './AdminNotificationMenu'
 import './admin-shell.css'
 import { AdminToastProvider } from './ui'
 
@@ -161,6 +162,7 @@ export function AdminShell() {
               })}
             </select>
           </label>
+          <AdminNotificationMenu />
           <AuthBar />
         </header>
         <AdminToastProvider><div className="admin-shell-content"><Outlet /></div></AdminToastProvider>

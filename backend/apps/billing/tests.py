@@ -73,13 +73,21 @@ class CounterBillingTests(APITestCase):
             email_verified_at=timezone.now(),
         )
 
-    def appointment(self, code="APT-BILLING", *, service_rows=None, confirmed=True, legacy_billing_allowed=False):
+    def appointment(
+        self,
+        code="APT-BILLING",
+        *,
+        service_rows=None,
+        confirmed=True,
+        legacy_billing_allowed=False,
+        booking_price=Decimal("500000"),
+    ):
         starts = timezone.now() - timedelta(hours=2)
         appointment = Appointment.objects.create(
             public_code=code, patient_profile=self.patient, branch=self.branch,
             branch_service=self.branch_service, dentist=self.dentist, chair=self.chair,
             service_name_snapshot=self.service.name,
-            service_price_snapshot=Decimal("500000"), duration_minutes=30,
+            service_price_snapshot=booking_price, duration_minutes=30,
             buffer_minutes=0, starts_at=starts, ends_at=starts + timedelta(minutes=30),
             occupied_until=starts + timedelta(minutes=30), status=Appointment.Status.COMPLETED,
             completed_at=timezone.now(),
@@ -345,6 +353,34 @@ class CounterBillingTests(APITestCase):
         self.assertNotIn(appointment.public_code, [item["appointment_code"] for item in queue.data["data"]])
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("không có dịch vụ tính phí", response.data["message"])
+
+    def test_zero_price_performed_or_legacy_visit_is_not_in_invoice_ready_queue(self):
+        performed = self.appointment(
+            "APT-ZERO-PERFORMED",
+            confirmed=True,
+            service_rows=[(self.branch_service, self.service, Decimal("0"), 1)],
+        )
+        legacy = self.appointment(
+            "APT-ZERO-LEGACY",
+            confirmed=False,
+            service_rows=[],
+            legacy_billing_allowed=True,
+            booking_price=Decimal("0"),
+        )
+        self.client.force_authenticate(self.admin)
+
+        queue = self.client.get(
+            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk}),
+        )
+        performed_invoice = self.create_invoice(performed)
+        legacy_invoice = self.create_invoice(legacy)
+
+        self.assertEqual(queue.status_code, status.HTTP_200_OK)
+        codes = [item["appointment_code"] for item in queue.data["data"]]
+        self.assertNotIn(performed.public_code, codes)
+        self.assertNotIn(legacy.public_code, codes)
+        self.assertEqual(performed_invoice.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(legacy_invoice.status_code, status.HTTP_409_CONFLICT)
 
     def test_legacy_completed_visit_uses_booking_snapshot_without_creating_clinical_data(self):
         appointment = self.appointment(

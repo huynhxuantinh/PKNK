@@ -99,6 +99,11 @@ export function BranchManagementPage() {
   })
   const isManager = canAccessArea(user, 'MANAGEMENT')
   const knownPendingCodes = useRef(new Set<string>())
+  const activeBranchIdRef = useRef<number | null>(branchId)
+  activeBranchIdRef.current = branchId
+
+  const isInActiveBranch = (appointment: ManagementAppointment) =>
+    appointment.branch_id === activeBranchIdRef.current
 
   useEffect(() => {
     let active = true
@@ -217,7 +222,14 @@ export function BranchManagementPage() {
     }
   }, [appointmentReloadVersion, branchId, date, days, dentistId, status])
 
+  useEffect(() => {
+    setCancelling(null)
+    setMoving(null)
+    setBusy('')
+  }, [branchId])
+
   function replaceAppointment(next: ManagementAppointment) {
+    if (!isInActiveBranch(next)) return
     setItems(
       (current) =>
         current?.map((item) =>
@@ -227,6 +239,10 @@ export function BranchManagementPage() {
   }
 
   async function updateAppointment(item: ManagementAppointment, action: AppointmentAction) {
+    if (!isInActiveBranch(item)) {
+      setError('Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.')
+      return
+    }
     setBusy(item.public_code)
     setError('')
     try {
@@ -236,30 +252,46 @@ export function BranchManagementPage() {
           : action === 'check-in'
             ? await checkInManagedAppointment(item.public_code)
             : await markManagedAppointmentNoShow(item.public_code)
-      replaceAppointment(response.data)
+      if (isInActiveBranch(response.data)) replaceAppointment(response.data)
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Không thể cập nhật lịch.')
+      if (isInActiveBranch(item)) {
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể cập nhật lịch.')
+      }
     } finally {
-      setBusy('')
+      if (isInActiveBranch(item)) setBusy('')
     }
   }
 
   async function cancelAppointment(reason: string) {
     if (!cancelling) return
+    if (!isInActiveBranch(cancelling)) {
+      setCancelling(null)
+      setError('Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.')
+      return
+    }
     setBusy(cancelling.public_code)
     try {
       const response = await cancelManagedAppointment(cancelling.public_code, reason)
-      replaceAppointment(response.data)
-      setCancelling(null)
+      if (isInActiveBranch(response.data)) {
+        replaceAppointment(response.data)
+        setCancelling(null)
+      }
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Không thể hủy lịch.')
+      if (isInActiveBranch(cancelling)) {
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể hủy lịch.')
+      }
     } finally {
-      setBusy('')
+      if (isInActiveBranch(cancelling)) setBusy('')
     }
   }
 
   async function findRescheduleSlots(moveDate: string, moveDentistId?: number) {
     if (!moving) return []
+    if (!isInActiveBranch(moving)) {
+      setMoving(null)
+      setError('Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.')
+      return []
+    }
     try {
       const response = await listManagedRescheduleSlots(
         moving.public_code,
@@ -268,7 +300,9 @@ export function BranchManagementPage() {
       )
       return response.data
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải giờ trống.')
+      if (isInActiveBranch(moving)) {
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải giờ trống.')
+      }
       return []
     }
   }
@@ -280,6 +314,11 @@ export function BranchManagementPage() {
     idempotencyKey: string,
   ) {
     if (!moving) return
+    if (!isInActiveBranch(moving)) {
+      setMoving(null)
+      setError('Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.')
+      return
+    }
     setBusy(moving.public_code)
     try {
       await rescheduleManagedAppointment(moving.public_code, {
@@ -288,12 +327,16 @@ export function BranchManagementPage() {
         dentist_id: moveDentistId,
         idempotency_key: idempotencyKey,
       })
-      setMoving(null)
-      setAppointmentReloadVersion((version) => version + 1)
+      if (isInActiveBranch(moving)) {
+        setMoving(null)
+        setAppointmentReloadVersion((version) => version + 1)
+      }
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Không thể đổi lịch.')
+      if (isInActiveBranch(moving)) {
+        setError(caughtError instanceof Error ? caughtError.message : 'Không thể đổi lịch.')
+      }
     } finally {
-      setBusy('')
+      if (isInActiveBranch(moving)) setBusy('')
     }
   }
 
@@ -301,6 +344,8 @@ export function BranchManagementPage() {
     return <Navigate to="/dang-nhap?returnTo=%2Fquan-ly-chi-nhanh" replace />
   }
   if (!isManager || (loaded && !branchId)) return <Navigate to="/" replace />
+  const activeCancellation = cancelling && isInActiveBranch(cancelling) ? cancelling : null
+  const activeReschedule = moving && isInActiveBranch(moving) ? moving : null
 
   return (
     <div className="branch-management-page">
@@ -396,23 +441,23 @@ export function BranchManagementPage() {
             </label>
           </div>
 
-          {viewMode === 'calendar' ? <AppointmentCalendar items={items} dentists={branch?.dentists || []} selectedDate={date} days={days} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} /> : <AppointmentList items={items} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} />}
+          {viewMode === 'calendar' ? <AppointmentCalendar items={items} dentists={branch?.dentists || []} openingHours={branch?.opening_hours || []} selectedDate={date} days={days} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} /> : <AppointmentList items={items} busyCode={busy} onAction={updateAppointment} onCancel={setCancelling} onReschedule={setMoving} />}
         </section>
       </main>
 
-      {cancelling && (
+      {activeCancellation && (
         <CancelAppointmentModal
-          appointment={cancelling}
-          busy={busy === cancelling.public_code}
+          appointment={activeCancellation}
+          busy={busy === activeCancellation.public_code}
           onClose={() => setCancelling(null)}
           onConfirm={cancelAppointment}
         />
       )}
-      {moving && (
+      {activeReschedule && (
         <RescheduleAppointmentModal
-          appointment={moving}
+          appointment={activeReschedule}
           dentists={branch?.dentists || []}
-          busy={busy === moving.public_code}
+          busy={busy === activeReschedule.public_code}
           onClose={() => setMoving(null)}
           onFindSlots={findRescheduleSlots}
           onConfirm={moveAppointment}

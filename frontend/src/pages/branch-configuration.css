@@ -2,6 +2,13 @@
   max-width: 1280px;
 }
 
+.branch-config-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .branch-config-page .branch-config-heading {
   position: relative;
   overflow: hidden;

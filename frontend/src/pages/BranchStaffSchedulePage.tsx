@@ -118,6 +118,7 @@ export function BranchStaffSchedulePage() {
     null,
   );
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [savingKind, setSavingKind] = useState<"shift" | "off" | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [filterDentistId, setFilterDentistId] = useState("");
@@ -126,6 +127,7 @@ export function BranchStaffSchedulePage() {
   >("ALL");
   const [shiftPage, setShiftPage] = useState(0);
   const branchIdRef = useRef(branchId);
+  const savingRef = useRef(false);
   const [shiftModalBranchId, setShiftModalBranchId] = useState<number | null>(
     null,
   );
@@ -172,6 +174,8 @@ export function BranchStaffSchedulePage() {
     setOffModalBranchId(null);
     setPendingToggle(null);
     setBusyId(null);
+    savingRef.current = false;
+    setSavingKind(null);
     setError("");
     setNotice("");
   }, [branchId]);
@@ -316,6 +320,7 @@ export function BranchStaffSchedulePage() {
 
   async function saveShift(event: FormEvent) {
     event.preventDefault();
+    if (savingRef.current) return;
     setError("");
     setNotice("");
     const submittingBranchId = branchId;
@@ -337,6 +342,8 @@ export function BranchStaffSchedulePage() {
       setError("Ngày kết thúc không được trước ngày bắt đầu.");
       return;
     }
+    savingRef.current = true;
+    setSavingKind("shift");
     try {
       const payload = buildWorkShiftPayload(shift);
       if (editingShiftId) await patchManagedWorkShift(editingShiftId, payload);
@@ -349,10 +356,14 @@ export function BranchStaffSchedulePage() {
     } catch (caught) {
       if (branchIdRef.current !== submittingBranchId) return;
       setError(conflictMessage(caught, "Không thể lưu ca làm."));
+    } finally {
+      savingRef.current = false;
+      setSavingKind(null);
     }
   }
   async function saveOff(event: FormEvent) {
     event.preventDefault();
+    if (savingRef.current) return;
     setError("");
     setNotice("");
     const submittingBranchId = branchId;
@@ -384,6 +395,8 @@ export function BranchStaffSchedulePage() {
       ends_at: `${off.ends_at}:00+07:00`,
       reason: off.reason.trim(),
     };
+    savingRef.current = true;
+    setSavingKind("off");
     try {
       if (editingOffId) await patchManagedTimeOff(editingOffId, payload);
       else
@@ -395,6 +408,9 @@ export function BranchStaffSchedulePage() {
     } catch (caught) {
       if (branchIdRef.current !== submittingBranchId) return;
       setError(conflictMessage(caught, "Không thể lưu lịch nghỉ."));
+    } finally {
+      savingRef.current = false;
+      setSavingKind(null);
     }
   }
   async function toggle() {
@@ -743,8 +759,8 @@ export function BranchStaffSchedulePage() {
             </FormField>
           </FormRow>
           <div className="branch-staff-page__modal-actions">
-            <AdminButton>Lưu ca làm</AdminButton>
-            <AdminButton tone="secondary" type="button" onClick={resetShift}>
+            <AdminButton disabled={savingKind !== null}>{savingKind === "shift" ? "Đang lưu..." : "Lưu ca làm"}</AdminButton>
+            <AdminButton tone="secondary" type="button" disabled={savingKind !== null} onClick={resetShift}>
               Hủy
             </AdminButton>
           </div>
@@ -806,8 +822,8 @@ export function BranchStaffSchedulePage() {
             />
           </FormField>
           <div className="branch-staff-page__modal-actions">
-            <AdminButton>Lưu lịch nghỉ</AdminButton>
-            <AdminButton tone="secondary" type="button" onClick={resetOff}>
+            <AdminButton disabled={savingKind !== null}>{savingKind === "off" ? "Đang lưu..." : "Lưu lịch nghỉ"}</AdminButton>
+            <AdminButton tone="secondary" type="button" disabled={savingKind !== null} onClick={resetOff}>
               Hủy
             </AdminButton>
           </div>
