@@ -245,7 +245,7 @@
   box-shadow: 0 18px 38px rgba(28, 77, 93, 0.09);
 }
 .service-image-wrap {
-  height: 168px;
+  height: 154px;
   position: relative;
   overflow: hidden;
   background: var(--aurelia-cyan-soft);
@@ -306,18 +306,47 @@
 .recognition-section .section-heading-centered {
   margin-bottom: 40px;
 }
+.recognition-carousel {
+  min-width: 0;
+}
+.recognition-carousel-actions {
+  margin: 0 4px 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.recognition-carousel-actions button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b9dce3;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--aurelia-blue-dark);
+  font-size: 25px;
+  line-height: 1;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.recognition-carousel-actions button:hover {
+  border-color: var(--aurelia-blue);
+  background: var(--aurelia-blue);
+  color: #fff;
+}
 .recognition-grid {
   padding: 8px 4px 18px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(205px, 1fr));
+  display: flex;
   gap: 16px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
   scrollbar-width: thin;
   scrollbar-color: #9dcbd4 transparent;
 }
 .recognition-card {
-  min-width: 0;
+  flex: 0 0 min(260px, calc((100% - 48px) / 4));
+  min-width: 220px;
   margin: 0;
   overflow: hidden;
   scroll-snap-align: start;
@@ -334,8 +363,8 @@
   box-shadow: 0 20px 42px rgba(28, 77, 93, 0.12);
 }
 .recognition-image-wrap {
-  height: 290px;
-  padding: 14px;
+  height: 230px;
+  padding: 12px;
   display: grid;
   place-items: center;
   border-bottom: 1px solid #e4edef;
@@ -350,9 +379,12 @@
 .recognition-card figcaption {
   min-height: 108px;
   padding: 18px;
+  position: relative;
+  z-index: 1;
   display: grid;
   align-content: start;
   gap: 7px;
+  background: #fff;
 }
 .recognition-card strong {
   color: var(--aurelia-ink);
@@ -678,10 +710,14 @@
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
   overflow: hidden;
-  border-color: var(--aurelia-line);
+  border: 1px solid var(--aurelia-line);
   border-radius: 13px;
+  background: #fff;
+  color: var(--aurelia-ink);
+  text-align: left;
   cursor: pointer;
   outline: none;
+  transition: border-color 0.18s, background 0.18s;
 }
 .branch-list-card > img {
   width: 150px;
@@ -696,6 +732,22 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
+}
+.branch-detail-link {
+  margin-top: auto;
+  padding-top: 4px;
+  align-self: flex-start;
+  color: var(--aurelia-blue-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.branch-detail-link span {
+  margin-left: 5px;
+  transition: margin-left 0.18s ease;
+}
+.branch-detail-link:hover span {
+  margin-left: 9px;
 }
 .branch-list-card:hover {
   border-color: #a9dbe3;
@@ -1022,7 +1074,10 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .recognition-grid {
-    grid-template-columns: repeat(5, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .recognition-card {
+    flex-basis: 230px;
   }
   .branch-filters {
     grid-template-columns: 1fr 1fr;
@@ -1082,10 +1137,11 @@
     font-size: 12px;
   }
   .hero-slider {
-    aspect-ratio: 1.65 / 1;
+    aspect-ratio: 2.42 / 1;
     border-radius: 14px;
   }
   .hero-slides img {
+    object-fit: contain;
     object-position: center;
   }
   .slider-arrow {
@@ -1093,19 +1149,44 @@
     height: 34px;
   }
   .trust-strip {
-    grid-template-columns: 1fr;
-    padding: 30px 0;
+    width: min(100% - 32px, 440px);
+    padding: 22px 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 14px;
     row-gap: 0;
   }
   .trust-strip p,
   .trust-strip p:first-child,
   .trust-strip p:last-child {
-    padding: 18px 4px;
+    padding: 13px 0;
     border-right: 0;
     border-bottom: 1px solid var(--aurelia-line);
   }
-  .trust-strip p:last-child {
+  .trust-strip p:nth-last-child(-n + 2) {
     border-bottom: 0;
+  }
+  .trust-strip p:nth-child(odd) {
+    border-right: 1px solid var(--aurelia-line);
+    padding-right: 10px;
+  }
+  .trust-strip p:nth-child(even) {
+    padding-left: 4px;
+  }
+  .trust-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 15px !important;
+  }
+  .trust-strip p {
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 9px;
+  }
+  .trust-strip strong {
+    font-size: 12px;
+  }
+  .trust-strip small {
+    font-size: 10px;
+    line-height: 1.45;
   }
   .services-section {
     padding-block: 72px;
@@ -1117,18 +1198,23 @@
     grid-template-columns: 1fr;
   }
   .service-card {
-    min-height: 350px;
+    min-height: 320px;
+  }
+  .service-image-wrap {
+    height: 132px;
   }
   .recognition-section {
     padding-block: 68px;
   }
   .recognition-grid {
-    grid-template-columns: repeat(5, min(320px, calc(100vw - 84px)));
-    scroll-snap-type: x mandatory;
+    gap: 12px;
     scroll-padding-inline: 4px;
   }
+  .recognition-card {
+    flex-basis: min(252px, calc(100vw - 76px));
+  }
   .recognition-image-wrap {
-    height: 270px;
+    height: 190px;
   }
   .branches-section {
     padding: 52px 16px 72px;

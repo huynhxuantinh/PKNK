@@ -207,6 +207,52 @@ function HeroSlider() {
   );
 }
 
+function RecognitionCarousel() {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    track.scrollBy({
+      left: direction * Math.min(track.clientWidth * 0.8, 320),
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="recognition-carousel">
+      <div className="recognition-carousel-actions" aria-label="Điều hướng chứng nhận">
+        <button type="button" onClick={() => scroll(-1)} aria-label="Xem chứng nhận trước">
+          ‹
+        </button>
+        <button type="button" onClick={() => scroll(1)} aria-label="Xem chứng nhận tiếp theo">
+          ›
+        </button>
+      </div>
+      <div
+        ref={trackRef}
+        className="recognition-grid"
+        role="region"
+        aria-label="Danh sách chứng nhận và thành tựu, vuốt ngang để xem thêm"
+        tabIndex={0}
+      >
+        {recognitions.map((item) => (
+          <figure className="recognition-card" key={item.image}>
+            <div className="recognition-image-wrap">
+              <img src={item.image} alt={item.title} loading="lazy" />
+            </div>
+            <figcaption>
+              <strong>{item.title}</strong>
+              <span>{item.description}</span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function HomePage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchDirectory, setBranchDirectory] = useState<Branch[]>([]);
@@ -524,24 +570,7 @@ export function HomePage() {
               góp cộng đồng của DentaVie.
             </p>
           </div>
-          <div
-            className="recognition-grid"
-            role="region"
-            aria-label="Danh sách chứng nhận và thành tựu, vuốt ngang để xem thêm"
-            tabIndex={0}
-          >
-            {recognitions.map((item) => (
-              <figure className="recognition-card" key={item.image}>
-                <div className="recognition-image-wrap">
-                  <img src={item.image} alt={item.title} loading="lazy" />
-                </div>
-                <figcaption>
-                  <strong>{item.title}</strong>
-                  <span>{item.description}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <RecognitionCarousel />
         </section>
 
         <section className="branches-section">
@@ -549,10 +578,6 @@ export function HomePage() {
             <div>
               <h2>Tìm phòng khám gần bạn.</h2>
             </div>
-            <p>
-              Chọn một cơ sở để xem vị trí, địa chỉ và trạng thái hoạt động trực
-              tiếp trên bản đồ.
-            </p>
           </div>
 
           <form
