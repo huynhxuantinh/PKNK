@@ -146,13 +146,17 @@ export async function apiRequest<T>(
 }
 
 export function downloadRequestPath(path: string): string {
-  if (/^https?:\/\//.test(path)) {
-    const url = new URL(path)
-    // Django may build an absolute URL using Docker's internal `web:8000`
-    // hostname. Keep only the API path so the browser uses the Vite proxy.
-    return `${url.pathname}${url.search}`
+  const isRemoteApi = /^https?:\/\//i.test(API_BASE_URL)
+  const apiBase = new URL(API_BASE_URL, window.location.origin)
+  const source = new URL(path, apiBase.origin)
+
+  const apiPrefix = apiBase.pathname.replace(/\/+$/, '')
+  let pathname = source.pathname
+  if (pathname !== apiPrefix && !pathname.startsWith(`${apiPrefix}/`)) {
+    pathname = `${apiPrefix}/${pathname.replace(/^\/+/, '')}`
   }
-  return path.startsWith(API_BASE_URL) ? path : `${API_BASE_URL}${path}`
+
+  return `${isRemoteApi ? apiBase.origin : ''}${pathname}${source.search}`
 }
 
 async function fetchAuthenticatedFile(path: string) {

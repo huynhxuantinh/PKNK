@@ -2,9 +2,10 @@ from datetime import timedelta
 
 from celery import shared_task
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
+
+from .emailing import send_branded_email
 
 from .models import Notification, NotificationDelivery
 
@@ -43,15 +44,13 @@ def deliver_notification_email(self, delivery_id):
         recipient_email = recipient.email
 
     try:
-        sent = send_mail(
+        sent = send_branded_email(
             subject=subject,
-            message=(
-                f"{delivery.notification.body}\n\n"
-                f"Mở trang thông báo: {settings.FRONTEND_URL.rstrip('/')}/notifications"
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient_email],
-            fail_silently=False,
+            recipient=recipient_email,
+            heading=subject,
+            message=delivery.notification.body,
+            action_label="Mở thông báo",
+            action_url=f"{settings.FRONTEND_URL.rstrip('/')}/notifications",
         )
     except Exception as error:
         NotificationDelivery.objects.filter(pk=delivery_id).update(

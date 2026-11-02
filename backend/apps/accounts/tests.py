@@ -90,6 +90,8 @@ class AuthenticationAPITests(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/verify-email?token=", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].alternatives[0][1], "text/html")
+        self.assertIn("DentaVie", mail.outbox[0].alternatives[0][0])
         self.assertNotEqual(token_record.token_digest, raw_token)
         self.assertEqual(
             token_record.token_digest,

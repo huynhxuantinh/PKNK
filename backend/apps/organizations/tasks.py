@@ -4,8 +4,9 @@ from zoneinfo import ZoneInfo
 
 from celery import Task, shared_task
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils import timezone
+
+from apps.notifications.emailing import send_branded_email
 
 from .models import StaffInvitation
 
@@ -59,19 +60,18 @@ def send_staff_invitation_email(invitation_id, raw_token):
         invitation.expires_at,
         timezone=ZoneInfo(invitation.organization.timezone),
     ).strftime("%H:%M ngày %d/%m/%Y")
-    result = send_mail(
+    result = send_branded_email(
         subject=f"Lời mời tham gia {invitation.organization.name}",
+        recipient=invitation.email,
+        heading="Bạn được mời tham gia DentaVie",
         message=(
             f"Quản trị viên {inviter_name} mời bạn làm "
             f"{invitation.get_role_display()} tại {scope_name} của "
             f"{invitation.organization.name}.\n"
-            f"Liên kết có hiệu lực đến {expires_at}.\n\n"
-            "Xem và chấp nhận lời mời tại:\n"
-            f"{url}"
+            f"Liên kết có hiệu lực đến {expires_at}."
         ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[invitation.email],
-        fail_silently=False,
+        action_label="Xem lời mời",
+        action_url=url,
     )
     StaffInvitation.objects.filter(pk=invitation_id).update(
         email_delivery_status=StaffInvitation.EmailDeliveryStatus.SENT,

@@ -2,7 +2,8 @@ from urllib.parse import urlencode
 
 from celery import shared_task
 from django.conf import settings
-from django.core.mail import send_mail
+
+from apps.notifications.emailing import send_branded_email
 
 from .models import User
 from .services import EmailVerificationService, PasswordResetService
@@ -28,16 +29,16 @@ def send_email_verification(user_id, return_to=""):
         query_params["returnTo"] = return_to
     query = urlencode(query_params)
     verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?{query}"
-    return send_mail(
-        subject="Xác minh email tài khoản phòng khám nha khoa",
+    return send_branded_email(
+        subject="Xác minh email tài khoản DentaVie",
+        recipient=user.email,
+        heading="Xác minh email của bạn",
         message=(
             f"Xin chào {user.full_name},\n\n"
-            "Vui lòng mở liên kết sau để xác minh email:\n"
-            f"{verification_url}"
+            "Bạn vừa đăng ký tài khoản DentaVie. Hãy xác minh email để hoàn tất đăng ký và đặt lịch khám."
         ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
+        action_label="Xác minh email",
+        action_url=verification_url,
     )
 
 
@@ -55,14 +56,14 @@ def send_password_reset_email(email):
     raw_token = PasswordResetService.issue_token(user)
     query = urlencode({"token": raw_token})
     reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?{query}"
-    return send_mail(
-        subject="Đặt lại mật khẩu tài khoản phòng khám nha khoa",
+    return send_branded_email(
+        subject="Đặt lại mật khẩu DentaVie",
+        recipient=user.email,
+        heading="Đặt lại mật khẩu",
         message=(
             f"Xin chào {user.full_name},\n\n"
-            "Mở liên kết sau để đặt lại mật khẩu. Liên kết chỉ dùng một lần:\n"
-            f"{reset_url}"
+            "Bạn đã yêu cầu đặt lại mật khẩu. Liên kết này chỉ sử dụng một lần."
         ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
+        action_label="Đặt lại mật khẩu",
+        action_url=reset_url,
     )

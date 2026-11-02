@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DentaVie</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f1fafb;color:#123047;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1fafb;padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #cde6eb;border-radius:20px;overflow:hidden;">
+          <tr><td style="padding:26px 34px;background:linear-gradient(135deg,#064b61,#1495af);color:#ffffff;">
+            <div style="font-size:25px;font-weight:700;letter-spacing:-.5px;">Denta<span style="color:#a8f0e8;">Vie</span></div>
+            <div style="margin-top:7px;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#c4f4f1;">Chăm sóc nụ cười của bạn</div>
+          </td></tr>
+          <tr><td style="padding:34px;">
+            <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:#e8f8f6;color:#087a75;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;">Thông tin tài khoản</div>
+            <h1 style="margin:18px 0 12px;font-size:27px;line-height:1.25;color:#123047;">{{ heading }}</h1>
+            <p style="margin:0;color:#557187;font-size:15px;line-height:1.7;white-space:pre-line;">{{ message }}</p>
+            {% if action_url %}
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;"><tr><td style="border-radius:9px;background:#0b92ae;">
+                <a href="{{ action_url }}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">{{ action_label }}</a>
+              </td></tr></table>
+              <p style="margin:24px 0 0;color:#7890a1;font-size:12px;line-height:1.6;">Nếu nút không hoạt động, hãy sao chép liên kết này vào trình duyệt:<br><a href="{{ action_url }}" style="color:#087f9b;word-break:break-all;">{{ action_url }}</a></p>
+            {% endif %}
+          </td></tr>
+          <tr><td style="padding:20px 34px;background:#f7fbfc;border-top:1px solid #e0eef1;color:#7890a1;font-size:12px;line-height:1.6;">
+            Email này được gửi tự động bởi DentaVie. Không chia sẻ liên kết trong email với người khác.
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>
