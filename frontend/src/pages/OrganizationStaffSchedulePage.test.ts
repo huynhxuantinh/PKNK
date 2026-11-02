@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { settledMapWithConcurrency } from './OrganizationStaffSchedulePage'
+import { settledMapWithConcurrency } from './organizationStaffScheduleUtils'
 
 describe('settledMapWithConcurrency', () => {
   it('limits concurrent work and preserves result order', async () => {

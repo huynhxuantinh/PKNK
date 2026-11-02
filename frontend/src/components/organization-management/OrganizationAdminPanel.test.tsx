@@ -267,6 +267,7 @@ describe('OrganizationAdminPanel', () => {
         role: 'BRANCH_ADMIN',
         branch_id: 2,
         branch_name: 'Mỹ Đình',
+        replaces_membership_id: 7,
         status: 'EXPIRED',
         email_delivery_status: 'FAILED',
         email_sent_at: null,
@@ -309,6 +310,7 @@ describe('OrganizationAdminPanel', () => {
       email: 'expired@example.com',
       role: 'BRANCH_ADMIN',
       branch_id: 2,
+      replaces_membership_id: 7,
     })
   })
 })

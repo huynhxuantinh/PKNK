@@ -167,7 +167,7 @@ export function BranchInvoicesPage() {
     const controller = new AbortController()
     void loadReadyAppointments(controller.signal)
     return () => controller.abort()
-  }, [loadReadyAppointments])
+  }, [branchId, loadReadyAppointments])
 
   function applyReadyFilters() {
     if (readyDateFrom && readyDateTo && readyDateFrom > readyDateTo) {

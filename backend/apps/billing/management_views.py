@@ -2,6 +2,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -105,8 +106,14 @@ class BranchInvoiceReadyAppointmentListAPIView(ManagementAPIView):
             Appointment.objects.filter(
                 branch=branch,
                 status=Appointment.Status.COMPLETED,
-                clinical_encounter__performed_services_confirmed=True,
-                clinical_encounter__performed_services__isnull=False,
+                clinical_encounter__status="FINALIZED",
+            )
+            .filter(
+                Q(clinical_encounter__legacy_billing_allowed=True)
+                | Q(
+                    clinical_encounter__performed_services_confirmed=True,
+                    clinical_encounter__performed_services__isnull=False,
+                )
             )
             .exclude(invoices__status__in=[Invoice.Status.DRAFT, Invoice.Status.ISSUED, Invoice.Status.PAID])
             .select_related("patient_profile__user", "dentist__user", "clinical_encounter")

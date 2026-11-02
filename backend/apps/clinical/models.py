@@ -27,6 +27,7 @@ class ClinicalEncounter(models.Model):
     notes = models.TextField(blank=True)
     aftercare_instructions = models.TextField(blank=True, default="")
     performed_services_confirmed = models.BooleanField(default=False)
+    legacy_billing_allowed = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, db_column="id_created_by",
         on_delete=models.PROTECT, related_name="clinical_encounters_created",

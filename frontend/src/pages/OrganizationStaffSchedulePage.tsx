@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { listManagedTimeOffs, listManagedWorkShifts, type ManagedTimeOff, type ManagedWorkShift } from '../api/management'
@@ -7,35 +7,12 @@ import { DataTable, EmptyState, StatusBadge } from '../components/admin/ui'
 import { OrganizationPageLayout } from '../components/organization-management/OrganizationPageLayout'
 import { useOrganizationScope } from '../components/organization-management/useOrganizationScope'
 import { weekdayLabels } from '../components/branch-management/staffSchedulePresentation'
+import { settledMapWithConcurrency } from './organizationStaffScheduleUtils'
 
 type ShiftRow = ManagedWorkShift & { branchName: string; dentistName: string }
 type OffRow = ManagedTimeOff & { branchName: string; dentistName: string }
 
 const hcmDateTime = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
-const BRANCH_SCHEDULE_CONCURRENCY = 3
-
-export async function settledMapWithConcurrency<T, TResult>(
-  items: T[],
-  worker: (item: T) => Promise<TResult>,
-  concurrency = BRANCH_SCHEDULE_CONCURRENCY,
-) {
-  const results = new Array<PromiseSettledResult<TResult>>(items.length)
-  let nextIndex = 0
-  const run = async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex
-      nextIndex += 1
-      try {
-        results[index] = { status: 'fulfilled', value: await worker(items[index]) }
-      } catch (reason) {
-        results[index] = { status: 'rejected', reason }
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), items.length) }, run))
-  return results
-}
-
 export function OrganizationStaffSchedulePage() {
   const scope = useOrganizationScope()
   const [branches, setBranches] = useState<OrganizationBranch[]>([])
@@ -69,7 +46,7 @@ export function OrganizationStaffSchedulePage() {
             shifts: shiftResponse.data.map((shift) => ({ ...shift, branchName: branch.name, dentistName: dentistById.get(shift.dentist_id) || `Nha sĩ #${shift.dentist_id}` })),
             offs: offResponse.data.map((off) => ({ ...off, branchName: branch.name, dentistName: dentistById.get(off.dentist_id) || `Nha sĩ #${off.dentist_id}` })),
           }
-        })
+        }, 3)
         if (controller.signal.aborted) return
         setShifts(results.flatMap((result) => result.status === 'fulfilled' ? result.value.shifts : []))
         const uniqueOffs = new Map<number, OffRow>()
@@ -89,9 +66,15 @@ export function OrganizationStaffSchedulePage() {
     return () => controller.abort()
   }, [scope.organizationId])
 
-  const matches = (item: { branch_id: number | null; dentist_id: number; is_active: boolean }) => (!branchId || item.branch_id === null || item.branch_id === Number(branchId)) && (!dentistId || item.dentist_id === Number(dentistId)) && (status === 'ALL' || item.is_active === (status === 'ACTIVE'))
-  const visibleShifts = useMemo(() => shifts.filter(matches), [branchId, dentistId, shifts, status])
-  const visibleOffs = useMemo(() => offs.filter(matches), [branchId, dentistId, offs, status])
+  const matchesFilters = useCallback(
+    (item: { branch_id: number | null; dentist_id: number; is_active: boolean }) =>
+      (!branchId || item.branch_id === null || item.branch_id === Number(branchId))
+      && (!dentistId || item.dentist_id === Number(dentistId))
+      && (status === 'ALL' || item.is_active === (status === 'ACTIVE')),
+    [branchId, dentistId, status],
+  )
+  const visibleShifts = useMemo(() => shifts.filter(matchesFilters), [matchesFilters, shifts])
+  const visibleOffs = useMemo(() => offs.filter(matchesFilters), [matchesFilters, offs])
 
   return (
     <OrganizationPageLayout organizationId={scope.organizationId} heroKicker="Nguồn lực toàn chuỗi" heroTitle={organizationName} heroDescription="Theo dõi ca làm và lịch nghỉ giữa các chi nhánh; thay đổi được xử lý tại chi nhánh để bảo toàn lịch hẹn." heroAside={<span className="organization-hero-stat">{visibleShifts.filter((item) => item.is_active).length} ca đang áp dụng</span>}>

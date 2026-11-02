@@ -34,7 +34,6 @@ import {
 import { useManagedBranches } from "../components/branch-management/useManagedBranches";
 import {
   AdminButton,
-  AdminCard,
   AdminForm,
   AdminModal,
   DataTable,
@@ -105,6 +104,7 @@ export function BranchStaffSchedulePage() {
       branches: managedBranches.branches,
       loaded: !managedBranches.loading,
     }) || 0;
+  const canManageOrganizationTimeOffs = canAccessArea(user, "ORGANIZATION");
   const [dentists, setDentists] = useState<ScheduleDentist[]>([]);
   const [shifts, setShifts] = useState<ManagedWorkShift[]>([]);
   const [offs, setOffs] = useState<ManagedTimeOff[]>([]);
@@ -297,6 +297,7 @@ export function BranchStaffSchedulePage() {
   };
   const openOff = (item?: ManagedTimeOff) => {
     if (!branchId || (item && item.branch_id !== null && item.branch_id !== branchId)) return;
+    if (item?.branch_id === null && !canManageOrganizationTimeOffs) return;
     if (item) {
       setOff({
         dentist_id: String(item.dentist_id),
@@ -404,7 +405,11 @@ export function BranchStaffSchedulePage() {
       kind === "shift"
         ? item.branch_id === submittingBranchId
         : item.branch_id === null || item.branch_id === submittingBranchId;
-    if (!submittingBranchId || !isInCurrentScope) {
+    if (
+      !submittingBranchId ||
+      !isInCurrentScope ||
+      (kind === "time-off" && item.branch_id === null && !canManageOrganizationTimeOffs)
+    ) {
       setPendingToggle(null);
       setError("Chi nhánh đã thay đổi. Hãy mở lại mục cần cập nhật.");
       return;
@@ -632,7 +637,11 @@ export function BranchStaffSchedulePage() {
               {
                 key: "action",
                 header: "",
-                cell: (item) => (
+                cell: (item) => item.branch_id === null && !canManageOrganizationTimeOffs ? (
+                  <span className="branch-staff-page__organization-scope">
+                    Toàn tổ chức
+                  </span>
+                ) : (
                   <div className="branch-staff-page__actions">
                     <button onClick={() => openOff(item)}>Sửa</button>
                     <button

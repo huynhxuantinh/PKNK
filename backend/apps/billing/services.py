@@ -58,18 +58,21 @@ class BillingService:
         ).first()
         if encounter is None or encounter.status != ClinicalEncounter.Status.FINALIZED:
             raise ValidationError("Lượt khám chưa có bệnh án đã chốt.")
-        if not encounter.performed_services_confirmed:
+        if not encounter.performed_services_confirmed and not encounter.legacy_billing_allowed:
             raise ValidationError("Nha sĩ chưa xác nhận dịch vụ thực hiện cho lượt khám này.")
         performed_services = list(
             ClinicalPerformedService.objects.select_for_update().select_related("branch_service__service").filter(
                 encounter=encounter,
             )
         )
-        if not performed_services:
-            raise ValidationError("Lượt khám chưa có dịch vụ thực hiện để lập hóa đơn.")
-        subtotal = sum(
-            (item.unit_price_snapshot * item.quantity for item in performed_services),
-            Decimal("0"),
+        if not performed_services and not encounter.legacy_billing_allowed:
+            raise ValidationError(
+                "Lượt khám đã xác nhận không có dịch vụ tính phí; không cần lập hóa đơn."
+            )
+        subtotal = (
+            sum((item.unit_price_snapshot * item.quantity for item in performed_services), Decimal("0"))
+            if performed_services
+            else appointment.service_price_snapshot
         )
         if subtotal <= 0 or not _is_whole_vnd(subtotal):
             raise ValidationError("Tổng dịch vụ thực hiện phải là số VND nguyên và lớn hơn 0.")
@@ -83,7 +86,7 @@ class BillingService:
             total=subtotal,
             created_by=actor_user,
         )
-        InvoiceLine.objects.bulk_create([
+        lines = [
             InvoiceLine(
                 invoice=invoice,
                 service=item.branch_service.service,
@@ -94,10 +97,25 @@ class BillingService:
                 line_total=item.unit_price_snapshot * item.quantity,
             )
             for item in performed_services
-        ])
+        ]
+        if not lines:
+            lines.append(InvoiceLine(
+                invoice=invoice,
+                service=appointment.branch_service.service,
+                service_code_snapshot=appointment.branch_service.service.code,
+                description=f"{appointment.service_name_snapshot} (dữ liệu lịch sử)",
+                quantity=1,
+                unit_price=appointment.service_price_snapshot,
+                line_total=appointment.service_price_snapshot,
+            ))
+        InvoiceLine.objects.bulk_create(lines)
         cls._audit(
             invoice, actor_user=actor_user, action="INVOICE_CREATED",
-            before={}, after={"status": invoice.status, "appointment_id": appointment.pk},
+            before={}, after={
+                "status": invoice.status,
+                "appointment_id": appointment.pk,
+                "billing_basis": "LEGACY_BOOKING_SNAPSHOT" if not performed_services else "PERFORMED_SERVICES",
+            },
             request=request,
         )
         return invoice

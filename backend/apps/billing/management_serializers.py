@@ -57,9 +57,17 @@ class InvoiceReadyAppointmentSerializer(serializers.Serializer):
     completed_at = serializers.DateTimeField(read_only=True)
     performed_services = serializers.SerializerMethodField()
     estimated_total = serializers.SerializerMethodField()
+    billing_basis = serializers.SerializerMethodField()
 
     def get_performed_services(self, appointment):
         encounter = appointment.clinical_encounter
+        if encounter.legacy_billing_allowed and not encounter.performed_services.exists():
+            return [{
+                "service_name": appointment.service_name_snapshot,
+                "quantity": 1,
+                "unit_price": appointment.service_price_snapshot,
+                "tooth_reference": "",
+            }]
         return [
             {
                 "service_name": item.service_name_snapshot,
@@ -71,10 +79,17 @@ class InvoiceReadyAppointmentSerializer(serializers.Serializer):
         ]
 
     def get_estimated_total(self, appointment):
+        encounter = appointment.clinical_encounter
+        if encounter.legacy_billing_allowed and not encounter.performed_services.exists():
+            return appointment.service_price_snapshot
         return sum(
             item.unit_price_snapshot * item.quantity
             for item in appointment.clinical_encounter.performed_services.all()
         )
+
+    def get_billing_basis(self, appointment):
+        encounter = appointment.clinical_encounter
+        return "LEGACY_BOOKING_SNAPSHOT" if encounter.legacy_billing_allowed and not encounter.performed_services.exists() else "PERFORMED_SERVICES"
 
 
 class InvoiceReadyAppointmentQuerySerializer(serializers.Serializer):

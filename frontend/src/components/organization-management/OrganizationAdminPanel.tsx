@@ -215,6 +215,9 @@ export function OrganizationAdminPanel({
         email: invitation.email,
         role: invitation.role,
         branch_id: invitation.branch_id,
+        ...(invitation.replaces_membership_id
+          ? { replaces_membership_id: invitation.replaces_membership_id }
+          : {}),
       })
       setNotice(`Đã gửi lại lời mời tới ${invitation.email}.`)
       setReloadKey((current) => current + 1)
@@ -239,30 +242,6 @@ export function OrganizationAdminPanel({
     } catch (caught) {
       setConfirming(null)
       setError(caught instanceof Error ? caught.message : 'Không thể cập nhật quyền quản trị.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function deactivateManagerForChange() {
-    if (!changingManager) return
-    const { branch, manager } = changingManager
-    setBusy(true)
-    setError('')
-    setNotice('')
-    try {
-      await updateOrganizationMembership(manager.id_membership, { is_active: false })
-      setChangingManager(null)
-      setNotice(
-        `Đã ngưng quyền của ${manager.user_email}. Hãy mời quản lý mới cho ${branch.name}.`,
-      )
-      setForm({ ...emptyInvite(), branchId: String(branch.id_branch) })
-      setFormError('')
-      setModalOpen(true)
-      setReloadKey((current) => current + 1)
-    } catch (caught) {
-      setChangingManager(null)
-      setError(caught instanceof Error ? caught.message : 'Không thể đổi quản lý chi nhánh.')
     } finally {
       setBusy(false)
     }

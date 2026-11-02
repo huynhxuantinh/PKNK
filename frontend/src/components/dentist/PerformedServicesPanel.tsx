@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { replaceClinicalPerformedServices } from '../../api/dentist'
 import type {
@@ -47,9 +47,12 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
   const [initialConfirmed, setInitialConfirmed] = useState(encounter.performed_services_confirmed)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const synchronizedEncounterId = useRef<number | null>(null)
   const servicesById = useMemo(() => new Map(branchServices.map((service) => [service.id_branch_service, service])), [branchServices])
 
   useEffect(() => {
+    if (synchronizedEncounterId.current === encounter.id_clinical_encounter) return
+    synchronizedEncounterId.current = encounter.id_clinical_encounter
     const nextItems = encounter.performed_services.map(toEditable)
     setItems(nextItems)
     setInitialItems(nextItems)
@@ -59,7 +62,7 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
   // Lưu nháp nội dung bệnh án cũng thay đổi updated_at. Chỉ đồng bộ lại khi
   // chuyển sang một lượt khám khác; nếu không, các dịch vụ nha sĩ đang nhập
   // nhưng chưa xác nhận sẽ bị ghi đè bằng dữ liệu cũ từ server.
-  }, [encounter.id_clinical_encounter])
+  }, [encounter.id_clinical_encounter, encounter.performed_services, encounter.performed_services_confirmed])
 
   const dirty = !areEqual(items, initialItems) || confirmed !== initialConfirmed
 
@@ -109,7 +112,12 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
     try {
       const response = await replaceClinicalPerformedServices(encounter.id_clinical_encounter, {
         confirmed: true,
-        items: items.map(({ key: _key, ...item }) => item),
+        items: items.map((item) => ({
+          branch_service_id: item.branch_service_id,
+          quantity: item.quantity,
+          tooth_reference: item.tooth_reference,
+          clinical_note: item.clinical_note,
+        })),
       })
       const savedItems = response.data.items.map(toEditable)
       setItems(savedItems)

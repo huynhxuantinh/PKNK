@@ -11,8 +11,7 @@ const paymentMethodLabels: Record<ManagedPaymentMethod, string> = { CASH: 'Tiề
 
 export function InvoiceAppointmentHint() {
   return <p className="invoice-appointment-hint">
-    Danh sách chỉ gợi ý lịch đã hoàn tất trong 30 ngày gần nhất. Với lịch cũ hơn,
-    hãy nhập trực tiếp mã lịch hẹn.
+    Chỉ lập hóa đơn cho lượt khám có dịch vụ tính phí. Lượt khám lịch sử dùng giá tại thời điểm đặt lịch và cần được kiểm tra trước khi phát hành.
   </p>
 }
 
@@ -49,8 +48,8 @@ export function InvoiceReadyAppointmentQueue({
     <header>
       <div>
         <p className="eyebrow">Đã khám – chờ lập hóa đơn</p>
-        <h2 id="invoice-ready-title">Dịch vụ nha sĩ đã xác nhận</h2>
-        <p>Hóa đơn nháp dùng đúng dịch vụ, số lượng và giá đã ghi nhận trong lượt khám.</p>
+        <h2 id="invoice-ready-title">Dịch vụ chờ lập hóa đơn</h2>
+        <p>Hóa đơn nháp dùng dịch vụ, số lượng và giá đã ghi nhận trong lượt khám.</p>
       </div>
       <span>Tổng {count} lượt chờ</span>
     </header>
@@ -67,6 +66,7 @@ export function InvoiceReadyAppointmentQueue({
           <span>{appointment.appointment_code} · {dateTime(appointment.completed_at)}</span>
           <small>BS. {appointment.dentist_name}</small>
           <p>{appointment.performed_services.map((service) => `${service.service_name} × ${service.quantity}${service.tooth_reference ? ` · ${service.tooth_reference}` : ''}`).join(' · ')}</p>
+          {appointment.billing_basis === 'LEGACY_BOOKING_SNAPSHOT' && <small>Giá từ dịch vụ đã đặt của lượt khám lịch sử; cần kiểm tra trước khi phát hành.</small>}
         </div>
         <div className="invoice-ready-action"><strong>{money(appointment.estimated_total)}</strong><button type="button" onClick={() => onCreate(appointment)}>Lập hóa đơn</button></div>
       </article>)}

@@ -7,6 +7,7 @@ import httpx
 from payos import WebhookError
 from payos import PayOSError
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.db import DatabaseError, transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -61,6 +62,10 @@ class CounterBillingTests(APITestCase):
         cls.branch_service = BranchService.objects.create(branch=cls.branch, service=cls.service, price=Decimal("500000"))
         cls.chair = Chair.objects.create(branch=cls.branch, code="C1", name="Chair", resource_type=Chair.ResourceType.CHAIR)
 
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+
     @classmethod
     def user(cls, email, name):
         return User.objects.create_user(
@@ -68,7 +73,7 @@ class CounterBillingTests(APITestCase):
             email_verified_at=timezone.now(),
         )
 
-    def appointment(self, code="APT-BILLING", *, service_rows=None, confirmed=True):
+    def appointment(self, code="APT-BILLING", *, service_rows=None, confirmed=True, legacy_billing_allowed=False):
         starts = timezone.now() - timedelta(hours=2)
         appointment = Appointment.objects.create(
             public_code=code, patient_profile=self.patient, branch=self.branch,
@@ -82,9 +87,11 @@ class CounterBillingTests(APITestCase):
         encounter = ClinicalEncounter.objects.create(
             appointment=appointment,
             performed_services_confirmed=confirmed,
+            legacy_billing_allowed=legacy_billing_allowed,
             created_by=self.dentist.user,
         )
-        service_rows = service_rows or [(self.branch_service, self.service, Decimal("500000"), 1)]
+        if service_rows is None:
+            service_rows = [(self.branch_service, self.service, Decimal("500000"), 1)]
         for branch_service, service, price, quantity in service_rows:
             ClinicalPerformedService.objects.create(
                 encounter=encounter,
@@ -320,6 +327,47 @@ class CounterBillingTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("xác nhận dịch vụ", response.data["message"])
+
+    def test_confirmed_no_charge_visit_is_not_invoiceable_or_in_ready_queue(self):
+        appointment = self.appointment(
+            "APT-NO-CHARGE",
+            confirmed=True,
+            service_rows=[],
+        )
+        self.client.force_authenticate(self.admin)
+
+        queue = self.client.get(
+            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk}),
+        )
+        response = self.create_invoice(appointment)
+
+        self.assertEqual(queue.status_code, status.HTTP_200_OK)
+        self.assertNotIn(appointment.public_code, [item["appointment_code"] for item in queue.data["data"]])
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("không có dịch vụ tính phí", response.data["message"])
+
+    def test_legacy_completed_visit_uses_booking_snapshot_without_creating_clinical_data(self):
+        appointment = self.appointment(
+            "APT-LEGACY-BILLING",
+            confirmed=False,
+            service_rows=[],
+            legacy_billing_allowed=True,
+        )
+        encounter = appointment.clinical_encounter
+        self.client.force_authenticate(self.admin)
+
+        queue = self.client.get(
+            reverse("management:branch-invoice-ready-appointments", kwargs={"branch_id": self.branch.pk}),
+        )
+        response = self.create_invoice(appointment)
+
+        self.assertEqual(queue.status_code, status.HTTP_200_OK)
+        item = next(item for item in queue.data["data"] if item["appointment_code"] == appointment.public_code)
+        self.assertEqual(item["billing_basis"], "LEGACY_BOOKING_SNAPSHOT")
+        self.assertEqual(item["performed_services"][0]["service_name"], self.service.name)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["data"]["lines"][0]["description"], f"{self.service.name} (dữ liệu lịch sử)")
+        self.assertFalse(ClinicalPerformedService.objects.filter(encounter=encounter).exists())
 
     def test_issued_invoice_line_and_posted_payment_are_database_immutable(self):
         created = self.create_invoice(self.appointment())

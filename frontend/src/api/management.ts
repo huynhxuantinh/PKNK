@@ -81,6 +81,7 @@ export interface InvoiceReadyAppointment {
   dentist_name: string
   completed_at: string
   estimated_total: string
+  billing_basis: 'PERFORMED_SERVICES' | 'LEGACY_BOOKING_SNAPSHOT'
   performed_services: Array<{
     service_name: string
     quantity: number

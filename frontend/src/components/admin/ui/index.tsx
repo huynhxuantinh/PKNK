@@ -113,6 +113,8 @@ export function AdminToastProvider({ children }: { children: ReactNode }) {
   return <ToastContext.Provider value={value}>{children}<div className="admin-toast-stack" aria-live="polite">{toasts.map((toast) => <div className={`admin-toast is-${toast.tone}`} key={toast.id}>{toast.message}</div>)}</div></ToastContext.Provider>
 }
 
+// Context hook is intentionally co-located with its provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAdminToast() {
   const context = useContext(ToastContext)
   if (!context) throw new Error('useAdminToast must be used inside AdminToastProvider.')
