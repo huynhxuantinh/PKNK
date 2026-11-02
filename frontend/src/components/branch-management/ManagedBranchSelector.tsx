@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
 import type { ManagedBranch } from '../../api/management'
+import styles from './ManagedBranchSelector.module.css'
 
 interface ManagedBranchSelectorProps {
   branches: ManagedBranch[]
@@ -33,8 +34,8 @@ export function ManagedBranchSelector({
   }
 
   return (
-    <section className="managed-branch-selector" aria-labelledby="branch-selector-title">
-      <span className="managed-branch-selector-kicker">PHẠM VI LÀM VIỆC</span>
+    <section className={styles.selector} aria-labelledby="branch-selector-title">
+      <span>PHẠM VI LÀM VIỆC</span>
       <h1 id="branch-selector-title">Chọn chi nhánh làm việc</h1>
       <p>Chọn chi nhánh để xem ca làm hoặc báo cáo tương ứng.</p>
 
