@@ -1,0 +1,32 @@
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { scroll-padding-top: 100px; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--cream);
+  font-weight: 400;
+}
+
+button,
+input,
+select,
+textarea { font: inherit; }
+
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(8, 127, 115, .28);
+  outline-offset: 3px;
+}
+
+a { color: inherit; }

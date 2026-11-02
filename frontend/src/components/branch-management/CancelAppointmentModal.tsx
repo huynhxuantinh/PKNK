@@ -43,7 +43,7 @@ export function CancelAppointmentModal({
             onChange={(event) => setReason(event.target.value)}
           />
         </label>
-        <div>
+        <div className="modal-actions">
           <button type="button" className="button-secondary" onClick={onClose} disabled={busy}>
             Quay lại
           </button>

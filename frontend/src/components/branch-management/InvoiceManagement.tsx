@@ -4,7 +4,7 @@ import { toDataURL } from 'qrcode'
 import type { InvoiceReadyAppointment, ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPayosCheckout, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
 import { DataTable, EmptyState, StatusBadge } from '../admin/ui'
 import { invoiceStatusLabels } from './invoicePresentation'
-import './invoice-management-refresh.css'
+import styles from './InvoiceManagement.module.css'
 
 const money = (value: string) => `${new Intl.NumberFormat('vi-VN').format(Number(value))} ₫`
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
@@ -83,12 +83,12 @@ export function InvoiceReadyAppointmentQueue({
 export function InvoiceTable({ items, onSelect }: { items: ManagedInvoice[]; onSelect: (invoice: ManagedInvoice) => void }) {
   const tone = (status: ManagedInvoiceStatus) => status === 'PAID' ? 'success' as const : status === 'VOID' ? 'danger' as const : status === 'DRAFT' ? 'neutral' as const : 'info' as const
   return <DataTable rows={items} rowKey={(invoice) => invoice.id_invoice} empty={<EmptyState title="Chưa có hóa đơn phù hợp" description="Thử thay đổi bộ lọc hoặc tạo hóa đơn từ lịch khám hoàn tất." />} columns={[
-    { key: 'number', header: 'Hóa đơn', cell: (invoice) => <div className="invoice-table-identity"><strong>{invoice.invoice_number}</strong><small>{invoice.appointment_code}</small></div> },
+    { key: 'number', header: 'Hóa đơn', cell: (invoice) => <div className={styles.tableIdentity}><strong>{invoice.invoice_number}</strong><small>{invoice.appointment_code}</small></div> },
     { key: 'patient', header: 'Bệnh nhân', cell: (invoice) => invoice.patient_name },
     { key: 'created', header: 'Ngày tạo', cell: (invoice) => dateTime(invoice.created_at) },
-    { key: 'total', header: 'Tổng tiền', cell: (invoice) => <strong className="invoice-table-total">{money(invoice.total)}</strong> },
+    { key: 'total', header: 'Tổng tiền', cell: (invoice) => <strong className={styles.tableTotal}>{money(invoice.total)}</strong> },
     { key: 'status', header: 'Trạng thái', cell: (invoice) => <StatusBadge tone={tone(invoice.status)}>{invoiceStatusLabels[invoice.status]}</StatusBadge> },
-    { key: 'action', header: '', cell: (invoice) => <button type="button" className="invoice-table-open" onClick={() => onSelect(invoice)}>Xem chi tiết</button> },
+    { key: 'action', header: '', cell: (invoice) => <button type="button" className={styles.tableOpen} onClick={() => onSelect(invoice)}>Xem chi tiết</button> },
   ]} />
 }
 
@@ -157,7 +157,7 @@ export function InvoicePagination({ count, limit, offset, onChange }: InvoicePag
 interface InvoiceDetailPanelProps { invoice: ManagedInvoice; busy: boolean; onClose: () => void; onIssue: () => void; onVoid: () => void; onEdit: () => void; onRecordPayment: () => void; onVoidPayment: (payment: ManagedInvoicePayment) => void }
 export function InvoiceDetailPanel({ invoice, busy, onClose, onIssue, onVoid, onEdit, onRecordPayment, onVoidPayment }: InvoiceDetailPanelProps) {
   const postedPayment = invoice.payments.find((payment) => payment.status === 'POSTED')
-  return <div className="branch-management-modal-backdrop"><section className="branch-management-modal invoice-detail-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-detail-title">
+  return <div className={`branch-management-modal-backdrop ${styles.detailBackdrop}`}><section className={`branch-management-modal invoice-detail-modal ${styles.detailModal}`} role="dialog" aria-modal="true" aria-labelledby="invoice-detail-title">
     <header><div><span className={`invoice-status is-${invoice.status.toLowerCase()}`}>{invoiceStatusLabels[invoice.status]}</span><h2 id="invoice-detail-title">{invoice.invoice_number}</h2><p>{invoice.patient_name} · Lịch {invoice.appointment_code}</p></div><button type="button" className="invoice-close" onClick={onClose} aria-label="Đóng">×</button></header>
     <div className="invoice-line-list">{invoice.lines.map((line) => <div key={line.id_invoice_line}><span><strong>{line.description}</strong><small>{line.quantity} × {money(line.unit_price)}</small></span><b>{money(line.line_total)}</b></div>)}</div>
     <dl className="invoice-totals"><div><dt>Tạm tính</dt><dd>{money(invoice.subtotal)}</dd></div><div><dt>Giảm giá</dt><dd>- {money(invoice.discount)}</dd></div><div><dt>Tổng cộng</dt><dd>{money(invoice.total)}</dd></div></dl>
@@ -272,7 +272,7 @@ export function InvoiceDraftEditor({ invoice, busy, serverError = '', onCancel, 
     <label>Lý do điều chỉnh<textarea name="invoice-adjustment-reason" required minLength={3} maxLength={1000} value={adjustmentReason} disabled={busy} onChange={(event) => setAdjustmentReason(event.target.value)} placeholder="Ví dụ: Điều chỉnh theo dịch vụ phát sinh đã được bệnh nhân đồng ý." /></label>
     <dl className="invoice-draft-preview"><div><dt>Tạm tính dự kiến</dt><dd>{money(String(subtotal))}</dd></div><div><dt>Tổng dự kiến</dt><dd>{money(String(estimatedTotal))}</dd></div></dl>
     <p className="invoice-draft-note">Số tiền chính thức được lấy từ hệ thống sau khi lưu.</p>
-    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div>
+    <div className="modal-actions"><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div>
   </form></div>
 }
 
@@ -294,11 +294,11 @@ export function PaymentChoiceModal({ busy, onCancel, onCash, onPayos }: {
   return <div className="branch-management-modal-backdrop invoice-confirm-layer"><section className="branch-management-modal payment-modal" role="dialog" aria-modal="true" aria-label="Chọn phương thức thanh toán">
     <h2>Thanh toán hóa đơn</h2>
     <p>Chọn cách thanh toán tại quầy. QR payOS chỉ được xác nhận khi payOS gửi kết quả về hệ thống.</p>
-    <div className="payment-choice-actions">
+    <div className={styles.paymentChoiceActions}>
       <button type="button" disabled={busy} onClick={onCash}><strong>Tiền mặt</strong><span>Thu tiền trực tiếp tại quầy</span></button>
       <button type="button" className="button-secondary" disabled={busy} onClick={onPayos}><strong>QR payOS</strong><span>Tạo mã để khách quét và thanh toán</span></button>
     </div>
-    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button></div>
+    <div className="modal-actions"><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button></div>
   </section></div>
 }
 
@@ -325,15 +325,15 @@ export function PayosCheckoutModal({ checkout, busy, serverError = '', onCancel,
     return () => { active = false }
   }, [checkout?.order_code, checkout?.qr_code])
 
-  return <div className="branch-management-modal-backdrop invoice-confirm-layer"><section className="branch-management-modal payment-modal payos-checkout-modal" role="dialog" aria-modal="true" aria-label="Thanh toán QR payOS">
+  return <div className="branch-management-modal-backdrop invoice-confirm-layer"><section className={`branch-management-modal payment-modal ${styles.payosCheckoutModal}`} role="dialog" aria-modal="true" aria-label="Thanh toán QR payOS">
     <h2>Thanh toán QR payOS</h2>
     {serverError && <div className="payment-modal-error" role="alert">{serverError}</div>}
-    {!checkout && <><p>Tạo mã QR để khách quét bằng ứng dụng ngân hàng.</p><div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang tạo...' : 'Tạo mã QR'}</button></div></>}
+    {!checkout && <><p>Tạo mã QR để khách quét bằng ứng dụng ngân hàng.</p><div className="modal-actions"><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang tạo...' : 'Tạo mã QR'}</button></div></>}
     {checkout && <>
-      {qrImage ? <img className="payos-qr-image" src={qrImage} alt="Mã QR payOS để thanh toán" /> : <p>Không thể hiển thị mã QR. Hãy mở liên kết payOS bên dưới.</p>}
-      <p className="payment-method-note"><strong>Đang chờ payOS xác minh</strong><span>Không thu tiền mặt cho hóa đơn này khi mã QR còn hiệu lực.</span></p>
-      <a className="button-secondary payos-checkout-link" href={checkout.checkout_url} target="_blank" rel="noreferrer">Mở trang payOS</a>
-      <div><button type="button" className="button-secondary" onClick={onCancel}>Đóng</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang kiểm tra...' : 'Làm mới trạng thái'}</button></div>
+      {qrImage ? <img className={styles.payosQrImage} src={qrImage} alt="Mã QR payOS để thanh toán" /> : <p>Không thể hiển thị mã QR. Hãy mở liên kết payOS bên dưới.</p>}
+      <p className={styles.paymentMethodNote}><strong>Đang chờ payOS xác minh</strong><span>Không thu tiền mặt cho hóa đơn này khi mã QR còn hiệu lực.</span></p>
+      <a className={`button-secondary ${styles.payosCheckoutLink}`} href={checkout.checkout_url} target="_blank" rel="noreferrer">Mở trang payOS</a>
+      <div className="modal-actions"><button type="button" className="button-secondary" onClick={onCancel}>Đóng</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang kiểm tra...' : 'Làm mới trạng thái'}</button></div>
     </>}
   </section></div>
 }
@@ -359,11 +359,11 @@ export function PaymentModal({ invoice, idempotencyKey, busy, serverError = '', 
     <h2>Ghi nhận thanh toán</h2>
     <p>Hóa đơn {invoice.invoice_number}</p>
     {(validationError || serverError) && <div className="payment-modal-error" role="alert">{validationError || serverError}</div>}
-    <p className="payment-method-note"><strong>Tiền mặt tại quầy</strong><span>Thanh toán payOS được xác minh tự động từ giao dịch online.</span></p>
+    <p className={styles.paymentMethodNote}><strong>Tiền mặt tại quầy</strong><span>Thanh toán payOS được xác minh tự động từ giao dịch online.</span></p>
     <label>Tổng cần thu<input value={invoice.total} readOnly aria-readonly="true" /></label>
     <label>Khách đưa<input name="cash-received" type="number" min={invoice.total} step="1" inputMode="numeric" value={cashReceived} disabled={busy} onChange={(event) => { setCashReceived(event.target.value); setValidationError('') }} /></label>
-    <output className="payment-change" aria-live="polite"><span>Tiền thừa</span><strong>{money(String(change))}</strong></output>
-    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang ghi nhận...' : 'Xác nhận đã thu tiền'}</button></div>
+    <output className={styles.paymentChange} aria-live="polite"><span>Tiền thừa</span><strong>{money(String(change))}</strong></output>
+    <div className="modal-actions"><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang ghi nhận...' : 'Xác nhận đã thu tiền'}</button></div>
   </form></div>
 }
 
@@ -396,6 +396,6 @@ export function VoidPaymentModal({ payment, busy, serverError = '', onCancel, on
     <div className="payment-refund-warning">Hệ thống chỉ đưa hóa đơn về chưa thanh toán. Việc hoàn tiền thật cho khách phải làm riêng.</div>
     {(validationError || serverError) && <div className="payment-modal-error" role="alert">{validationError || serverError}</div>}
     <label>Lý do<textarea value={reason} disabled={busy} minLength={3} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></label>
-    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang hủy...' : 'Xác nhận hủy thanh toán'}</button></div>
+    <div className="modal-actions"><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang hủy...' : 'Xác nhận hủy thanh toán'}</button></div>
   </form></div>
 }

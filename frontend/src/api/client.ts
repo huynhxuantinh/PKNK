@@ -147,7 +147,8 @@ export async function apiRequest<T>(
 
 export function downloadRequestPath(path: string): string {
   const isRemoteApi = /^https?:\/\//i.test(API_BASE_URL)
-  const apiBase = new URL(API_BASE_URL, window.location.origin)
+  const browserOrigin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin
+  const apiBase = new URL(API_BASE_URL, browserOrigin)
   const source = new URL(path, apiBase.origin)
 
   const apiPrefix = apiBase.pathname.replace(/\/+$/, '')

@@ -55,10 +55,10 @@ describe('invoice management UI', () => {
     const paid = { ...issued, status: 'PAID' as const, paid_at: '2026-10-24T09:05:00+07:00' }
     const voided = { ...issued, status: 'VOID' as const, voided_at: '2026-10-24T09:10:00+07:00' }
 
-    expect(detail(issued)).toContain('Ghi nhận thanh toán')
-    expect(detail(draftInvoice)).not.toContain('Ghi nhận thanh toán')
-    expect(detail(paid)).not.toContain('Ghi nhận thanh toán')
-    expect(detail(voided)).not.toContain('Ghi nhận thanh toán')
+    expect(detail(issued)).toContain('>Thanh toán</button>')
+    expect(detail(draftInvoice)).not.toContain('>Thanh toán</button>')
+    expect(detail(paid)).not.toContain('>Thanh toán</button>')
+    expect(detail(voided)).not.toContain('>Thanh toán</button>')
   })
 
   it('only offers draft editing before the invoice is issued', () => {

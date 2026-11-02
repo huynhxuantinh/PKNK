@@ -1,0 +1,44 @@
+@import "@fontsource-variable/montserrat";
+
+:root {
+  --font-display: "Montserrat Variable", Montserrat, Arial, sans-serif;
+  --ink: #162c3a;
+  --ink-deep: #12384a;
+  --muted: #61717c;
+  --line: #dce9ed;
+  --surface: #ffffff;
+  --cream: #ffffff;
+  --primary: #148eb0;
+  --primary-dark: #087493;
+  --soft: #f2fafb;
+  --lime: #dff5f8;
+  --peach: #f2fafb;
+  --gold: #148eb0;
+  --danger: #de2828;
+  --shadow: 0 4px 16px rgba(18, 56, 74, .05), 0 16px 40px rgba(18, 56, 74, .05);
+
+  --dv-navy-900: #082d4a;
+  --dv-navy-800: #123e52;
+  --dv-teal-700: #087c9d;
+  --dv-teal-600: #118da8;
+  --dv-teal-100: #eaf6f8;
+  --dv-canvas: #f4fbfc;
+  --dv-border: #d9e8ed;
+  --dv-radius-sm: 8px;
+  --dv-radius-md: 12px;
+  --dv-radius-lg: 18px;
+  --dv-radius-xl: 24px;
+  --dv-space-1: 4px;
+  --dv-space-2: 8px;
+  --dv-space-3: 12px;
+  --dv-space-4: 16px;
+  --dv-space-5: 24px;
+  --dv-space-6: 32px;
+
+  font-family: var(--font-display);
+  color: #3d4045;
+  background: #ffffff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
