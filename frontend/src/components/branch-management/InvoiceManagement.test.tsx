@@ -130,17 +130,17 @@ describe('invoice management UI', () => {
     expect(onSubmit.mock.calls[1][0].idempotency_key).toBe('payment-attempt-001')
   })
 
-  it('rejects a bank transfer without a transaction reference', () => {
+  it('requires the cash received to cover the invoice total', () => {
     const onSubmit = vi.fn()
     const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
     let renderer: ReactTestRenderer
 
     act(() => { renderer = create(<PaymentModal invoice={issued} idempotencyKey="payment-attempt-002" busy={false} onCancel={() => {}} onSubmit={onSubmit} />) })
-    act(() => { renderer!.root.findByProps({ name: 'payment-method' }).props.onChange({ target: { value: 'BANK_TRANSFER' } }) })
+    act(() => { renderer!.root.findByProps({ name: 'cash-received' }).props.onChange({ target: { value: '400000' } }) })
     act(() => { renderer!.root.findByProps({ 'aria-label': 'Ghi nhận thanh toán' }).props.onSubmit({ preventDefault() {} }) })
 
     expect(onSubmit).not.toHaveBeenCalled()
-    expect(renderer!.root.findByProps({ role: 'alert' }).children.join('')).toContain('mã giao dịch')
+    expect(renderer!.root.findByProps({ role: 'alert' }).children.join('')).toContain('khách đưa')
   })
 
   it('requires a reason before voiding a posted payment', () => {
@@ -207,7 +207,7 @@ describe('invoice management UI', () => {
   it('explains how to create an invoice for an older appointment', () => {
     const markup = renderToStaticMarkup(<InvoiceAppointmentHint />)
 
-    expect(markup).toContain('30 ngày gần nhất')
-    expect(markup).toContain('nhập trực tiếp mã lịch hẹn')
+    expect(markup).toContain('lượt khám có dịch vụ tính phí')
+    expect(markup).toContain('Lượt khám lịch sử')
   })
 })

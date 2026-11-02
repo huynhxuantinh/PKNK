@@ -129,7 +129,9 @@ class ReasonSerializer(serializers.Serializer):
 
 
 class PaymentCreateSerializer(serializers.Serializer):
-    method = serializers.ChoiceField(choices=Payment.Method.choices)
+    # The counter confirms cash only. BANK_TRANSFER is reserved for the
+    # verified payOS service path and is never a manually posted payment.
+    method = serializers.ChoiceField(choices=[Payment.Method.CASH])
     amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=1)
     external_reference = serializers.CharField(max_length=100, required=False, allow_blank=True)
     idempotency_key = serializers.CharField(min_length=8, max_length=64)

@@ -186,12 +186,26 @@ class CounterBillingTests(APITestCase):
         self.client.post(reverse("management:invoice-issue", kwargs={"invoice_id": invoice_id}))
         rejected_payment = self.client.post(
             reverse("management:invoice-payments", kwargs={"invoice_id": invoice_id}),
-            {"method": "CARD", "amount": "400000", "idempotency_key": "billing-payment-002"}, format="json",
+            {"method": "CASH", "amount": "400000", "idempotency_key": "billing-payment-002"}, format="json",
         )
 
         self.assertEqual(rejected_invoice.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(rejected_payment.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(Payment.objects.exists())
+
+    def test_counter_payment_rejects_non_cash_methods(self):
+        created = self.create_invoice(self.appointment("APT-MANUAL-CASH-ONLY"))
+        invoice_id = created.data["data"]["id_invoice"]
+        self.client.post(reverse("management:invoice-issue", kwargs={"invoice_id": invoice_id}))
+
+        rejected = self.client.post(
+            reverse("management:invoice-payments", kwargs={"invoice_id": invoice_id}),
+            {"method": "BANK_TRANSFER", "amount": "500000", "idempotency_key": "billing-payment-cash-only"},
+            format="json",
+        )
+
+        self.assertEqual(rejected.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Payment.objects.filter(invoice_id=invoice_id).exists())
 
     def test_draft_adjustment_requires_reason_and_branch_service(self):
         created = self.create_invoice(self.appointment("APT-DRAFT-REASON"))
@@ -411,7 +425,7 @@ class CounterBillingTests(APITestCase):
         self.client.post(reverse("management:invoice-issue", kwargs={"invoice_id": invoice_id}))
         self.client.post(
             reverse("management:invoice-payments", kwargs={"invoice_id": invoice_id}),
-            {"method": "BANK_TRANSFER", "amount": "500000", "idempotency_key": "billing-payment-003"}, format="json",
+            {"method": "CASH", "amount": "500000", "idempotency_key": "billing-payment-003"}, format="json",
         )
         line = InvoiceLine.objects.get(invoice_id=invoice_id)
         payment = Payment.objects.get(invoice_id=invoice_id)

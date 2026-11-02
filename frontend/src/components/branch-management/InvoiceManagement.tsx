@@ -7,7 +7,7 @@ import './invoice-management-refresh.css'
 
 const money = (value: string) => `${new Intl.NumberFormat('vi-VN').format(Number(value))} ₫`
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
-const paymentMethodLabels: Record<ManagedPaymentMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản', CARD: 'Thẻ' }
+const paymentMethodLabels: Record<ManagedPaymentMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'payOS', CARD: 'Thẻ' }
 
 export function InvoiceAppointmentHint() {
   return <p className="invoice-appointment-hint">
@@ -285,29 +285,31 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ invoice, idempotencyKey, busy, serverError = '', onCancel, onSubmit }: PaymentModalProps) {
-  const [method, setMethod] = useState<ManagedPaymentMethod>('CASH')
-  const [externalReference, setExternalReference] = useState('')
+  const [cashReceived, setCashReceived] = useState(invoice.total)
   const [validationError, setValidationError] = useState('')
+  const invoiceTotal = Number(invoice.total)
+  const received = Number(cashReceived)
+  const change = Number.isFinite(received) ? Math.max(0, received - invoiceTotal) : 0
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const reference = externalReference.trim()
-    if (method !== 'CASH' && !reference) {
-      setValidationError('Cần nhập mã giao dịch cho chuyển khoản hoặc thanh toán thẻ.')
+    if (!Number.isFinite(received) || received < invoiceTotal) {
+      setValidationError('Số tiền khách đưa phải đủ tổng hóa đơn.')
       return
     }
     setValidationError('')
-    onSubmit({ method, amount: invoice.total, external_reference: reference, idempotency_key: idempotencyKey })
+    onSubmit({ method: 'CASH', amount: invoice.total, external_reference: '', idempotency_key: idempotencyKey })
   }
 
   return <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal payment-modal" role="dialog" aria-modal="true" aria-label="Ghi nhận thanh toán" onSubmit={submit}>
     <h2>Ghi nhận thanh toán</h2>
     <p>Hóa đơn {invoice.invoice_number}</p>
     {(validationError || serverError) && <div className="payment-modal-error" role="alert">{validationError || serverError}</div>}
-    <label>Phương thức<select name="payment-method" value={method} disabled={busy} onChange={(event) => { setMethod(event.target.value as ManagedPaymentMethod); setValidationError('') }}><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option><option value="CARD">Thẻ</option></select></label>
-    <label>Số tiền<input value={invoice.total} readOnly aria-readonly="true" /></label>
-    <label>Mã tham chiếu<input value={externalReference} disabled={busy} maxLength={100} onChange={(event) => setExternalReference(event.target.value)} placeholder={method === 'CASH' ? 'Không bắt buộc' : 'Nhập số giao dịch'} /></label>
-    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang ghi nhận...' : 'Xác nhận thanh toán'}</button></div>
+    <p className="payment-method-note"><strong>Tiền mặt tại quầy</strong><span>Thanh toán payOS được xác minh tự động từ giao dịch online.</span></p>
+    <label>Tổng cần thu<input value={invoice.total} readOnly aria-readonly="true" /></label>
+    <label>Khách đưa<input name="cash-received" type="number" min={invoice.total} step="1" inputMode="numeric" value={cashReceived} disabled={busy} onChange={(event) => { setCashReceived(event.target.value); setValidationError('') }} /></label>
+    <output className="payment-change" aria-live="polite"><span>Tiền thừa</span><strong>{money(String(change))}</strong></output>
+    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="submit" disabled={busy}>{busy ? 'Đang ghi nhận...' : 'Xác nhận đã thu tiền'}</button></div>
   </form></div>
 }
 
