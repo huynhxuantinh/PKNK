@@ -1,12 +1,14 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
+
+import styles from "./OrganizationPageLayout.module.css";
 
 interface OrganizationPageLayoutProps {
-  organizationId: number | null
-  heroKicker: string
-  heroTitle: string
-  heroDescription: string
-  heroAside?: ReactNode
-  children: ReactNode
+  organizationId: number | null;
+  heroKicker: string;
+  heroTitle: string;
+  heroDescription: string;
+  heroAside?: ReactNode;
+  children: ReactNode;
 }
 
 export function OrganizationPageLayout({
@@ -18,21 +20,19 @@ export function OrganizationPageLayout({
   children,
 }: OrganizationPageLayoutProps) {
   return (
-    <div className="branch-management-page organization-management-page">
+    <div className={`branch-management-page ${styles.page}`}>
       <main className="branch-management-main">
-        <section className="branch-management-hero organization-management-hero">
+        <section className={`branch-management-hero ${styles.hero}`}>
           <div>
-            <span className="organization-eyebrow">{heroKicker}</span>
+            <span className={styles.eyebrow}>{heroKicker}</span>
             <h1>{heroTitle}</h1>
             <p>{heroDescription}</p>
           </div>
-          {heroAside && <div className="organization-hero-tools">{heroAside}</div>}
+          {heroAside && <div className={styles.tools}>{heroAside}</div>}
         </section>
 
         {organizationId ? (
-          <>
-            {children}
-          </>
+          <>{children}</>
         ) : (
           <p className="management-error" role="alert">
             Tài khoản chưa được cấp quyền quản trị tổ chức.
@@ -40,5 +40,5 @@ export function OrganizationPageLayout({
         )}
       </main>
     </div>
-  )
+  );
 }

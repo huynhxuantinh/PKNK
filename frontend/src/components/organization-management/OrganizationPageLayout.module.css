@@ -1,0 +1,221 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #eaf7f9 0, #f8fcfd 430px);
+}
+
+.hero {
+  position: relative;
+  align-items: center;
+  overflow: hidden;
+  padding: 1.5rem 1.75rem;
+}
+
+.hero::after {
+  position: absolute;
+  right: -80px;
+  bottom: -170px;
+  width: 270px;
+  height: 270px;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 38px rgb(255 255 255 / 0.05),
+    0 0 0 78px rgb(255 255 255 / 0.035);
+  content: "";
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero h1 {
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+}
+
+.eyebrow {
+  color: #99e5ef;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.tools {
+  display: grid;
+  justify-items: end;
+  gap: 0.85rem;
+}
+
+.page :global(.organization-hero-button) {
+  padding: 0.8rem 1.2rem;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.page :global(.organization-hero-button:hover) {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.page :global(.organization-hero-stat) {
+  color: #d9f4f7;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.page :global(.organization-date-range) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.page :global(.organization-date-range label) {
+  display: grid;
+  min-width: 130px;
+  gap: 0.35rem;
+  color: #d9f4f7;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.page :global(.organization-date-range input) {
+  padding: 0.62rem 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  color: #082d4a;
+  font: inherit;
+}
+
+.page :global(.organization-date-range button) {
+  padding: 0.68rem 0.95rem;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  border-radius: 8px;
+  background: #fff;
+  color: #087c9d;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.page :global(.organization-date-range button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page :global(.organization-quick-ranges) {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.page :global(.organization-date-range .organization-quick-ranges button) {
+  padding: 0.45rem 0.62rem;
+  border-color: rgb(255 255 255 / 0.34);
+  background: rgb(255 255 255 / 0.1);
+  color: #e9fcff;
+}
+
+.page
+  :global(
+    .organization-date-range .organization-quick-ranges button.is-active
+  ) {
+  border-color: #fff;
+  background: #fff;
+  color: #087c9d;
+}
+
+.page :global(.organization-report-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.page :global(.organization-network-summary) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.page :global(.organization-network-summary article) {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #d7e8ed;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #fff, #f4fbfc);
+  box-shadow: 0 8px 22px rgb(20 78 101 / 0.045);
+}
+
+.page :global(.organization-network-summary span) {
+  color: #638095;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.page :global(.organization-network-summary strong) {
+  color: #082d4a;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.page :global(.organization-network-summary small) {
+  color: #708b9a;
+  font-size: 0.74rem;
+}
+
+.page :global(.organization-finance-kpi) {
+  display: grid;
+  gap: 0.38rem;
+  padding: 1.2rem;
+}
+.page :global(.organization-finance-kpi span) {
+  color: #638095;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.page :global(.organization-finance-kpi strong) {
+  color: #082d4a;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+.page :global(.organization-finance-kpi small) {
+  color: #78909b;
+  font-size: 0.74rem;
+}
+
+@media (max-width: 720px) {
+  .tools {
+    width: 100%;
+    justify-items: stretch;
+  }
+}
+
+@media (max-width: 980px) {
+  .page :global(.organization-report-grid),
+  .page :global(.organization-network-summary) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page :global(.organization-date-range) {
+    width: 100%;
+  }
+  .page :global(.organization-date-range label) {
+    flex: 1 1 140px;
+  }
+}
