@@ -14,8 +14,7 @@ import {
   StatusBadge,
 } from "../components/admin/ui";
 import { hcmDate } from "../components/branch-management/appointmentPresentation";
-import "./branch-dashboard.css";
-import "./branch-dashboard-pagination.css";
+import styles from "./BranchDashboardPage.module.css";
 
 const today = () => hcmDate(new Date());
 const BRANCH_DASHBOARD_REFRESH_MS = 30_000;
@@ -131,8 +130,8 @@ export function BranchDashboardPage() {
   const branchQuery = scope.branchId ? `?chi-nhanh=${scope.branchId}` : "";
 
   return (
-    <div className="branch-dashboard">
-      <section className="branch-dashboard__hero">
+    <div className={styles.root}>
+      <section className={styles.hero}>
         <div>
           <p className="eyebrow">Vận hành hôm nay</p>
           <h1>{branch?.name || "Tổng quan chi nhánh"}</h1>
@@ -151,27 +150,27 @@ export function BranchDashboardPage() {
         </Link>
       </section>
 
-      <section className="branch-dashboard__kpis" aria-label="Chỉ số lịch hẹn">
+      <section className={styles.kpis} aria-label="Chỉ số lịch hẹn">
         {appointments === null ? (
-          <Skeleton className="branch-dashboard__kpi-skeleton" lines={4} />
+          <Skeleton className={styles.kpiSkeleton} lines={4} />
         ) : (
           <>
-            <AdminCard className="branch-dashboard__kpi">
+            <AdminCard className={styles.kpi}>
               <span>Lịch hôm nay</span>
               <strong>{summary.totalToday}</strong>
               <small>Đã lên lịch trong ngày</small>
             </AdminCard>
-            <AdminCard className="branch-dashboard__kpi is-warning">
+            <AdminCard className={`${styles.kpi} ${styles.warning}`}>
               <span>Chờ xác nhận</span>
               <strong>{summary.pending}</strong>
               <small>Cần kiểm tra và phản hồi</small>
             </AdminCard>
-            <AdminCard className="branch-dashboard__kpi is-success">
+            <AdminCard className={`${styles.kpi} ${styles.success}`}>
               <span>Đã check-in</span>
               <strong>{summary.checkedIn}</strong>
               <small>Sẵn sàng cho bác sĩ</small>
             </AdminCard>
-            <AdminCard className="branch-dashboard__kpi is-info">
+            <AdminCard className={`${styles.kpi} ${styles.info}`}>
               <span>Lịch sắp tới</span>
               <strong>{summary.upcoming.length}</strong>
               <small>Trong 7 ngày tới</small>
@@ -180,8 +179,8 @@ export function BranchDashboardPage() {
         )}
       </section>
 
-      <section className="branch-dashboard__grid">
-        <AdminCard className="branch-dashboard__upcoming">
+      <section className={styles.grid}>
+        <AdminCard className={styles.upcoming}>
           <header>
             <div>
               <p className="eyebrow">Lịch gần nhất</p>
@@ -192,14 +191,14 @@ export function BranchDashboardPage() {
             </Link>
           </header>
           {error ? (
-            <p className="branch-dashboard__error" role="alert">
+            <p className={styles.error} role="alert">
               {error}
             </p>
           ) : appointments === null ? (
             <Skeleton lines={4} />
           ) : summary.upcoming.length ? (
             <>
-            <div className="branch-dashboard__appointments">
+            <div className={styles.appointments}>
               {displayedUpcoming.map((item) => (
                 <article key={item.public_code}>
                   <time>{timeFormatter.format(new Date(item.starts_at))}</time>
@@ -228,7 +227,7 @@ export function BranchDashboardPage() {
               ))}
             </div>
             {upcomingPageCount > 1 && (
-              <nav className="branch-dashboard__pagination" aria-label="Phân trang lịch sắp tới">
+              <nav className={styles.pagination} aria-label="Phân trang lịch sắp tới">
                 <button type="button" disabled={upcomingPage === 0} onClick={() => setUpcomingPage((page) => page - 1)}>Trước</button>
                 <span>{upcomingPage + 1} / {upcomingPageCount}</span>
                 <button type="button" disabled={upcomingPage === upcomingPageCount - 1} onClick={() => setUpcomingPage((page) => page + 1)}>Sau</button>
@@ -242,7 +241,7 @@ export function BranchDashboardPage() {
             />
           )}
         </AdminCard>
-        <AdminCard className="branch-dashboard__quick-actions">
+        <AdminCard className={styles.quickActions}>
           <p className="eyebrow">Thao tác nhanh</p>
           <h2>Vận hành chi nhánh</h2>
           <div>
