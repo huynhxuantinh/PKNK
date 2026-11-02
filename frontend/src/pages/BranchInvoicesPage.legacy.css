@@ -1,3 +1,5 @@
+/* Scoped to .invoice-management-page so this route cannot affect other roles. */
+@scope (.invoice-management-page) {
 /* Legacy selectors isolated to the branch invoice route. */
 .invoice-management-page {
   background: linear-gradient(180deg, #edf8fa 0, #f8fcfd 380px);
@@ -575,4 +577,6 @@
   .invoice-ready-filters button {
     width: 100%;
   }
+}
+
 }

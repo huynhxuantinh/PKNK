@@ -137,7 +137,7 @@ export function BranchReportsPage() {
 
   if (!branchId) {
     return (
-      <div className="branch-management-page">
+      <div className="branch-management-page branch-report-page">
         <main className="branch-management-main">
           <ManagedBranchSelector
             branches={managedBranches.branches}
@@ -153,7 +153,7 @@ export function BranchReportsPage() {
   }
 
   return (
-    <div className="branch-management-page">
+    <div className="branch-management-page branch-report-page">
       <main className={`branch-management-main ${styles.page}`}>
         <Link
           className="staff-schedule-back"

@@ -1,3 +1,5 @@
+/* All selectors in this file belong exclusively to the public homepage. */
+@scope (.home-page) {
 .hero-wrap {
   padding: 32px max(24px, calc((100% - 1200px) / 2)) 42px;
   background: #edf8fa;
@@ -1109,5 +1111,5 @@
   }
 }
 
-/* Dedicated clinic detail page */
+}
 

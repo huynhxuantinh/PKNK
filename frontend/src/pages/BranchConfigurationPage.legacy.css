@@ -1,3 +1,5 @@
+/* Scoped to .branch-config-page so this route cannot affect other roles. */
+@scope (.branch-config-page) {
 /* Legacy selectors kept local to the branch configuration route. */
 .branch-config-page {
   background: linear-gradient(180deg, #edf8fa 0, #f8fcfd 400px);
@@ -270,4 +272,6 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
 }

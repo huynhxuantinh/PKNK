@@ -21,7 +21,7 @@ export function OrganizationPageLayout({
   children,
 }: OrganizationPageLayoutProps) {
   return (
-    <div className={`branch-management-page ${styles.page}`}>
+    <div className={`branch-management-page organization-page-scope ${styles.page}`}>
       <main className="branch-management-main">
         <section className={`branch-management-hero ${styles.hero}`}>
           <div>

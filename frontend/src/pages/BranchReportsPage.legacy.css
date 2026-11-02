@@ -1,3 +1,5 @@
+/* Scoped to .branch-report-page so this route cannot affect other roles. */
+@scope (.branch-report-page) {
 /* Legacy selectors isolated to the branch reports route. */
 .branch-report-loading,
 .branch-report-empty {
@@ -160,4 +162,6 @@
   .managed-branch-selector form > div {
     grid-template-columns: 1fr;
   }
+}
+
 }

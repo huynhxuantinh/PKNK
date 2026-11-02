@@ -1,3 +1,5 @@
+/* Scoped to .organization-page-scope so this route cannot affect other roles. */
+@scope (.organization-page-scope) {
 /* Organization administration page styles. */
 /* Organization administration */
 .organization-revenue-chart {
@@ -768,4 +770,6 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
 }

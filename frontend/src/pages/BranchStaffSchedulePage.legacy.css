@@ -1,3 +1,5 @@
+/* Scoped to .staff-schedule-page so this route cannot affect other roles. */
+@scope (.staff-schedule-page) {
 /* Legacy selectors isolated to the branch staff-schedule route. */
 .staff-schedule-page {
   background: linear-gradient(180deg, #edf8fa 0, #f8fcfd 360px);
@@ -291,4 +293,6 @@
   background: #fff;
   color: #102b3a;
   text-align: center;
+}
+
 }

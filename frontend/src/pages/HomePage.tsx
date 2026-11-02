@@ -394,7 +394,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="site-shell">
+    <div className="site-shell home-page">
       <Seo {...homeSeo} jsonLd={homeStructuredData} />
       <header className="site-header">
         <a className="brand" href="#top" aria-label="Trang chủ DentaVie">

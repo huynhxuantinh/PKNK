@@ -478,7 +478,7 @@ export function BranchStaffSchedulePage() {
     );
 
   return (
-    <div className="branch-management-page">
+    <div className="branch-management-page staff-schedule-page">
       <main className={`branch-management-main ${styles.page}`}>
         <header className="branch-staff-page__heading">
           <div>

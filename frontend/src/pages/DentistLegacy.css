@@ -1,3 +1,5 @@
+/* Scoped to .dentist-page so this route cannot affect other roles. */
+@scope (.dentist-page) {
 /* Dentist workspace styles. */
 /* Dentist workspace */
 .dentist-page {
@@ -426,3 +428,5 @@
 
 
 
+
+}

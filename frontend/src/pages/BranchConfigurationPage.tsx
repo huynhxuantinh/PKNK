@@ -380,7 +380,7 @@ export function BranchConfigurationPage() {
   if (!canAccessArea(user, "MANAGEMENT") || !branchId)
     return <Navigate to="/quan-ly-chi-nhanh" replace />;
   return (
-    <div className={`branch-management-page ${styles.page}`}>
+    <div className={`branch-management-page branch-config-page ${styles.page}`}>
       <main>
         <div className="branch-management-main">
           <Link
