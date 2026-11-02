@@ -73,6 +73,7 @@ khẩu **`Demo123!`** (chỉ dùng cho môi trường demo/local).
 | Vai trò | Họ tên | Email |
 | --- | --- | --- |
 | Bệnh nhân | Nguyễn Minh Anh | `patient@demo.pknk.vn` |
+| Bệnh nhân | Trần Gia Hân | `patient2@demo.pknk.vn` |
 | Quản trị toàn hệ thống | Quản trị PKNK Dental | `admin@demo.pknk.vn` |
 | Quản lý chi nhánh | Quản lý PKNK Dental Sài Gòn | `branch.admin.q1@demo.pknk.vn` |
 | Quản lý chi nhánh | Quản lý PKNK Dental An Khánh | `branch.admin.td@demo.pknk.vn` |

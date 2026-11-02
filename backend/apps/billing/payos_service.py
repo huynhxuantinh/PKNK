@@ -93,16 +93,17 @@ def create_checkout(*, invoice, user):
             provider_error = error
         else:
             payos_transaction.checkout_url = response.checkout_url
+            payos_transaction.qr_code = getattr(response, "qr_code", "")
             payos_transaction.payos_reference = response.payment_link_id
             payos_transaction.save(
-                update_fields=["checkout_url", "payos_reference", "updated_at"]
+                update_fields=["checkout_url", "qr_code", "payos_reference", "updated_at"]
             )
             return payos_transaction, True
 
     raise PayosCheckoutUnavailable("Không thể kết nối payOS.") from provider_error
 
 
-def cancel_pending_checkouts(invoice):
+def cancel_pending_checkouts(invoice, *, cancellation_reason="Invoice voided"):
     pending = list(
         PayosTransaction.objects.select_for_update().filter(
             invoice=invoice,
@@ -116,14 +117,24 @@ def cancel_pending_checkouts(invoice):
             try:
                 payment_link = client.payment_requests.cancel(
                     item.order_code,
-                    cancellation_reason="Invoice voided",
+                    cancellation_reason=cancellation_reason,
                 )
             except (PayOSError, httpx.RequestError):
                 payment_link = client.payment_requests.get(item.order_code)
                 if payment_link.status in {"CANCELLED", "EXPIRED"}:
                     continue
+                if payment_link.status == "PAID":
+                    apply_remote_status(item, payment_link)
+                    raise PayosCancellationUnavailable(
+                        "Link payOS đã được thanh toán."
+                    )
                 raise PayosCancellationUnavailable(
                     "Link payOS vẫn chưa được hủy."
+                )
+            if payment_link.status == "PAID":
+                apply_remote_status(item, payment_link)
+                raise PayosCancellationUnavailable(
+                    "Link payOS đã được thanh toán."
                 )
             if payment_link.status != "CANCELLED":
                 raise PayosCancellationUnavailable(
@@ -135,6 +146,52 @@ def cancel_pending_checkouts(invoice):
     for item in pending:
         item.status = PayosTransaction.Status.CANCELLED
         item.save(update_fields=["status", "updated_at"])
+
+
+def resolve_pending_checkouts_for_cash(invoice):
+    """Synchronize and cancel payOS checkouts before counter cash payment."""
+    pending = list(
+        PayosTransaction.objects.select_for_update().filter(
+            invoice=invoice,
+            status=PayosTransaction.Status.PENDING,
+        )
+    )
+    if not pending:
+        return
+
+    with_checkout_url = [item for item in pending if item.checkout_url]
+    try:
+        client = get_payos_client() if with_checkout_url else None
+        for item in with_checkout_url:
+            outcome = apply_remote_status(
+                item, client.payment_requests.get(item.order_code)
+            )
+            invoice.refresh_from_db(fields=["status", "paid_at"])
+            if outcome == "SUCCEEDED" or invoice.status == Invoice.Status.PAID:
+                raise ValidationError("Hóa đơn đã được thanh toán qua payOS.")
+            if outcome == "NEEDS_REVIEW":
+                raise ValidationError(
+                    "Giao dịch payOS cần được kiểm tra trước khi thu tiền mặt."
+                )
+        cancel_pending_checkouts(
+            invoice,
+            cancellation_reason="Cash payment at counter",
+        )
+    except PayosCancellationUnavailable as error:
+        invoice.refresh_from_db(fields=["status", "paid_at"])
+        if invoice.status == Invoice.Status.PAID:
+            raise ValidationError("Hóa đơn đã được thanh toán qua payOS.") from error
+        raise ValidationError(
+            "Không thể xác nhận tiền mặt khi link payOS chưa được hủy."
+        ) from error
+    except (PayOSError, httpx.RequestError, ImproperlyConfigured) as error:
+        raise ValidationError(
+            "Không thể đối soát link payOS trước khi thu tiền mặt."
+        ) from error
+
+    invoice.refresh_from_db(fields=["status", "paid_at"])
+    if invoice.status != Invoice.Status.ISSUED:
+        raise ValidationError("Hóa đơn không còn ở trạng thái chờ thanh toán.")
 
 
 def _mark_for_review(payos_transaction, *, reason):
@@ -157,13 +214,23 @@ def apply_verified_payment(*, order_code, amount, reference=""):
     from .services import BillingService
 
     try:
-        payos_transaction = PayosTransaction.objects.select_for_update().select_related(
-            "invoice__branch__organization", "initiated_by"
-        ).get(pk=order_code)
+        transaction_probe = PayosTransaction.objects.only("pk", "invoice_id").get(
+            pk=order_code
+        )
     except PayosTransaction.DoesNotExist:
         return "IGNORED"
+    # Use the same lock order as counter cash payment: invoice, then checkout.
+    Invoice.objects.select_for_update().get(pk=transaction_probe.invoice_id)
+    payos_transaction = PayosTransaction.objects.select_for_update().select_related(
+        "invoice__branch__organization", "initiated_by"
+    ).get(pk=transaction_probe.pk)
     if payos_transaction.status == PayosTransaction.Status.SUCCEEDED:
         return "SUCCEEDED"
+    if payos_transaction.status in {
+        PayosTransaction.Status.CANCELLED,
+        PayosTransaction.Status.NEEDS_REVIEW,
+    }:
+        return "IGNORED"
     if int(amount) != payos_transaction.amount:
         _mark_for_review(payos_transaction, reason="AMOUNT_MISMATCH")
         return "NEEDS_REVIEW"

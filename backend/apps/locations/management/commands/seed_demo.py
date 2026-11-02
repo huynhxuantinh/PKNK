@@ -521,6 +521,31 @@ class Command(BaseCommand):
             defaults={"is_active": True},
         )
 
+        patient_second = self._upsert_user(
+            email="patient2@demo.pknk.vn",
+            full_name="Trần Gia Hân",
+            password=password,
+        )
+        patient_second.phone = "0912345678"
+        patient_second.save(update_fields=["phone"])
+        PatientProfile.objects.update_or_create(
+            user=patient_second,
+            defaults={
+                "date_of_birth": date(1998, 11, 22),
+                "gender": PatientProfile.Gender.FEMALE,
+                "province": province,
+                "ward": Ward.objects.get(code="26740"),
+                "address_line": "8 Nguyễn Huệ",
+            },
+        )
+        Membership.objects.update_or_create(
+            user=patient_second,
+            organization=organization,
+            branch=None,
+            role=Membership.Role.PATIENT,
+            defaults={"is_active": True},
+        )
+
         Ward.objects.filter(
             code__in=LEGACY_DEMO_WARD_CODES,
             branches__isnull=True,
@@ -530,7 +555,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Đã tạo/cập nhật dữ liệu demo."))
         self.stdout.write(f"Chi nhánh: {len(branches)} | Dịch vụ: {len(services)} | Nha sĩ: {len(DENTISTS)}")
         self.stdout.write(
-            "Tài khoản: patient@demo.pknk.vn, admin@demo.pknk.vn, "
+            "Tài khoản: patient@demo.pknk.vn, patient2@demo.pknk.vn, admin@demo.pknk.vn, "
             + ", ".join(branch_admin_emails)
         )
         self.stdout.write(f"Mật khẩu demo: {password}")

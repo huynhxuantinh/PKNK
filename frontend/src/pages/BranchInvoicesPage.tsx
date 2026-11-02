@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import {
-  createManagedInvoice, getManagedInvoice, issueManagedInvoice, listInvoiceReadyAppointments, listManagedInvoices,
+  createManagedInvoice, createManagedPayosCheckout, getManagedInvoice, issueManagedInvoice, listInvoiceReadyAppointments, listManagedInvoices,
   postManagedPayment, voidManagedInvoice, voidManagedPayment,
   updateManagedInvoiceDraft, type InvoiceReadyAppointment, type ManagedInvoice, type ManagedInvoiceDraftInput,
-  type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPaymentInput,
+  type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPayosCheckout, type ManagedPaymentInput,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
@@ -16,7 +16,7 @@ import {
   InvoiceFilters,
   InvoiceTable,
   InvoicePagination,
-  PaymentModal,
+  PaymentChoiceModal, PaymentModal, PayosCheckoutModal,
   VoidPaymentModal,
 } from '../components/branch-management/InvoiceManagement'
 import {
@@ -50,6 +50,8 @@ export function BranchInvoicesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showVoid, setShowVoid] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
+  const [paymentMode, setPaymentMode] = useState<'CHOICE' | 'CASH' | 'PAYOS'>('CHOICE')
+  const [payosCheckout, setPayosCheckout] = useState<ManagedPayosCheckout | null>(null)
   const [showDraftEditor, setShowDraftEditor] = useState(false)
   const [paymentAttemptKey, setPaymentAttemptKey] = useState('')
   const [paymentToVoid, setPaymentToVoid] = useState<ManagedInvoicePayment | null>(null)
@@ -120,6 +122,8 @@ export function BranchInvoicesPage() {
     setShowCreate(false)
     setShowVoid(false)
     setShowPayment(false)
+    setPaymentMode('CHOICE')
+    setPayosCheckout(null)
     setShowDraftEditor(false)
     setPaymentToVoid(null)
     setPaymentError('')
@@ -259,8 +263,52 @@ export function BranchInvoicesPage() {
     if (!scopeReady) return
     setPaymentError('')
     setPaymentAttemptKey(crypto.randomUUID())
+    setPaymentMode('CHOICE')
+    setPayosCheckout(null)
     setShowPayment(true)
   }
+
+  async function createPayosCheckout() {
+    if (!selected || !scopeReady) return
+    setBusy(true); setPaymentError(''); setNotice('')
+    try {
+      const response = await createManagedPayosCheckout(selected.id_invoice)
+      if (!isCurrentBranch()) return
+      setPayosCheckout(response.data)
+      setPaymentMode('PAYOS')
+      setNotice('Đã tạo mã QR payOS. Hệ thống sẽ tự xác minh khi khách thanh toán.')
+    } catch (caught) {
+      if (!isCurrentBranch()) return
+      setPaymentError(caught instanceof Error ? caught.message : 'Không thể tạo mã QR payOS.')
+      setPaymentMode('PAYOS')
+    } finally { setBusy(false) }
+  }
+
+  async function refreshPayosPaymentStatus() {
+    if (!selected || !scopeReady) return
+    setBusy(true); setPaymentError('')
+    try {
+      const response = await getManagedInvoice(selected.id_invoice)
+      if (!isCurrentBranch()) return
+      setSelected(response.data)
+      if (response.data.status === 'PAID') {
+        setShowPayment(false); setPaymentMode('CHOICE'); setPayosCheckout(null)
+        setNotice('payOS đã xác minh thanh toán.')
+        await loadInvoices()
+      } else setNotice('payOS chưa xác minh thanh toán. Mã QR vẫn đang chờ.')
+    } catch (caught) {
+      if (!isCurrentBranch()) return
+      setPaymentError(caught instanceof Error ? caught.message : 'Không thể kiểm tra trạng thái payOS.')
+    } finally { setBusy(false) }
+  }
+
+  useEffect(() => {
+    if (!showPayment || paymentMode !== 'PAYOS' || !payosCheckout || !selected) return
+    const timer = window.setInterval(() => { void refreshPayosPaymentStatus() }, 5000)
+    return () => window.clearInterval(timer)
+  // The interval only watches the active counter checkout; its handler reads current state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPayment, paymentMode, payosCheckout?.order_code, selected?.id_invoice])
 
   async function recordPayment(data: ManagedPaymentInput) {
     if (!selected || !scopeReady) return
@@ -269,7 +317,7 @@ export function BranchInvoicesPage() {
       await postManagedPayment(selected.id_invoice, data)
       const refreshed = await getManagedInvoice(selected.id_invoice)
       if (!isCurrentBranch()) return
-      setSelected(refreshed.data); setShowPayment(false); setPaymentAttemptKey(''); setNotice('Đã ghi nhận thanh toán.'); await loadInvoices()
+      setSelected(refreshed.data); setShowPayment(false); setPaymentMode('CHOICE'); setPayosCheckout(null); setPaymentAttemptKey(''); setNotice('Đã ghi nhận thanh toán.'); await loadInvoices()
     } catch (caught) { if (!isCurrentBranch()) return; setPaymentError(caught instanceof Error ? caught.message : 'Không thể ghi nhận thanh toán.') }
     finally { setBusy(false) }
   }
@@ -342,7 +390,9 @@ export function BranchInvoicesPage() {
     {showCreate && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={createInvoice}><h2>Tạo hóa đơn nháp</h2><InvoiceAppointmentHint /><label>Mã lịch hẹn<input required list="ready-appointments" value={appointmentCode} onChange={(event) => setAppointmentCode(event.target.value)} placeholder="VD: APT-..." /></label><datalist id="ready-appointments">{readyAppointments.map((appointment) => <option key={appointment.appointment_code} value={appointment.appointment_code}>{appointment.patient_name} — {appointment.performed_services.map((service) => service.service_name).join(', ')}</option>)}</datalist><div><button type="button" className="button-secondary" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" disabled={busy}>Tạo bản nháp</button></div></form></div>}
     {selected && <InvoiceDetailPanel invoice={selected} busy={busy} onClose={() => setSelected(null)} onIssue={() => void issueInvoice()} onVoid={() => setShowVoid(true)} onEdit={openDraftEditor} onRecordPayment={openPayment} onVoidPayment={openVoidPayment} />}
     {showVoid && selected && <div className="branch-management-modal-backdrop invoice-confirm-layer"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={voidInvoice}><h2>Hủy hóa đơn</h2><p>Lý do hủy sẽ được lưu trong nhật ký đối soát.</p><label>Lý do<textarea required minLength={3} maxLength={1000} value={voidReason} onChange={(event) => setVoidReason(event.target.value)} /></label><div><button type="button" className="button-secondary" onClick={() => setShowVoid(false)}>Quay lại</button><button type="submit" disabled={busy}>Xác nhận hủy</button></div></form></div>}
-    {showPayment && selected && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}
+    {showPayment && selected && paymentMode === 'CHOICE' && <PaymentChoiceModal busy={busy} onCancel={() => { setShowPayment(false); setPaymentError('') }} onCash={() => setPaymentMode('CASH')} onPayos={() => void createPayosCheckout()} />}
+    {showPayment && selected && paymentMode === 'CASH' && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setPaymentMode('CHOICE'); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}
+    {showPayment && selected && paymentMode === 'PAYOS' && <PayosCheckoutModal checkout={payosCheckout} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentMode('CHOICE'); setPayosCheckout(null); setPaymentError('') }} onRetry={() => void (payosCheckout ? refreshPayosPaymentStatus() : createPayosCheckout())} />}
     {paymentToVoid && <VoidPaymentModal payment={paymentToVoid} busy={busy} serverError={paymentError} onCancel={() => { setPaymentToVoid(null); setPaymentError('') }} onSubmit={(reason) => void voidPayment(reason)} />}
     {showDraftEditor && selected && <InvoiceDraftEditor invoice={selected} busy={busy} serverError={draftEditorError} onCancel={() => { setShowDraftEditor(false); setDraftEditorError('') }} onSubmit={(data) => void updateDraft(data)} />}
     </main>

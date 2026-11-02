@@ -68,6 +68,12 @@ export interface ManagedInvoiceDraftInput { discount: string; lines: ManagedInvo
 export type ManagedPaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CARD'
 export interface ManagedInvoicePayment { id_payment: number; payment_number: string; method: ManagedPaymentMethod; amount: string; status: 'POSTED' | 'VOID'; external_reference: string; source: 'MANUAL' | 'PAYOS'; posted_at: string; voided_at: string | null; void_reason: string }
 export interface ManagedPaymentInput { method: ManagedPaymentMethod; amount: string; external_reference: string; idempotency_key: string }
+export interface ManagedPayosCheckout {
+  order_code: number
+  checkout_url: string
+  qr_code: string
+  status: 'PENDING' | 'SUCCEEDED' | 'CANCELLED' | 'NEEDS_REVIEW'
+}
 export interface ManagedInvoice {
   id_invoice: number; invoice_number: string; appointment_code: string; branch_id: number
   patient_profile_id: number; patient_name: string; replacement_for_id: number | null
@@ -238,6 +244,7 @@ export function listInvoiceReadyAppointments(
 export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/issue/`, { method: 'POST' }, { auth: true })
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const createManagedPayosCheckout = (invoiceId: number) => apiRequest<{ data: ManagedPayosCheckout }>(`/management/invoices/${invoiceId}/payos-checkout/`, { method: 'POST' }, { auth: true })
 export const voidManagedPayment = (paymentId: number, reason: string) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/payments/${paymentId}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 
 export const getManagedBranch = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, { signal }, { auth: true })

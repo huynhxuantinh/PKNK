@@ -655,6 +655,61 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(hidden.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
 
+    @patch("apps.billing.management_views.create_checkout")
+    def test_manager_can_create_payos_checkout_for_counter(self, create_checkout_mock):
+        invoice = self.issued_invoice("APT-COUNTER-QR")
+        checkout = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.admin,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/counter-qr",
+            qr_code="000201010212...",
+        )
+        create_checkout_mock.return_value = (checkout, True)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse("management:invoice-payos-checkout", kwargs={"invoice_id": invoice.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["data"]["order_code"], checkout.order_code)
+        self.assertEqual(response.data["data"]["qr_code"], checkout.qr_code)
+        create_checkout_mock.assert_called_once_with(invoice=invoice, user=self.admin)
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_counter_cash_cancels_pending_payos_checkout_first(self, payos_class):
+        invoice = self.issued_invoice("APT-CASH-AFTER-QR")
+        checkout = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/cash-after-qr",
+        )
+        payos_class.return_value.payment_requests.get.return_value = SimpleNamespace(
+            status="PENDING"
+        )
+        payos_class.return_value.payment_requests.cancel.return_value = SimpleNamespace(
+            status="CANCELLED"
+        )
+
+        payment, created = BillingService.post_payment(
+            invoice_id=invoice.pk,
+            method=Payment.Method.CASH,
+            amount=invoice.total,
+            idempotency_key="cash-after-payos-link",
+            actor_user=self.admin,
+        )
+
+        self.assertTrue(created)
+        self.assertEqual(payment.method, Payment.Method.CASH)
+        checkout.refresh_from_db()
+        self.assertEqual(checkout.status, PayosTransaction.Status.CANCELLED)
+        payos_class.return_value.payment_requests.cancel.assert_called_once_with(
+            checkout.order_code,
+            cancellation_reason="Cash payment at counter",
+        )
+
     @patch("apps.billing.payos_service.PayOS")
     def test_invalid_payos_webhook_has_no_side_effect(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-BAD-SIGNATURE")
@@ -750,7 +805,7 @@ class CounterBillingTests(APITestCase):
         self.assertTrue(AuditEvent.objects.filter(action="PAYOS_PAYMENT_NEEDS_REVIEW").exists())
 
     @patch("apps.billing.payos_service.PayOS")
-    def test_webhook_for_non_issued_invoice_requires_review(self, payos_class):
+    def test_late_webhook_after_counter_cash_is_ignored(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-PAID")
         payos_transaction = PayosTransaction.objects.create(
             invoice=invoice, initiated_by=self.patient_user, amount=500000
@@ -774,7 +829,8 @@ class CounterBillingTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payos_transaction.refresh_from_db()
-        self.assertEqual(payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW)
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.CANCELLED)
+        self.assertEqual(Payment.objects.filter(invoice=invoice).count(), 1)
 
     def test_payos_payment_cannot_be_voided_as_if_it_were_a_refund(self):
         invoice = self.issued_invoice("APT-PAYOS-NO-VOID")

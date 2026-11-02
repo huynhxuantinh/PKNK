@@ -14,7 +14,11 @@ from apps.notifications.services import NotificationService
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment
-from .payos_service import PayosCancellationUnavailable, cancel_pending_checkouts
+from .payos_service import (
+    PayosCancellationUnavailable,
+    cancel_pending_checkouts,
+    resolve_pending_checkouts_for_cash,
+)
 
 
 def _is_whole_vnd(value):
@@ -245,6 +249,11 @@ class BillingService:
         invoice = Invoice.objects.select_for_update().select_related("branch__organization").get(pk=invoice_id)
         if invoice.status != Invoice.Status.ISSUED:
             raise ValidationError("Chỉ hóa đơn ISSUED mới được thanh toán.")
+        if method == Payment.Method.CASH:
+            resolve_pending_checkouts_for_cash(invoice)
+            invoice.refresh_from_db(fields=["status", "paid_at", "total"])
+            if invoice.status != Invoice.Status.ISSUED:
+                raise ValidationError("Hóa đơn không còn ở trạng thái chờ thanh toán.")
         if amount != invoice.total or not _is_whole_vnd(amount):
             raise ValidationError("MVP yêu cầu thanh toán đúng toàn bộ số tiền hóa đơn bằng VND nguyên.")
         now = timezone.now()

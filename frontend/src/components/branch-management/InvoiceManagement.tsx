@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { toDataURL } from 'qrcode'
 
-import type { InvoiceReadyAppointment, ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
+import type { InvoiceReadyAppointment, ManagedInvoice, ManagedInvoiceDraftInput, ManagedInvoicePayment, ManagedInvoiceStatus, ManagedPayosCheckout, ManagedPaymentInput, ManagedPaymentMethod } from '../../api/management'
 import { DataTable, EmptyState, StatusBadge } from '../admin/ui'
 import { invoiceStatusLabels } from './invoicePresentation'
 import './invoice-management-refresh.css'
@@ -174,7 +175,7 @@ export function InvoiceDetailPanel({ invoice, busy, onClose, onIssue, onVoid, on
       {invoice.status === 'DRAFT' && <button type="button" className="button-secondary" disabled={busy} onClick={onEdit}>Chỉnh sửa</button>}
       {invoice.status === 'DRAFT' && <button type="button" disabled={busy} onClick={onIssue}>Phát hành hóa đơn</button>}
       {['DRAFT', 'ISSUED'].includes(invoice.status) && <button type="button" className="button-danger" disabled={busy} onClick={onVoid}>Hủy hóa đơn</button>}
-      {invoice.status === 'ISSUED' && <button type="button" disabled={busy} onClick={onRecordPayment}>Ghi nhận thanh toán</button>}
+      {invoice.status === 'ISSUED' && <button type="button" disabled={busy} onClick={onRecordPayment}>Thanh toán</button>}
       {invoice.status === 'PAID' && postedPayment?.source === 'PAYOS' && <p className="payment-refund-warning">Thanh toán payOS không thể hủy tại đây. Cần hoàn tiền thực tế cho khách theo quy trình riêng.</p>}
       {invoice.status === 'PAID' && postedPayment?.source !== 'PAYOS' && postedPayment && <button type="button" className="button-danger" disabled={busy} onClick={() => onVoidPayment(postedPayment)}>Hủy thanh toán</button>}
     </footer>
@@ -282,6 +283,59 @@ interface PaymentModalProps {
   serverError?: string
   onCancel: () => void
   onSubmit: (data: ManagedPaymentInput) => void
+}
+
+export function PaymentChoiceModal({ busy, onCancel, onCash, onPayos }: {
+  busy: boolean
+  onCancel: () => void
+  onCash: () => void
+  onPayos: () => void
+}) {
+  return <div className="branch-management-modal-backdrop invoice-confirm-layer"><section className="branch-management-modal payment-modal" role="dialog" aria-modal="true" aria-label="Chọn phương thức thanh toán">
+    <h2>Thanh toán hóa đơn</h2>
+    <p>Chọn cách thanh toán tại quầy. QR payOS chỉ được xác nhận khi payOS gửi kết quả về hệ thống.</p>
+    <div className="payment-choice-actions">
+      <button type="button" disabled={busy} onClick={onCash}><strong>Tiền mặt</strong><span>Thu tiền trực tiếp tại quầy</span></button>
+      <button type="button" className="button-secondary" disabled={busy} onClick={onPayos}><strong>QR payOS</strong><span>Tạo mã để khách quét và thanh toán</span></button>
+    </div>
+    <div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button></div>
+  </section></div>
+}
+
+export function PayosCheckoutModal({ checkout, busy, serverError = '', onCancel, onRetry }: {
+  checkout: ManagedPayosCheckout | null
+  busy: boolean
+  serverError?: string
+  onCancel: () => void
+  onRetry: () => void
+}) {
+  const [qrImage, setQrImage] = useState('')
+
+  useEffect(() => {
+    let active = true
+    if (!checkout?.qr_code) {
+      setQrImage('')
+      return () => { active = false }
+    }
+    void toDataURL(checkout.qr_code, { width: 280, margin: 1 }).then((value) => {
+      if (active) setQrImage(value)
+    }).catch(() => {
+      if (active) setQrImage('')
+    })
+    return () => { active = false }
+  }, [checkout?.order_code, checkout?.qr_code])
+
+  return <div className="branch-management-modal-backdrop invoice-confirm-layer"><section className="branch-management-modal payment-modal payos-checkout-modal" role="dialog" aria-modal="true" aria-label="Thanh toán QR payOS">
+    <h2>Thanh toán QR payOS</h2>
+    {serverError && <div className="payment-modal-error" role="alert">{serverError}</div>}
+    {!checkout && <><p>Tạo mã QR để khách quét bằng ứng dụng ngân hàng.</p><div><button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>Quay lại</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang tạo...' : 'Tạo mã QR'}</button></div></>}
+    {checkout && <>
+      {qrImage ? <img className="payos-qr-image" src={qrImage} alt="Mã QR payOS để thanh toán" /> : <p>Không thể hiển thị mã QR. Hãy mở liên kết payOS bên dưới.</p>}
+      <p className="payment-method-note"><strong>Đang chờ payOS xác minh</strong><span>Không thu tiền mặt cho hóa đơn này khi mã QR còn hiệu lực.</span></p>
+      <a className="button-secondary payos-checkout-link" href={checkout.checkout_url} target="_blank" rel="noreferrer">Mở trang payOS</a>
+      <div><button type="button" className="button-secondary" onClick={onCancel}>Đóng</button><button type="button" disabled={busy} onClick={onRetry}>{busy ? 'Đang kiểm tra...' : 'Làm mới trạng thái'}</button></div>
+    </>}
+  </section></div>
 }
 
 export function PaymentModal({ invoice, idempotencyKey, busy, serverError = '', onCancel, onSubmit }: PaymentModalProps) {

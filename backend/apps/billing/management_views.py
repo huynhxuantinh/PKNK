@@ -1,6 +1,7 @@
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import DecimalField, F, OuterRef, Q, Subquery, Sum
 from django.shortcuts import get_object_or_404
@@ -27,6 +28,7 @@ from .management_serializers import (
     ReasonSerializer,
 )
 from .models import Invoice, Payment
+from .payos_service import PayosCheckoutUnavailable, create_checkout
 from .services import BillingService
 
 
@@ -227,6 +229,45 @@ class InvoicePaymentCreateAPIView(ManagementAPIView):
             raise billing_conflict(error)
         return Response(
             {"data": PaymentSerializer(payment).data},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class InvoicePayosCheckoutAPIView(ManagementAPIView):
+    """Create or reuse the payOS QR checkout shown at the counter."""
+
+    @extend_schema(request=None, responses={201: dict})
+    def post(self, request, invoice_id):
+        invoice = scoped_invoice(request.user, invoice_id)
+        try:
+            checkout, created = create_checkout(invoice=invoice, user=request.user)
+        except DjangoValidationError as error:
+            raise billing_conflict(error)
+        except ImproperlyConfigured:
+            return Response(
+                {
+                    "code": "payos_not_configured",
+                    "message": "payOS chưa được cấu hình cho môi trường này.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except PayosCheckoutUnavailable:
+            return Response(
+                {
+                    "code": "payos_unavailable",
+                    "message": "Không thể tạo mã payOS lúc này. Vui lòng thử lại.",
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response(
+            {
+                "data": {
+                    "order_code": checkout.order_code,
+                    "checkout_url": checkout.checkout_url,
+                    "qr_code": checkout.qr_code,
+                    "status": checkout.status,
+                }
+            },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
