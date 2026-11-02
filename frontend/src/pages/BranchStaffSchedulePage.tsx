@@ -45,6 +45,7 @@ import {
 } from "../components/admin/ui";
 import { hcmDate } from "../components/branch-management/appointmentPresentation";
 import styles from "./BranchStaffSchedulePage.module.css";
+import "./BranchStaffSchedulePage.legacy.css";
 
 interface TimeOffForm {
   dentist_id: string;

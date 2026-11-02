@@ -20,6 +20,7 @@ import {
 } from "../api/dentist";
 import { AuthBar } from "../auth/AuthBar";
 import { useAuth } from "../auth/AuthContext";
+import "./DentistLegacy.css";
 import { hasActiveRole } from "../auth/roles";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { ClinicalAttachmentPanel } from "../components/dentist/ClinicalAttachmentPanel";

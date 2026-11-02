@@ -14,6 +14,7 @@ import { resolveScopedManagedBranchId } from "../components/branch-management/ma
 import { useManagedBranches } from "../components/branch-management/useManagedBranches";
 import { printBranchReport } from "../components/branch-management/reportPdf";
 import styles from "./BranchReportsPage.module.css";
+import "./BranchReportsPage.legacy.css";
 
 const iso = (date: Date) =>
   new Intl.DateTimeFormat("en-CA", {

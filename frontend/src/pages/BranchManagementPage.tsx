@@ -434,14 +434,14 @@ export function BranchManagementPage() {
             >
               <button
                 type="button"
-                className={viewMode === "table" ? "is-active" : ""}
+                className={viewMode === "table" ? styles.active : undefined}
                 onClick={() => setViewMode("table")}
               >
                 Danh sách
               </button>
               <button
                 type="button"
-                className={viewMode === "calendar" ? "is-active" : ""}
+                className={viewMode === "calendar" ? styles.active : undefined}
                 onClick={() => setViewMode("calendar")}
               >
                 Lịch

@@ -22,6 +22,7 @@ import {
 import {
   latestVoidedInvoiceId,
 } from '../components/branch-management/invoicePresentation'
+import './BranchInvoicesPage.legacy.css'
 
 const INVOICE_PAGE_SIZE = 20
 const INVOICE_READY_PAGE_SIZE = 10

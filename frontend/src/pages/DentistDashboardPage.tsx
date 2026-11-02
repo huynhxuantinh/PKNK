@@ -12,6 +12,7 @@ import {
   type DentistScheduleView,
 } from "../features/dentist/dentistSchedule";
 import { Seo } from "../seo/Seo";
+import "./DentistLegacy.css";
 import type {
   BranchDetail,
   DentistAppointment,

@@ -39,6 +39,7 @@ import {
 } from "../components/branch-management/BranchConfigurationSections";
 import { buildHolidayPayload } from "../components/branch-management/branchConfigurationPresentation";
 import styles from "./BranchConfigurationPage.module.css";
+import "./BranchConfigurationPage.legacy.css";
 
 const defaultHours = (): ManagedOpeningHour[] =>
   Array.from({ length: 7 }, (_, index) => ({

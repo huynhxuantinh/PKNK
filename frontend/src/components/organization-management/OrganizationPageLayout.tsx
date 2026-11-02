@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import "./OrganizationLegacy.css";
 import styles from "./OrganizationPageLayout.module.css";
 
 interface OrganizationPageLayoutProps {

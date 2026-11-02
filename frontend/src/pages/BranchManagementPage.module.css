@@ -79,7 +79,7 @@
   font-weight: 800;
   cursor: pointer;
 }
-.viewSwitch button.is-active {
+.viewSwitch button.active {
   border-color: #078fad;
   background: #eaf8fa;
   color: #087c9d;
