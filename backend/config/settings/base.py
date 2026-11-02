@@ -107,7 +107,7 @@ LOCAL_APPS = [
     "apps.audit",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + ["anymail"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -337,6 +337,12 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() in {"1", "true", "yes"}
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+ANYMAIL = {
+    "RESEND_API_KEY": os.getenv("RESEND_API_KEY", ""),
+}
+CELERY_TASK_ALWAYS_EAGER = os.getenv(
+    "CELERY_TASK_ALWAYS_EAGER", "false"
+).lower() in {"1", "true", "yes"}
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 PAYOS_CLIENT_ID = os.getenv("PAYOS_CLIENT_ID", "")
 PAYOS_API_KEY = os.getenv("PAYOS_API_KEY", "")
