@@ -1,0 +1,149 @@
+/* Public-site header controls shared by Home, Pricing and branch details. */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: end;
+}
+
+.mobile-menu-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 1px solid var(--aurelia-line);
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.mobile-menu-btn:hover {
+  border-color: var(--aurelia-blue);
+  background: var(--aurelia-cyan-soft);
+}
+
+.mobile-menu-btn span {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--aurelia-ink);
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.mobile-menu-btn.open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.mobile-menu-btn.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-btn.open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.mobile-nav-drawer {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .mobile-nav-drawer {
+    position: fixed;
+    z-index: 29;
+    top: 78px;
+    right: 0;
+    left: 0;
+    display: block;
+    padding: 16px 24px 24px;
+    border-bottom: 1px solid var(--aurelia-line);
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(18, 56, 74, 0.12);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-120%);
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+
+  .mobile-nav-drawer.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .mobile-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mobile-nav-links a {
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f5f7;
+    color: var(--aurelia-ink);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .mobile-nav-links a:hover {
+    color: var(--aurelia-blue-dark);
+  }
+}
+
+@media (max-width: 760px) {
+  .mobile-nav-drawer {
+    top: 68px;
+  }
+}
+
+/* Pages that do not render a hamburger keep navigation reachable on narrow screens. */
+@media (max-width: 1120px) {
+  .site-header.site-header--scroll-nav {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+
+  .site-header.site-header--scroll-nav .main-nav {
+    display: flex;
+    min-width: 0;
+    gap: 18px;
+    justify-self: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-header.site-header--scroll-nav .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header.site-header--scroll-nav .main-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-header.site-header--scroll-nav {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .site-header.site-header--scroll-nav .main-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    padding: 5px 0 3px;
+  }
+}

@@ -728,3 +728,86 @@
   width: 100%;
   margin: 24px 0 0;
 }
+
+@media (max-width: 900px) {
+  :global .clinic-detail-hero {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+  :global .clinic-detail-image {
+    height: 300px;
+    order: -1;
+  }
+  :global .clinic-location-section,
+  :global .clinic-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  :global .clinic-dentist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  :global .clinic-detail-main {
+    width: calc(100% - 24px);
+    padding: 18px 0 52px;
+  }
+  :global .clinic-breadcrumb {
+    margin-bottom: 16px;
+  }
+  :global .clinic-detail-hero,
+  :global .clinic-info-card,
+  :global .clinic-location-card,
+  :global .clinic-detail-map-wrap,
+  :global .clinic-dentists-section {
+    border-radius: 16px;
+  }
+  :global .clinic-detail-image {
+    height: 230px;
+  }
+  :global .clinic-detail-copy,
+  :global .clinic-info-card,
+  :global .clinic-location-card {
+    padding: 22px;
+  }
+  :global .clinic-detail-copy h1 {
+    font-size: 30px;
+  }
+  :global .clinic-detail-facts {
+    grid-template-columns: 1fr;
+    margin-bottom: 20px;
+  }
+  :global .clinic-detail-fact,
+  :global .clinic-detail-fact + .clinic-detail-fact {
+    padding: 10px 0;
+    border-left: 0;
+  }
+  :global .clinic-detail-fact + .clinic-detail-fact {
+    border-top: 1px solid var(--aurelia-line);
+  }
+  :global .clinic-hero-actions,
+  :global .clinic-hero-actions .clinic-btn {
+    width: 100%;
+  }
+  :global .clinic-location-section,
+  :global .clinic-detail-grid {
+    gap: 16px;
+    margin-top: 16px;
+  }
+  :global .clinic-detail-map-wrap {
+    min-height: 300px;
+    padding: 6px;
+  }
+  :global .clinic-detail-map-wrap .branch-map-canvas {
+    min-height: 288px;
+  }
+  :global .clinic-service-list,
+  :global .clinic-dentist-grid {
+    grid-template-columns: 1fr;
+  }
+  :global .clinic-dentists-section {
+    margin-top: 16px;
+    padding: 22px;
+  }
+}

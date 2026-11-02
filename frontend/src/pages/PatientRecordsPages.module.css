@@ -39,6 +39,21 @@
   display: grid;
   gap: 14px;
 }
+.page :global(.appointment-record-stack) {
+  display: grid;
+  gap: 10px;
+}
+.page :global(.patient-record-notice) {
+  margin: 0 0 16px;
+  padding: 11px 13px;
+  border: 1px solid #b9e5d3;
+  border-radius: 10px;
+  background: #f0fbf6;
+  color: #08745c;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
 .page :global(.patient-record-tabs) {
   display: flex;
   gap: 8px;

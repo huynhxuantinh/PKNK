@@ -72,7 +72,7 @@ function LegalPage({
   return (
     <div className="site-shell legal-page">
       <Seo title={`${title} | DentaVie`} description={description} path={path} />
-      <header className="site-header">
+      <header className="site-header site-header--scroll-nav">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
           <img src="/branding/dentavie-logo-horizontal-color.png" alt="DentaVie" />
         </Link>

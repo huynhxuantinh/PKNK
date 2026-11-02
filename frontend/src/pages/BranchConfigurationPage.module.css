@@ -35,6 +35,12 @@
 .page :global(.branch-config-grid) {
   gap: 18px;
 }
+.page :global(.branch-config-fieldset) {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .page :global(.branch-config-section) {
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);

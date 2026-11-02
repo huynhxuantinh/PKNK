@@ -8,6 +8,7 @@ import './components/admin/ui/LegacyBranchModal.css'
 import './styles/tokens.css'
 import './styles/reset.css'
 import './styles/management-shared.css'
+import './styles/public-navigation.css'
 import './styles.css'
 
 createRoot(document.getElementById('root')!).render(
