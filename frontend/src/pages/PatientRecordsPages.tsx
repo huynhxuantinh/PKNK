@@ -11,6 +11,7 @@ import { createPayosPayment } from "../api/billing";
 import { apiRequest, downloadAuthenticatedFile } from "../api/client";
 import { listPatientRescheduleSlots } from "../api/booking";
 import { AuthBar } from "../auth/AuthBar";
+import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { useAuth } from "../auth/AuthContext";
 import { hcmDate } from "../components/branch-management/appointmentPresentation";
 import { AuthenticatedThumbnail } from "../components/clinical/AuthenticatedThumbnail";
@@ -86,7 +87,7 @@ function RecordsLayout({
         path={path}
         noIndex
       />
-      <header className="site-header site-header--scroll-nav">
+      <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
           <img
             src="/branding/dentavie-logo-horizontal-color.png"
@@ -98,7 +99,16 @@ function RecordsLayout({
           <Link to="/dat-lich">Đặt lịch khám</Link>
           <Link to="/bang-gia">Bảng giá</Link>
         </nav>
-        <AuthBar />
+        <div className="header-actions">
+          <AuthBar />
+          <PublicMobileNavigation
+            links={[
+              { to: "/", label: "Trang chá»§" },
+              { to: "/dat-lich", label: "Äáº·t lá»‹ch khĂ¡m" },
+              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
+            ]}
+          />
+        </div>
       </header>
       <main className="patient-records-main">
         <header className="patient-records-heading">

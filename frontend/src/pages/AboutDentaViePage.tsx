@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
 
 import { AuthBar } from "../auth/AuthBar";
+import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { Seo } from "../seo/Seo";
 import styles from "./AboutDentaViePage.module.css";
 
 const recognitions = [
   {
     image: "/images/recognition/dental-care-award.png",
+    webpSrcSet:
+      "/images/recognition/dental-care-award-400.webp 400w, /images/recognition/dental-care-award-800.webp 800w",
     title: "DentaVie Awards 2024",
     year: "2024",
     description:
@@ -14,6 +17,8 @@ const recognitions = [
   },
   {
     image: "/images/recognition/iso-9001-certificate.png",
+    webpSrcSet:
+      "/images/recognition/iso-9001-certificate-400.webp 400w, /images/recognition/iso-9001-certificate-800.webp 800w",
     title: "Chứng nhận ISO 9001:2015",
     year: "ISO 9001:2015",
     description:
@@ -21,6 +26,8 @@ const recognitions = [
   },
   {
     image: "/images/recognition/national-brand-award.png",
+    webpSrcSet:
+      "/images/recognition/national-brand-award-400.webp 400w, /images/recognition/national-brand-award-800.webp 800w",
     title: "Top 10 thương hiệu mạnh",
     year: "2025",
     description:
@@ -28,6 +35,8 @@ const recognitions = [
   },
   {
     image: "/images/recognition/appreciation-certificate-gold.png",
+    webpSrcSet:
+      "/images/recognition/appreciation-certificate-gold-400.webp 400w, /images/recognition/appreciation-certificate-gold-800.webp 800w",
     title: "Certificate of Appreciation",
     year: "Ghi nhận",
     description:
@@ -35,6 +44,8 @@ const recognitions = [
   },
   {
     image: "/images/recognition/appreciation-certificate.png",
+    webpSrcSet:
+      "/images/recognition/appreciation-certificate-400.webp 400w, /images/recognition/appreciation-certificate-800.webp 800w",
     title: "Global Leadership Program",
     year: "Ghi nhận",
     description:
@@ -50,7 +61,7 @@ export function AboutDentaViePage() {
         description="Thông tin về DentaVie, định hướng chăm sóc và các chứng nhận, thành tựu."
         path="/ve-dentavie"
       />
-      <header className="site-header site-header--scroll-nav">
+      <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
           <img
             src="/branding/dentavie-logo-horizontal-color.png"
@@ -65,7 +76,17 @@ export function AboutDentaViePage() {
           <Link to="/#chi-nhanh">Chi nhánh</Link>
           <Link to="/#lien-he">Liên hệ</Link>
         </nav>
-        <AuthBar />
+        <div className="header-actions">
+          <AuthBar />
+          <PublicMobileNavigation
+            links={[
+              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
+              { to: "/ve-dentavie", label: "Vá» DentaVie" },
+              { to: "/#chi-nhanh", label: "Há»‡ thá»‘ng chi nhĂ¡nh" },
+              { to: "/#lien-he", label: "ThĂ´ng tin liĂªn há»‡" },
+            ]}
+          />
+        </div>
       </header>
 
       <main>
@@ -102,7 +123,19 @@ export function AboutDentaViePage() {
                 key={recognition.image}
               >
                 <div className="about-recognition-image">
-                  <img src={recognition.image} alt={recognition.title} />
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcSet={recognition.webpSrcSet}
+                      sizes="(max-width: 640px) min(100vw - 64px, 360px), (max-width: 980px) 42vw, 260px"
+                    />
+                    <img
+                      src={recognition.image}
+                      alt={recognition.title}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
                 <div>
                   <span>{recognition.year}</span>

@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 
 import { AuthBar } from "../auth/AuthBar";
+import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { BookingFlow } from "../features/booking/BookingFlow";
 import { Seo } from "../seo/Seo";
 import styles from "./BookingPage.module.css";
@@ -19,7 +20,7 @@ export function BookingPage() {
         path="/dat-lich"
         noIndex
       />
-      <header className="site-header site-header--scroll-nav">
+      <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
           <img
             src="/branding/dentavie-logo-horizontal-color.png"
@@ -31,7 +32,16 @@ export function BookingPage() {
           <Link to="/#chi-nhanh">Chi nhánh</Link>
           <Link to="/#lien-he">Liên hệ</Link>
         </nav>
-        <AuthBar />
+        <div className="header-actions">
+          <AuthBar />
+          <PublicMobileNavigation
+            links={[
+              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
+              { to: "/#chi-nhanh", label: "Chi nhĂ¡nh" },
+              { to: "/#lien-he", label: "LiĂªn há»‡" },
+            ]}
+          />
+        </div>
       </header>
 
       <main className={styles.main}>

@@ -90,6 +90,10 @@
   border-right: 1px solid #e3eef0;
   background: #f6fbfc;
 }
+.page :global(.about-recognition-image picture) {
+  display: grid;
+  width: 100%;
+}
 .page :global(.about-recognition-image img) {
   width: 100%;
   max-height: 260px;
