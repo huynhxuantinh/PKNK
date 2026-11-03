@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { getBranchDetail } from "../api/booking";
 import { AuthBar } from "../auth/AuthBar";
@@ -46,7 +46,6 @@ function formatVnd(price: string | number): string {
 
 export function BranchDetailPage() {
   const { branchId } = useParams();
-  const location = useLocation();
   const { isAuthenticated, user } = useAuth();
   const isStaff = isStaffUser(user);
   const [branch, setBranch] = useState<BranchDetail | null>(null);
@@ -329,10 +328,11 @@ export function BranchDetailPage() {
   }
 
   const bookingPath = `/dat-lich?chi-nhanh=${branch.id_branch}`;
-  const returnPath = `${location.pathname}${location.search}${location.hash}`;
+  // Return to the booking step that is already pinned to this branch instead of
+  // dropping the patient back on the clinic detail page after login.
   const bookingLink = isAuthenticated
     ? bookingPath
-    : `/dang-nhap?returnTo=${encodeURIComponent(returnPath)}`;
+    : `/dang-nhap?returnTo=${encodeURIComponent(bookingPath)}`;
 
   return (
     <div className="site-shell clinic-detail-page">
