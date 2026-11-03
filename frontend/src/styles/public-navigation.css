@@ -1,4 +1,4 @@
-/* Public-site header controls shared by Home, Pricing and branch details. */
+/* Public-site header controls shared by public pages. */
 .header-actions {
   display: flex;
   align-items: center;
@@ -104,7 +104,8 @@
 
 @media (max-width: 760px) {
   .mobile-nav-drawer {
-    top: 68px;
+    /* The shared compact header is 72px; keeping this in sync prevents overlap. */
+    top: 72px;
   }
 }
 

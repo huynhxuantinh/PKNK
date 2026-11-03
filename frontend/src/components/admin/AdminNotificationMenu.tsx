@@ -18,6 +18,8 @@ export function AdminNotificationMenu() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const controllerRef = useRef<AbortController | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   const load = useCallback(async () => {
     controllerRef.current?.abort()
@@ -51,6 +53,27 @@ export function AdminNotificationMenu() {
     }
   }, [load])
 
+  useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
   async function markRead(notification: Notification) {
     if (notification.read_at) return
     try {
@@ -73,8 +96,9 @@ export function AdminNotificationMenu() {
   }
 
   return (
-    <div className="admin-notification-menu">
+    <div className="admin-notification-menu" ref={menuRef}>
       <button
+        ref={triggerRef}
         className="admin-notification-trigger"
         type="button"
         aria-label={count ? `Thông báo, ${count} chưa đọc` : 'Thông báo'}

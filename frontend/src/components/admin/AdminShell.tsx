@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { AuthBar } from '../../auth/AuthBar'
@@ -62,6 +62,10 @@ export function AdminShell() {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarCompact, setSidebarCompact] = useState(false)
+  const [isMobileSidebar, setIsMobileSidebar] = useState(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const menuToggleRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusOnClose = useRef(false)
   const organizationArea = location.pathname.startsWith('/quan-ly-to-chuc')
   const items = organizationArea ? organizationItems : branchItems
   const branchScope = useManagedBranchScope(user, !organizationArea)
@@ -72,10 +76,69 @@ export function AdminShell() {
   const scopeOptions = organizationArea ? organizationScope.options : branchScope.branches
   const scopeDisabled = organizationArea ? !organizationScope.options.length : branchScope.loading || !branchScope.branches.length
 
+  function closeMenu(restoreFocus = false) {
+    restoreFocusOnClose.current = restoreFocus
+    setMenuOpen(false)
+  }
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 900px)')
+    const updateViewport = () => {
+      setIsMobileSidebar(mediaQuery.matches)
+      if (!mediaQuery.matches) closeMenu(false)
+    }
+    updateViewport()
+    mediaQuery.addEventListener('change', updateViewport)
+    return () => mediaQuery.removeEventListener('change', updateViewport)
+  }, [])
+
+  useEffect(() => {
+    sidebarRef.current?.toggleAttribute('inert', isMobileSidebar && !menuOpen)
+  }, [isMobileSidebar, menuOpen])
+
+  useEffect(() => {
+    if (!isMobileSidebar || !menuOpen) {
+      if (restoreFocusOnClose.current) {
+        restoreFocusOnClose.current = false
+        menuToggleRef.current?.focus()
+      }
+      return
+    }
+
+    const sidebar = sidebarRef.current
+    sidebar?.focus()
+    const focusableSelector = 'a[href], button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMenu(true)
+        return
+      }
+      if (event.key !== 'Tab' || !sidebar) return
+      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(focusableSelector))
+      if (!focusable.length) {
+        event.preventDefault()
+        sidebar.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isMobileSidebar, menuOpen])
+
   function selectScope(id: number) {
     if (organizationArea) organizationScope.selectOrganization(id)
     else branchScope.selectBranch(id)
-    setMenuOpen(false)
+    closeMenu(false)
   }
 
   function destination(path: string) {
@@ -85,7 +148,13 @@ export function AdminShell() {
   return (
     <div className={`admin-shell ${sidebarCompact ? 'is-sidebar-compact' : ''}`}>
       <Seo title={`${sectionTitle(location.pathname)} | DentaVie`} description="Khu vực vận hành DentaVie." path={location.pathname} noIndex />
-      <aside className={`admin-sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="Điều hướng quản trị">
+      <aside
+        ref={sidebarRef}
+        className={`admin-sidebar ${menuOpen ? 'is-open' : ''}`}
+        aria-label="Điều hướng quản trị"
+        aria-hidden={isMobileSidebar && !menuOpen}
+        tabIndex={-1}
+      >
         <div className="admin-sidebar-brand-row">
           <Link
             className="admin-brand"
@@ -114,7 +183,7 @@ export function AdminShell() {
               key={item.path}
               to={destination(item.path)}
               end
-              onClick={() => setMenuOpen(false)}
+              onClick={() => closeMenu(false)}
             >
               <span aria-hidden="true"><SidebarIcon name={item.icon} /></span>
               {item.label}
@@ -135,15 +204,29 @@ export function AdminShell() {
           </select>
         </label>
         {canSwitchArea && (
-          <Link className="admin-area-switch" to={organizationArea ? '/quan-ly-chi-nhanh' : '/quan-ly-to-chuc'}>
+          <Link
+            className="admin-area-switch"
+            to={organizationArea ? '/quan-ly-chi-nhanh' : '/quan-ly-to-chuc'}
+            onClick={() => closeMenu(false)}
+          >
             {organizationArea ? 'Quản lý chi nhánh' : 'Quản trị tổ chức'}
           </Link>
         )}
       </aside>
-      {menuOpen && <button className="admin-sidebar-backdrop" type="button" aria-label="Đóng menu" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && <button className="admin-sidebar-backdrop" type="button" aria-label="Đóng menu" onClick={() => closeMenu(true)} />}
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <button className="admin-menu-toggle" type="button" aria-expanded={menuOpen} aria-label="Mở menu quản trị" onClick={() => setMenuOpen((open) => !open)}>☰</button>
+          <button
+            ref={menuToggleRef}
+            className="admin-menu-toggle"
+            type="button"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? 'Đóng menu quản trị' : 'Mở menu quản trị'}
+            onClick={() => {
+              restoreFocusOnClose.current = false
+              setMenuOpen((open) => !open)
+            }}
+          >☰</button>
           <div className="admin-breadcrumb" aria-label="Đường dẫn">
             <span>{organizationArea ? 'Quản trị tổ chức' : 'Quản lý chi nhánh'}</span>
             <b>/</b>

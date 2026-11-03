@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { isStaffUser } from "../auth/roles";
 import { BranchMap } from "../components/BranchMap";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { PublicFooter } from "../components/public/PublicFooter";
 import { Seo } from "../seo/Seo";
 import { useMobileNavigationDrawer } from "../hooks/useMobileNavigationDrawer";
 import { SITE_URL, absoluteUrl } from "../seo/seoConfig";
@@ -807,33 +808,7 @@ export function BranchDetailPage() {
         )}
       </main>
 
-      <footer className="site-footer" id="lien-he">
-        <div className="footer-main">
-          <div className="footer-brand">
-            <img
-              src="/branding/dentavie-logo-horizontal-white.png"
-              alt="DentaVie"
-            />
-            <p>Chăm sóc nụ cười bằng sự rõ ràng, thuận tiện và tôn trọng.</p>
-          </div>
-          <div>
-            <strong>Liên hệ</strong>
-            <a href="tel:19002102">Đường dây nóng: 1900 2102</a>
-            <a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a>
-            <span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span>
-          </div>
-          <div>
-            <strong>Khám phá</strong>
-            <Link to="/#dich-vu">Dịch vụ</Link>
-            <Link to="/ve-dentavie">Về DentaVie</Link>
-            <Link to="/#chi-nhanh">Chi nhánh</Link>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <span>© 2026 DentaVie</span>
-          <span>Thời gian hiển thị theo Asia/Ho_Chi_Minh</span>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
