@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -48,6 +49,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => storedUser())
   const [isAuthReady, setIsAuthReady] = useState(false)
+  const sessionVersionRef = useRef(0)
 
   const persistUser = useCallback((next: User | null) => {
     if (next) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next))
@@ -56,12 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const synchronizeUser = useCallback(async () => {
+    const requestSessionVersion = sessionVersionRef.current
     if (!getStoredTokens()) return
     try {
       const response = await apiRequest<{ data: User }>('/auth/me/', {}, { auth: true })
+      if (requestSessionVersion !== sessionVersionRef.current) return
       persistUser(response.data)
     } catch {
-      if (!getStoredTokens()) persistUser(null)
+      if (requestSessionVersion === sessionVersionRef.current && !getStoredTokens()) persistUser(null)
     }
   }, [persistUser])
 
@@ -72,12 +76,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const onFocus = () => { void synchronizeUser() }
     const clearExpiredSession = () => {
+      sessionVersionRef.current += 1
       clearClinicalDraftCaches()
       clearBookingHoldCaches()
       persistUser(null)
     }
     const syncAcrossTabs = (event: StorageEvent) => {
-      if (event.key === 'pknk_tokens' && !event.newValue) clearExpiredSession()
+      if (event.key !== 'pknk_tokens') return
+      sessionVersionRef.current += 1
+      if (!event.newValue) {
+        clearExpiredSession()
+        return
+      }
+      // Keep no stale identity visible while the replacement session is verified.
+      setUser(null)
+      void synchronizeUser()
     }
     window.addEventListener('focus', onFocus)
     window.addEventListener(AUTH_EXPIRED_EVENT, clearExpiredSession)
@@ -95,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
+    sessionVersionRef.current += 1
     storeTokens(response.data.tokens)
     persistUser(response.data.user)
     return response.data.user
@@ -116,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback((changes: Partial<User>) => {
     setUser((current) => {
       if (!current) return current
+      if (changes.id_user !== undefined && changes.id_user !== current.id_user) {
+        return current
+      }
       const next = { ...current, ...changes }
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next))
       return next
@@ -123,11 +140,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const startSession = useCallback((nextUser: User, tokens: TokenPair) => {
+    sessionVersionRef.current += 1
     storeTokens(tokens)
     persistUser(nextUser)
   }, [persistUser])
 
   const logout = useCallback(async () => {
+    sessionVersionRef.current += 1
     const logoutRequest = (): RequestInit | null => {
       const refresh = getStoredTokens()?.refresh
       return refresh

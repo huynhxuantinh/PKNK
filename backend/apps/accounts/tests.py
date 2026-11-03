@@ -1,6 +1,7 @@
 import hashlib
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from django.core import mail
 from django.core.cache import cache
@@ -14,6 +15,7 @@ from rest_framework.test import APITestCase
 from apps.audit.models import AuditEvent
 
 from .models import ConsentRecord, EmailVerificationToken, PatientProfile, User
+from .tasks import send_email_verification
 
 
 class UserModelTests(TestCase):
@@ -183,6 +185,25 @@ class AuthenticationAPITests(APITestCase):
                 token_digest=hashlib.sha256(first_raw_token.encode()).hexdigest()
             ).used_at
         )
+
+    def test_failed_verification_delivery_keeps_previous_link_usable(self):
+        self.register()
+        first_raw_token = self.verification_token_from_latest_email()
+        first_token = EmailVerificationToken.objects.get(
+            token_digest=hashlib.sha256(first_raw_token.encode()).hexdigest()
+        )
+
+        with (
+            patch(
+                "apps.accounts.tasks.send_branded_email",
+                side_effect=OSError("SMTP unavailable"),
+            ),
+            self.assertRaises(OSError),
+        ):
+            send_email_verification.run(first_token.user_id)
+
+        first_token.refresh_from_db()
+        self.assertIsNone(first_token.used_at)
 
     def test_resend_verification_preserves_return_to(self):
         self.register()

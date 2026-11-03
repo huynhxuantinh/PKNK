@@ -59,9 +59,9 @@ def queue_verification_email(user_id, return_to=""):
         logger.exception("Không thể đưa email xác minh vào hàng đợi.")
 
 
-def queue_password_reset_email(email):
+def queue_password_reset_email(email, return_to=""):
     try:
-        send_password_reset_email.delay(email)
+        send_password_reset_email.delay(email, return_to)
     except Exception:
         logger.exception("Không thể đưa email đặt lại mật khẩu vào hàng đợi.")
 
@@ -324,7 +324,10 @@ class PasswordResetRequestAPIView(APIView):
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        queue_password_reset_email(serializer.validated_data["email"])
+        queue_password_reset_email(
+            serializer.validated_data["email"],
+            serializer.validated_data.get("return_to", ""),
+        )
         return Response(
             {
                 "data": {

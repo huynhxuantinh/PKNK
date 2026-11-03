@@ -196,6 +196,12 @@ class EmailVerificationResendSerializer(serializers.Serializer):
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
+    return_to = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2048,
+        validators=[validate_internal_return_to],
+    )
 
     def validate_email(self, value):
         return value.strip().lower()

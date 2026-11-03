@@ -1,6 +1,7 @@
 import hashlib
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from django.core import mail
 from django.core.cache import cache
@@ -12,6 +13,7 @@ from rest_framework.test import APITestCase
 
 from .models import PasswordResetToken, User
 from .serializers import token_pair_for_user
+from .tasks import send_password_reset_email
 
 
 class PasswordResetAPITests(APITestCase):
@@ -27,8 +29,12 @@ class PasswordResetAPITests(APITestCase):
         self.request_url = reverse("accounts:password-reset-request")
         self.confirm_url = reverse("accounts:password-reset-confirm")
 
-    def request_reset(self, email="patient@example.com"):
-        return self.client.post(self.request_url, {"email": email}, format="json")
+    def request_reset(self, email="patient@example.com", return_to=""):
+        return self.client.post(
+            self.request_url,
+            {"email": email, "return_to": return_to},
+            format="json",
+        )
 
     def raw_token_from_latest_email(self):
         reset_url = mail.outbox[-1].body.splitlines()[-1]
@@ -56,6 +62,16 @@ class PasswordResetAPITests(APITestCase):
             token_record.token_digest,
             hashlib.sha256(raw_token.encode()).hexdigest(),
         )
+
+    def test_request_preserves_safe_return_to_in_reset_link(self):
+        return_to = "/dat-lich?chi-nhanh=3"
+
+        response = self.request_reset(return_to=return_to)
+        reset_url = mail.outbox[-1].body.splitlines()[-1]
+        query = parse_qs(urlparse(reset_url).query)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(query["returnTo"], [return_to])
 
     def test_request_for_unknown_email_returns_same_response_without_email(self):
         existing_response = self.request_reset()
@@ -131,6 +147,22 @@ class PasswordResetAPITests(APITestCase):
 
         self.assertEqual(first_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+
+    def test_failed_reset_delivery_keeps_previous_link_usable(self):
+        self.request_reset()
+        first_token = self.raw_token_from_latest_email()
+
+        with (
+            patch(
+                "apps.accounts.tasks.send_branded_email",
+                side_effect=OSError("Resend unavailable"),
+            ),
+            self.assertRaises(OSError),
+        ):
+            send_password_reset_email.run(self.user.email)
+
+        response = self.confirm_reset(first_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_database_allows_only_one_unused_token_per_user(self):
         self.request_reset()

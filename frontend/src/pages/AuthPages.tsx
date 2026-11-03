@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { destinationAfterLogin } from "../auth/authRedirect";
+import { destinationAfterLogin, safeReturnPath } from "../auth/authRedirect";
 import { Seo } from "../seo/Seo";
 import "./AuthPages.css";
 
@@ -68,6 +68,14 @@ export function AuthShell({
   );
 }
 
+function AuthFormError({ message }: { message: string }) {
+  return (
+    <p className="auth-page-error" role="alert">
+      {message}
+    </p>
+  );
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -77,7 +85,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = safeReturnPath(searchParams.get("returnTo"), "");
   const isInvitationLogin = returnTo?.startsWith("/accept-invitation?token=");
   const passwordChanged = searchParams.get("passwordChanged") === "1";
 
@@ -159,9 +167,9 @@ export function LoginPage() {
           </span>
         </label>
         <div className="auth-password-actions">
-          <Link to="/quen-mat-khau">Quên mật khẩu?</Link>
+          <Link to={`/quen-mat-khau${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>Quên mật khẩu?</Link>
         </div>
-        {error && <p className="auth-page-error">{error}</p>}
+        {error && <AuthFormError message={error} />}
         <button className="auth-submit" disabled={isSubmitting}>
           {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
         </button>
@@ -283,7 +291,7 @@ export function RegisterPage() {
             .
           </span>
         </label>
-        {error && <p className="auth-page-error">{error}</p>}
+        {error && <AuthFormError message={error} />}
         <button className="auth-submit" disabled={isSubmitting}>
           {isSubmitting ? "Đang tạo tài khoản…" : "Đăng ký"}
         </button>
@@ -303,11 +311,13 @@ export function RegisterPage() {
 export function EmailVerificationPendingPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(
+    searchParams.get("email") || user?.email || "",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const email = searchParams.get("email") || user?.email || "";
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = safeReturnPath(searchParams.get("returnTo"), "");
 
   async function resend() {
     if (!email) return;
@@ -347,7 +357,7 @@ export function EmailVerificationPendingPage() {
           cung cấp. Mở liên kết trong email để kích hoạt chức năng đặt lịch.
         </p>
         {message && <p className="auth-page-message">{message}</p>}
-        {error && <p className="auth-page-error">{error}</p>}
+        {error && <AuthFormError message={error} />}
         {email ? (
           <button
             className="auth-submit"
@@ -358,7 +368,25 @@ export function EmailVerificationPendingPage() {
             {isSubmitting ? "Đang gửi…" : "Gửi lại email xác minh"}
           </button>
         ) : (
-          <Link to="/dang-ky">Đăng ký tài khoản</Link>
+          <form className="auth-page-form" onSubmit={(event) => {
+            event.preventDefault();
+            void resend();
+          }}>
+            <label>
+              Email đã đăng ký
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <button className="auth-submit" disabled={isSubmitting}>
+              {isSubmitting ? "Đang gửi…" : "Gửi lại email xác minh"}
+            </button>
+          </form>
         )}
       </div>
     </AuthShell>
@@ -369,7 +397,7 @@ export function VerifyEmailPage() {
   const { updateUser } = useAuth();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = safeReturnPath(searchParams.get("returnTo"), "");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -377,6 +405,9 @@ export function VerifyEmailPage() {
     token ? "" : "Liên kết xác minh không hợp lệ.",
   );
   const [isSuccess, setIsSuccess] = useState(false);
+  const recoveryPath = `/xac-minh-email${
+    returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+  }`;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -426,6 +457,13 @@ export function VerifyEmailPage() {
             Đăng nhập
           </Link>
         </div>
+      ) : !token ? (
+        <div className="auth-page-success">
+          <span>!</span>
+          <strong>Liên kết xác minh không hợp lệ hoặc đã hết hạn</strong>
+          <p>Hãy yêu cầu một email xác minh mới để tiếp tục kích hoạt tài khoản.</p>
+          <Link to={recoveryPath}>Gửi lại email xác minh</Link>
+        </div>
       ) : (
         <form className="auth-page-form" onSubmit={handleSubmit}>
           <label>
@@ -454,7 +492,12 @@ export function VerifyEmailPage() {
             Mật khẩu không được quá giống thông tin cá nhân và không được quá
             phổ biến.
           </small>
-          {message && <p className="auth-page-error">{message}</p>}
+          {message && <AuthFormError message={message} />}
+          {message && (
+            <p className="auth-switch">
+              <Link to={recoveryPath}>Gửi lại email xác minh</Link>
+            </p>
+          )}
           <button className="auth-submit" disabled={isSubmitting || !token}>
             {isSubmitting ? "Đang xác minh…" : "Xác minh và kích hoạt"}
           </button>
@@ -465,10 +508,13 @@ export function VerifyEmailPage() {
 }
 
 export function ForgotPasswordPage() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const returnTo = safeReturnPath(searchParams.get("returnTo"), "");
+  const loginPath = `/dang-nhap${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -479,7 +525,7 @@ export function ForgotPasswordPage() {
         "/auth/password-reset/request/",
         {
           method: "POST",
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, return_to: returnTo }),
         },
       );
       setMessage(response.data.message);
@@ -503,7 +549,7 @@ export function ForgotPasswordPage() {
           <span>✓</span>
           <strong>Kiểm tra hộp thư của bạn</strong>
           <p>{message}</p>
-          <Link to="/dang-nhap">Quay lại đăng nhập</Link>
+          <Link to={loginPath}>Quay lại đăng nhập</Link>
         </div>
       ) : (
         <>
@@ -519,13 +565,13 @@ export function ForgotPasswordPage() {
                 required
               />
             </label>
-            {error && <p className="auth-page-error">{error}</p>}
+            {error && <AuthFormError message={error} />}
             <button className="auth-submit" disabled={isSubmitting}>
               {isSubmitting ? "Đang gửi…" : "Gửi liên kết đặt lại"}
             </button>
           </form>
           <p className="auth-switch">
-            <Link to="/dang-nhap">← Quay lại đăng nhập</Link>
+            <Link to={loginPath}>← Quay lại đăng nhập</Link>
           </p>
         </>
       )}
@@ -536,6 +582,13 @@ export function ForgotPasswordPage() {
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const returnTo = safeReturnPath(searchParams.get("returnTo"), "");
+  const loginSearch = new URLSearchParams({ passwordChanged: "1" });
+  if (returnTo) loginSearch.set("returnTo", returnTo);
+  const loginPath = `/dang-nhap?${loginSearch.toString()}`;
+  const requestResetPath = `/quen-mat-khau${
+    returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+  }`;
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -584,7 +637,14 @@ export function ResetPasswordPage() {
           <span>✓</span>
           <strong>Đã đổi mật khẩu</strong>
           <p>{message}</p>
-          <Link to="/dang-nhap">Đăng nhập ngay</Link>
+          <Link to={loginPath}>Đăng nhập ngay</Link>
+        </div>
+      ) : !token ? (
+        <div className="auth-page-success">
+          <span>!</span>
+          <strong>Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn</strong>
+          <p>Hãy yêu cầu một liên kết mới để tiếp tục đặt lại mật khẩu.</p>
+          <Link to={requestResetPath}>Yêu cầu liên kết đặt lại mật khẩu mới</Link>
         </div>
       ) : (
         <form className="auth-page-form" onSubmit={handleSubmit}>
@@ -613,7 +673,14 @@ export function ResetPasswordPage() {
           <small className="password-hint">
             Liên kết chỉ sử dụng được một lần và có thời hạn.
           </small>
-          {error && <p className="auth-page-error">{error}</p>}
+          {error && <AuthFormError message={error} />}
+          {error && (
+            <p className="auth-switch">
+              <Link to={requestResetPath}>
+                Yêu cầu liên kết đặt lại mật khẩu mới
+              </Link>
+            </p>
+          )}
           <button className="auth-submit" disabled={isSubmitting || !token}>
             {isSubmitting ? "Đang cập nhật…" : "Đặt lại mật khẩu"}
           </button>

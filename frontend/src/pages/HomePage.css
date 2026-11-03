@@ -1015,7 +1015,7 @@
 }
 
 @media (max-width: 760px) {
-  .home-page {
+  :scope {
     --public-mobile-header-height: 68px;
   }
 
