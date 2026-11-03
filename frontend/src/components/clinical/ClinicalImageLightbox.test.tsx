@@ -58,9 +58,9 @@ describe('ClinicalImageLightbox', () => {
     })
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    const backdrop = renderer!.root.findAll(
-      (node) => node.props.className === 'record-lightbox-backdrop',
-    )[0]
+    const backdrop = renderer!.root.find(
+      (node) => node.type === 'div' && node.props.role === 'presentation',
+    )
     act(() => {
       const backdropElement = { id: 'backdrop' }
       backdrop.props.onMouseDown({
