@@ -154,6 +154,7 @@ describe('bookingSelectionReducer', () => {
     expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
     clearBookingHold(12)
   })
+
 })
 
 describe('bookingIdempotencyKey', () => {
@@ -274,5 +275,11 @@ describe('branchFromDetail', () => {
     expect(branchFromDetail(detail, new Date('2026-11-03T02:00:00Z')).is_open_now).toBe(true)
     expect(branchFromDetail(detail, new Date('2026-11-03T12:00:00Z')).is_open_now).toBe(false)
     expect(branchFromDetail(detail, new Date('2026-11-04T02:00:00Z')).is_open_now).toBe(false)
+  })
+
+  it('uses the API status when a holiday closes the branch', () => {
+    const closedForHoliday = { ...detail, is_open_now: false }
+
+    expect(branchFromDetail(closedForHoliday, new Date('2026-11-03T02:00:00Z')).is_open_now).toBe(false)
   })
 })

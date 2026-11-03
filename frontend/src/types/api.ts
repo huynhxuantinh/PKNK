@@ -83,6 +83,7 @@ export interface BranchDetail {
     latitude: number
     longitude: number
   }
+  is_open_now: boolean
   opening_hours: BranchOpeningHour[]
   images: Array<{
     id_branch_image: number

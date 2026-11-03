@@ -129,6 +129,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     ward_name = serializers.CharField(source="ward.full_name", read_only=True)
     full_address = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    is_open_now = serializers.BooleanField(source="api_is_open_now", read_only=True)
     opening_hours = BranchOpeningHourSerializer(many=True, read_only=True)
     images = BranchImageSerializer(many=True, read_only=True)
     services = BranchServiceSerializer(
@@ -159,6 +160,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
             "address_line",
             "full_address",
             "location",
+            "is_open_now",
             "opening_hours",
             "images",
             "services",

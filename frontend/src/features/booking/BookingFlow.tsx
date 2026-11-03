@@ -46,11 +46,13 @@ const currency = new Intl.NumberFormat("vi-VN", {
 const time = new Intl.DateTimeFormat("vi-VN", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Asia/Ho_Chi_Minh",
 });
 
 const fullDateTime = new Intl.DateTimeFormat("vi-VN", {
   dateStyle: "full",
   timeStyle: "short",
+  timeZone: "Asia/Ho_Chi_Minh",
 });
 
 function LoadingState({ label }: { label: string }) {
@@ -512,6 +514,44 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     }
   }
 
+  /**
+   * Re-reads the server state of a hold that can no longer be cancelled or
+   * confirmed. A 404/409 only means the hold is not HELD anymore, so the form
+   * must not stay locked: it may have expired, been cancelled elsewhere, or
+   * already been confirmed.
+   */
+  async function syncHeldAppointment(
+    hold: Appointment,
+  ): Promise<"held" | "confirmed" | "released" | "unknown"> {
+    try {
+      const active = await getActiveAppointmentHold();
+      if (active.data?.status === "HELD") {
+        rememberHeldAppointment(active.data);
+        return "held";
+      }
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) logout();
+      return "unknown";
+    }
+
+    // No live hold is left. Confirmation is idempotent for a booking that
+    // already went through, so this returns it without touching it; an
+    // expired or cancelled hold is rejected with 404/409 and can be cleared.
+    try {
+      const response = await confirmAppointment(hold.public_code);
+      setAppointment(response.data);
+      forgetHeldAppointment();
+      return "confirmed";
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) logout();
+      if (reason instanceof ApiError && [404, 409].includes(reason.status)) {
+        forgetHeldAppointment();
+        return "released";
+      }
+      return "unknown";
+    }
+  }
+
   async function releaseHeldAppointment(hold = heldAppointment) {
     if (!hold) return false;
     setBooking(true);
@@ -523,6 +563,20 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       return true;
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) logout();
+      if (holdIsNoLongerUsable(reason)) {
+        const outcome = await syncHeldAppointment(hold);
+        if (outcome === "released") {
+          await refreshSlots();
+          return true;
+        }
+        if (outcome === "confirmed") return true;
+        if (outcome === "held") {
+          setError(
+            "Hệ thống vẫn đang giữ một chỗ cho bạn. Hãy xác nhận hoặc chọn giờ khác trước khi đổi lựa chọn.",
+          );
+          return false;
+        }
+      }
       setError(
         "Chưa thể xác nhận chỗ giữ đã được hủy. Chỗ này vẫn được lưu; vui lòng thử lại hoặc xác nhận lịch đang giữ.",
       );

@@ -214,6 +214,20 @@ class BranchDetailAPIView(APIView):
             .distinct()
             .order_by("user__full_name")
         )
+        local_now = timezone.localtime(timezone.now())
+        has_open_hour = BranchOpeningHour.objects.filter(
+            branch=branch,
+            weekday=local_now.isoweekday(),
+            is_closed=False,
+            open_time__lte=local_now.time(),
+            close_time__gt=local_now.time(),
+        ).exists()
+        has_closed_holiday = Holiday.objects.filter(
+            organization=branch.organization,
+            holiday_date=local_now.date(),
+            is_closed=True,
+        ).filter(Q(branch=branch) | Q(branch__isnull=True)).exists()
+        branch.api_is_open_now = has_open_hour and not has_closed_holiday
         return Response({"data": BranchDetailSerializer(branch).data})
 
 

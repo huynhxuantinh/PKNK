@@ -143,7 +143,7 @@ export function branchFromDetail(detail: BranchDetail, now = new Date()): Branch
     full_address: detail.full_address,
     location: detail.location,
     distance_km: null,
-    is_open_now: branchIsOpenNow(detail.opening_hours, now),
+    is_open_now: detail.is_open_now ?? branchIsOpenNow(detail.opening_hours, now),
     primary_image: primaryImage,
   }
 }

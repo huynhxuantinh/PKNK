@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.gis.geos import Point
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -15,6 +16,7 @@ from .models import (
     Branch,
     BranchImage,
     BranchOpeningHour,
+    Holiday,
     Province,
     Ward,
 )
@@ -171,6 +173,29 @@ class BranchDetailAPITests(APITestCase):
         self.assertEqual(len(dentists), 1)
         self.assertEqual(dentists[0]["id_dentist"], self.dentist.pk)
         self.assertEqual(dentists[0]["full_name"], "BS. Nguyễn Minh")
+
+    def test_detail_reports_closed_when_an_applicable_holiday_is_today(self):
+        local_now = timezone.localtime(timezone.now())
+        BranchOpeningHour.objects.update_or_create(
+            branch=self.branch,
+            weekday=local_now.isoweekday(),
+            defaults={
+                "is_closed": False,
+                "open_time": time(0, 0),
+                "close_time": time(23, 59),
+            },
+        )
+        Holiday.objects.create(
+            organization=self.organization,
+            branch=self.branch,
+            holiday_date=local_now.date(),
+            name="Holiday closure",
+            is_closed=True,
+        )
+
+        response = self.client.get(self.detail_url())
+
+        self.assertFalse(response.data["data"]["is_open_now"])
 
     def test_inactive_branch_or_organization_is_not_public(self):
         inactive_branch = Branch.objects.create(
