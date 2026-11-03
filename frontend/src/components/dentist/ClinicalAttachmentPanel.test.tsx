@@ -21,6 +21,7 @@ describe('ClinicalAttachmentPanel pending uploads', () => {
           disabled={false}
           onChange={() => {}}
           onPendingChange={onPendingChange}
+          onUploadStateChange={() => {}}
         />,
       )
     })
@@ -64,6 +65,7 @@ describe('ClinicalAttachmentPanel pending uploads', () => {
           disabled={false}
           onChange={() => {}}
           onPendingChange={() => {}}
+          onUploadStateChange={() => {}}
         />,
       )
     })

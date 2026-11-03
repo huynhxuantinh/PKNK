@@ -50,11 +50,13 @@ type Props = {
   disabled: boolean
   onChange: (attachments: ClinicalAttachment[]) => void
   onPendingChange: (count: number) => void
+  onUploadStateChange: (uploading: boolean) => void
 }
 
-export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, onChange, onPendingChange }: Props) {
+export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, onChange, onPendingChange, onUploadStateChange }: Props) {
   const [drafts, setDrafts] = useState<AttachmentDraft[]>([])
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [attachmentToRemove, setAttachmentToRemove] = useState<ClinicalAttachment | null>(null)
 
@@ -63,6 +65,11 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
   }, [drafts.length, onPendingChange])
 
   useEffect(() => () => onPendingChange(0), [onPendingChange])
+
+  useEffect(() => {
+    onUploadStateChange(uploading)
+    return () => onUploadStateChange(false)
+  }, [onUploadStateChange, uploading])
 
   function selectFiles(files: FileList | null) {
     if (!files) return
@@ -94,6 +101,7 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
   async function uploadAll() {
     if (drafts.length === 0) return
     setBusy(true)
+    setUploading(true)
     setError('')
     try {
       let currentAttachments = [...attachments]
@@ -108,6 +116,7 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể tải ảnh lên.')
     } finally {
+      setUploading(false)
       setBusy(false)
     }
   }

@@ -117,8 +117,14 @@ export function DentistExaminationPage() {
   const [draftReadyFor, setDraftReadyFor] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [loadState, setLoadState] = useState<
+    "loading" | "error" | "success"
+  >("loading");
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [performedServicesDirty, setPerformedServicesDirty] = useState(false);
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
@@ -137,7 +143,11 @@ export function DentistExaminationPage() {
     serverForm &&
     !clinicalFormsEqual(form, serverForm),
   );
-  const isDirty = textFormDirty || performedServicesDirty;
+  const isDirty =
+    textFormDirty ||
+    performedServicesDirty ||
+    pendingAttachmentCount > 0 ||
+    isUploadingAttachments;
   const navigationBlocker = useBlocker(isDirty);
 
   useEffect(
@@ -188,6 +198,8 @@ export function DentistExaminationPage() {
   useEffect(() => {
     if (!isAuthenticated || !publicCode) return;
     let active = true;
+    setLoadState("loading");
+    setLoadError("");
     setDraftReadyFor("");
     setBranchServices([]);
     setBranchServicesError("");
@@ -240,6 +252,7 @@ export function DentistExaminationPage() {
         setServerForm(latestServerForm);
         setForm(localDraft ?? latestServerForm);
         setDraftReadyFor(publicCode);
+        setLoadState("success");
         if (localDraft && !clinicalFormsEqual(localDraft, latestServerForm)) {
           setNotice("Đã khôi phục bản nháp lưu trên thiết bị.");
         }
@@ -261,17 +274,19 @@ export function DentistExaminationPage() {
           });
       })
       .catch((reason) => {
-        if (active)
-          setError(
+        if (active) {
+          setLoadError(
             reason instanceof Error
               ? reason.message
               : "Không thể mở lượt khám.",
           );
+          setLoadState("error");
+        }
       });
     return () => {
       active = false;
     };
-  }, [currentUserId, isAuthenticated, publicCode]);
+  }, [currentUserId, isAuthenticated, loadAttempt, publicCode]);
 
   useEffect(() => {
     if (
@@ -408,6 +423,7 @@ export function DentistExaminationPage() {
     "Chưa cập nhật";
   const isFinalized = encounter?.status === "FINALIZED";
   const isReadOnly = isFinalized || appointment?.status === "COMPLETED";
+  const isFormLocked = isReadOnly || isSaving;
 
   return (
     <div className={`dentist-page examination-page ${styles.page}`}>
@@ -447,9 +463,20 @@ export function DentistExaminationPage() {
             {notice}
           </div>
         )}
-        {!appointment || !encounter ? (
+        {loadState === "loading" ? (
           <div className="examination-loading">Đang mở bệnh án...</div>
-        ) : (
+        ) : loadState === "error" ? (
+          <div className="app-error" role="alert">
+            <p>{loadError}</p>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : !appointment || !encounter ? null : (
           <>
             <section className="examination-patient">
               <div>
@@ -485,6 +512,7 @@ export function DentistExaminationPage() {
                     {new Intl.DateTimeFormat("vi-VN", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "Asia/Ho_Chi_Minh",
                     }).format(new Date(appointment.starts_at))}
                   </dd>
                 </div>
@@ -528,6 +556,7 @@ export function DentistExaminationPage() {
                       Lý do khám
                       <textarea
                         value={form.chief_complaint}
+                        disabled={isFormLocked}
                         onChange={(event) =>
                           setForm({
                             ...form,
@@ -541,6 +570,7 @@ export function DentistExaminationPage() {
                       Tiền sử sức khỏe
                       <textarea
                         value={form.medical_history}
+                        disabled={isFormLocked}
                         onChange={(event) =>
                           setForm({
                             ...form,
@@ -554,6 +584,7 @@ export function DentistExaminationPage() {
                       Chẩn đoán <b>*</b>
                       <textarea
                         value={form.diagnosis_summary}
+                        disabled={isFormLocked}
                         onChange={(event) =>
                           setForm({
                             ...form,
@@ -568,6 +599,7 @@ export function DentistExaminationPage() {
                       Ghi chú nội bộ
                       <textarea
                         value={form.notes}
+                        disabled={isFormLocked}
                         onChange={(event) =>
                           setForm({ ...form, notes: event.target.value })
                         }
@@ -578,6 +610,7 @@ export function DentistExaminationPage() {
                       Dặn dò sau khám
                       <textarea
                         value={form.aftercare_instructions}
+                        disabled={isFormLocked}
                         onChange={(event) =>
                           setForm({
                             ...form,
@@ -651,7 +684,7 @@ export function DentistExaminationPage() {
               <PerformedServicesPanel
                 encounter={encounter}
                 branchServices={branchServices}
-                disabled={isReadOnly}
+                disabled={isFormLocked}
                 onDirtyChange={setPerformedServicesDirty}
                 onSaved={(result) =>
                   setEncounter((current) =>
@@ -753,13 +786,14 @@ export function DentistExaminationPage() {
             <ClinicalAttachmentPanel
               encounterId={encounter.id_clinical_encounter}
               attachments={encounter.attachments}
-              disabled={isReadOnly}
+              disabled={isFormLocked}
               onChange={(attachments) =>
                 setEncounter((current) =>
                   current ? { ...current, attachments } : current,
                 )
               }
               onPendingChange={setPendingAttachmentCount}
+              onUploadStateChange={setIsUploadingAttachments}
             />
             {showCompleteConfirmation && (
               <ConfirmationModal
