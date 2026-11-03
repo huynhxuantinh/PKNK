@@ -59,7 +59,7 @@
   .mobile-nav-drawer {
     position: fixed;
     z-index: 29;
-    top: 78px;
+    top: var(--public-mobile-header-height, 78px);
     right: 0;
     left: 0;
     display: block;
@@ -104,8 +104,7 @@
 
 @media (max-width: 760px) {
   .mobile-nav-drawer {
-    /* The shared compact header is 72px; keeping this in sync prevents overlap. */
-    top: 72px;
+    top: var(--public-mobile-header-height, 72px);
   }
 }
 

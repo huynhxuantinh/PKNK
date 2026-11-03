@@ -172,6 +172,17 @@
 
 @media (max-width: 520px) {
   .admin-topbar { min-height: 62px; gap: 10px; }
+  .admin-notification-popover {
+    position: fixed;
+    top: 70px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 82px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
   .admin-breadcrumb { font-size: 11px; }
   .admin-scope-picker { display: none; }
   .admin-mobile-scope-picker { display: grid; gap: 5px; margin-top: 4px; padding: 12px 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: #f8fcfd; color: var(--admin-muted); font-size: 10px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
