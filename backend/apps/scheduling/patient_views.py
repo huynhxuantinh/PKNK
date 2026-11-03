@@ -180,7 +180,7 @@ class PatientAppointmentRescheduleAPIView(PatientAppointmentBaseAPIView):
             )
             return error_response(scheduling_error, status.HTTP_400_BAD_REQUEST)
         except ManagementConflict as error:
-            message = error.detail.get("message", "Appointment cannot be rescheduled.")
+            message = error.detail.get("message", "Không thể dời lịch hẹn này.")
             scheduling_error = SchedulingError(
                 str(message), code="appointment_reschedule_conflict"
             )

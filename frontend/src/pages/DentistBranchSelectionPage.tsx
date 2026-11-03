@@ -58,7 +58,7 @@ export function DentistBranchSelectionPage() {
                 <h2>{branch.name}</h2>
                 <p>{branch.full_address}</p>
                 <dl>
-                  <div><dt>Hotline</dt><dd>{branch.phone || 'Chưa cập nhật'}</dd></div>
+                  <div><dt>Đường dây nóng</dt><dd>{branch.phone || 'Chưa cập nhật'}</dd></div>
                   <div><dt>Email</dt><dd>{branch.email || 'Chưa cập nhật'}</dd></div>
                 </dl>
                 <button type="button" className="button" onClick={() => navigate(`/bac-si?chi-nhanh=${branch.id_branch}`)}>Làm việc tại chi nhánh này</button>

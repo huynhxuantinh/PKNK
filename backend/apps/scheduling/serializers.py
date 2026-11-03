@@ -127,7 +127,7 @@ class PatientAppointmentListQuerySerializer(serializers.Serializer):
         allowed = upcoming if attrs["scope"] == "UPCOMING" else history
         if attrs.get("status") and attrs["status"] not in allowed:
             raise serializers.ValidationError(
-                {"status": "Status does not belong to the selected appointment group."}
+                {"status": "Trạng thái không phù hợp với nhóm lịch hẹn đã chọn."}
             )
         return attrs
 

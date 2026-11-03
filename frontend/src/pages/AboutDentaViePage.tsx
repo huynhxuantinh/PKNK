@@ -80,10 +80,10 @@ export function AboutDentaViePage() {
           <AuthBar />
           <PublicMobileNavigation
             links={[
-              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
-              { to: "/ve-dentavie", label: "Vá» DentaVie" },
-              { to: "/#chi-nhanh", label: "Há»‡ thá»‘ng chi nhĂ¡nh" },
-              { to: "/#lien-he", label: "ThĂ´ng tin liĂªn há»‡" },
+              { to: "/bang-gia", label: "Bảng giá" },
+              { to: "/ve-dentavie", label: "Về DentaVie" },
+              { to: "/#chi-nhanh", label: "Hệ thống chi nhánh" },
+              { to: "/#lien-he", label: "Thông tin liên hệ" },
             ]}
           />
         </div>
@@ -159,7 +159,7 @@ export function AboutDentaViePage() {
           </div>
           <div>
             <strong>Liên hệ</strong>
-            <a href="tel:19002102">Hotline: 1900 2102</a>
+            <a href="tel:19002102">Đường dây nóng: 1900 2102</a>
             <a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a>
             <span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span>
           </div>

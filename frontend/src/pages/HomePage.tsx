@@ -900,7 +900,7 @@ export function HomePage() {
         <section className="support-banner">
           <div>
             <h2>Bạn cần tư vấn về dịch vụ nha khoa?</h2>
-            <p>Gọi hotline hoặc chọn chi nhánh gần bạn để được hỗ trợ.</p>
+            <p>Gọi đường dây nóng hoặc chọn chi nhánh gần bạn để được hỗ trợ.</p>
           </div>
           <div className="support-actions">
             <a href="tel:19002102">Gọi 1900 2102</a>
@@ -920,7 +920,7 @@ export function HomePage() {
           </div>
           <div>
             <strong>Liên hệ</strong>
-            <a href="tel:19002102">Hotline: 1900 2102</a>
+            <a href="tel:19002102">Đường dây nóng: 1900 2102</a>
             <a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a>
             <span>Thứ Hai – Chủ Nhật: 8:00 – 20:00</span>
           </div>

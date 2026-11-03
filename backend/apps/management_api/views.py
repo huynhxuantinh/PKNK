@@ -766,9 +766,13 @@ class MembershipDetailAPIView(ManagementAPIView):
         if branch and branch.organization_id != membership.organization_id:
             raise ValidationError({"branch_id": "Chi nhánh không thuộc organization."})
         if role == Membership.Role.ORGANIZATION_ADMIN and branch is not None:
-            raise ValidationError({"branch_id": "Organization Admin không gắn chi nhánh."})
+            raise ValidationError(
+                {"branch_id": "Quản trị viên tổ chức không được gắn trực tiếp với một chi nhánh."}
+            )
         if role == Membership.Role.BRANCH_ADMIN and branch is None:
-            raise ValidationError({"branch_id": "Branch Admin phải gắn chi nhánh."})
+            raise ValidationError(
+                {"branch_id": "Quản lý chi nhánh phải được phân công vào một chi nhánh."}
+            )
         if Membership.objects.filter(
             user=membership.user,
             organization=membership.organization,

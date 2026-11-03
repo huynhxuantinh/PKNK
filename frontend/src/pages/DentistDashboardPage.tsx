@@ -30,7 +30,7 @@ import styles from "./DentistDashboardPage.module.css";
 const statusLabel: Record<DentistAppointmentStatus, string> = {
   PENDING: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
-  CHECKED_IN: "Đã check-in",
+  CHECKED_IN: "Đã đến khám",
   IN_PROGRESS: "Đang khám",
   COMPLETED: "Đã hoàn tất",
   CANCELLED: "Đã hủy",
@@ -331,7 +331,7 @@ export function DentistDashboardPage() {
                     <p>{branch.full_address}</p>
                     <dl>
                       <div>
-                        <dt>Hotline</dt>
+                        <dt>Đường dây nóng</dt>
                         <dd>{branch.phone || "Chưa cập nhật"}</dd>
                       </div>
                       <div>
@@ -363,7 +363,7 @@ export function DentistDashboardPage() {
           </article>
           <article>
             <span>
-              {scheduleView === "UPCOMING" ? "Đã check-in" : "Đã hoàn tất"}
+              {scheduleView === "UPCOMING" ? "Đã đến khám" : "Đã hoàn tất"}
             </span>
             <strong>
               {scheduleView === "UPCOMING"
@@ -480,7 +480,7 @@ export function DentistDashboardPage() {
                   <>
                     <option value="PENDING">Chờ xác nhận</option>
                     <option value="CONFIRMED">Đã xác nhận</option>
-                    <option value="CHECKED_IN">Đã check-in</option>
+                    <option value="CHECKED_IN">Đã đến khám</option>
                     <option value="IN_PROGRESS">Đang khám</option>
                   </>
                 ) : (

@@ -36,9 +36,9 @@ export function BookingPage() {
           <AuthBar />
           <PublicMobileNavigation
             links={[
-              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
-              { to: "/#chi-nhanh", label: "Chi nhĂ¡nh" },
-              { to: "/#lien-he", label: "LiĂªn há»‡" },
+              { to: "/bang-gia", label: "Bảng giá" },
+              { to: "/#chi-nhanh", label: "Chi nhánh" },
+              { to: "/#lien-he", label: "Liên hệ" },
             ]}
           />
         </div>

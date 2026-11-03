@@ -190,9 +190,13 @@ class MembershipCreateSerializer(serializers.Serializer):
         role = attrs["role"]
         branch = attrs.get("branch")
         if role == Membership.Role.ORGANIZATION_ADMIN and branch is not None:
-            raise serializers.ValidationError({"branch_id": "Organization Admin không gắn chi nhánh."})
+            raise serializers.ValidationError(
+                {"branch_id": "Quản trị viên tổ chức không được gắn trực tiếp với một chi nhánh."}
+            )
         if role == Membership.Role.BRANCH_ADMIN and branch is None:
-            raise serializers.ValidationError({"branch_id": "Branch Admin phải gắn chi nhánh."})
+            raise serializers.ValidationError(
+                {"branch_id": "Quản lý chi nhánh phải được phân công vào một chi nhánh."}
+            )
         if branch is not None and not branch.is_active:
             raise serializers.ValidationError({"branch_id": "Chi nhánh đã ngưng hoạt động."})
         email = attrs["email"]
@@ -200,7 +204,9 @@ class MembershipCreateSerializer(serializers.Serializer):
         if replaces_membership is not None:
             if role != Membership.Role.BRANCH_ADMIN:
                 raise serializers.ValidationError(
-                    {"replaces_membership_id": "Only branch manager transfers may replace a membership."}
+                    {
+                        "replaces_membership_id": "Chỉ được thay thế quyền quản trị khi thực hiện chuyển giao quản lý chi nhánh."
+                    }
                 )
             if (
                 not replaces_membership.is_active
@@ -208,7 +214,9 @@ class MembershipCreateSerializer(serializers.Serializer):
                 or replaces_membership.branch_id != branch.pk
             ):
                 raise serializers.ValidationError(
-                    {"replaces_membership_id": "The selected branch manager is no longer active for this branch."}
+                    {
+                        "replaces_membership_id": "Quản lý được chọn không còn quyền hoạt động tại chi nhánh này."
+                    }
                 )
         try:
             if role == Membership.Role.BRANCH_ADMIN and replaces_membership is None:

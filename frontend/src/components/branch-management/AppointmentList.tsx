@@ -164,7 +164,7 @@ export function AppointmentList({
                       disabled={busy}
                       onClick={() => onAction(item, "check-in")}
                     >
-                      Check-in
+                      Xác nhận đến khám
                     </button>
                   )}
                   {["PENDING", "CONFIRMED"].includes(item.status) && (

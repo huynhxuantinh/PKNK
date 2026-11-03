@@ -199,7 +199,9 @@ class LogoutAPIView(APIView):
                 raise AuthenticationFailed("Token không thuộc tài khoản hiện tại.")
             token.blacklist()
         except TokenError as error:
-            raise AuthenticationFailed("Refresh token không hợp lệ.") from error
+            raise AuthenticationFailed(
+                "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại."
+            ) from error
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

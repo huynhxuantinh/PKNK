@@ -5,7 +5,7 @@ export const appointmentStatusLabels: Record<ManagementAppointmentStatus, string
   EXPIRED: 'Đã hết hạn giữ chỗ',
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
-  CHECKED_IN: 'Đã check-in',
+  CHECKED_IN: 'Đã đến khám',
   IN_PROGRESS: 'Đang khám',
   COMPLETED: 'Hoàn tất',
   CANCELLED: 'Đã hủy',

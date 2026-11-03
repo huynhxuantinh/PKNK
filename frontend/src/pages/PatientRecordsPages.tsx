@@ -103,9 +103,9 @@ function RecordsLayout({
           <AuthBar />
           <PublicMobileNavigation
             links={[
-              { to: "/", label: "Trang chá»§" },
-              { to: "/dat-lich", label: "Äáº·t lá»‹ch khĂ¡m" },
-              { to: "/bang-gia", label: "Báº£ng giĂ¡" },
+              { to: "/", label: "Trang chủ" },
+              { to: "/dat-lich", label: "Đặt lịch khám" },
+              { to: "/bang-gia", label: "Bảng giá" },
             ]}
           />
         </div>

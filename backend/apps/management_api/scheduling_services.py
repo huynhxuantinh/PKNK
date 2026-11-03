@@ -232,7 +232,7 @@ class RescheduleService:
             )
             if timezone.now() > original.starts_at - cutoff:
                 raise ManagementConflict(
-                    "The patient rescheduling cutoff has passed."
+                    "Đã quá thời hạn cho phép bệnh nhân dời lịch hẹn."
                 )
 
         # A reschedule keeps the originally selected dentist unless the caller

@@ -29,7 +29,7 @@ const privacySections: LegalSection[] = [
   },
   {
     title: '5. Bảo mật và liên hệ',
-    paragraphs: ['DentaVie áp dụng phân quyền, mã hóa đường truyền, nhật ký truy cập và các biện pháp vận hành phù hợp để bảo vệ dữ liệu. Nếu có câu hỏi, liên hệ cskh@dentavie.vn hoặc hotline 1900 2102.'],
+    paragraphs: ['DentaVie áp dụng phân quyền, mã hóa đường truyền, nhật ký truy cập và các biện pháp vận hành phù hợp để bảo vệ dữ liệu. Nếu có câu hỏi, liên hệ cskh@dentavie.vn hoặc đường dây nóng 1900 2102.'],
   },
 ]
 

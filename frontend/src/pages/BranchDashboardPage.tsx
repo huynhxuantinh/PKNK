@@ -166,7 +166,7 @@ export function BranchDashboardPage() {
               <small>Cần kiểm tra và phản hồi</small>
             </AdminCard>
             <AdminCard className={`${styles.kpi} ${styles.success}`}>
-              <span>Đã check-in</span>
+              <span>Đã đến khám</span>
               <strong>{summary.checkedIn}</strong>
               <small>Sẵn sàng cho bác sĩ</small>
             </AdminCard>
@@ -220,7 +220,7 @@ export function BranchDashboardPage() {
                     {item.status === "PENDING"
                       ? "Chờ xác nhận"
                       : item.status === "CHECKED_IN"
-                        ? "Đã check-in"
+                        ? "Đã đến khám"
                         : "Đã xác nhận"}
                   </StatusBadge>
                 </article>
@@ -249,7 +249,7 @@ export function BranchDashboardPage() {
               <b>01</b>
               <span>
                 <strong>Điều phối lịch hẹn</strong>
-                <small>Xác nhận, check-in hoặc dời lịch</small>
+                <small>Xác nhận đến khám hoặc dời lịch</small>
               </span>
               <i>→</i>
             </Link>

@@ -26,6 +26,98 @@ interface FilterDraft {
 
 const emptyDraft: FilterDraft = { branchId: '', action: '', accessType: '' }
 
+const auditActionLabels: Record<string, string> = {
+  LOGIN_FAILED: 'Đăng nhập không thành công',
+  LOGIN_SUCCEEDED: 'Đăng nhập thành công',
+  PASSWORD_CHANGED: 'Đã đổi mật khẩu',
+  MEMBERSHIP_ACTIVATED: 'Đã kích hoạt quyền thành viên',
+  MEMBERSHIP_UPDATED: 'Đã cập nhật quyền thành viên',
+  PATIENT_MEMBERSHIP_AUTO_DEACTIVATED: 'Đã tự động ngưng quyền bệnh nhân',
+  STAFF_ROLE_ASSIGNED: 'Đã phân quyền nhân sự',
+  STAFF_INVITATION_ACCEPTED: 'Đã chấp nhận lời mời nhân sự',
+  STAFF_INVITATION_CREATED: 'Đã tạo lời mời nhân sự',
+  STAFF_INVITATION_REVOKED: 'Đã thu hồi lời mời nhân sự',
+  BRANCH_CREATED: 'Đã tạo chi nhánh',
+  BRANCH_UPDATED: 'Đã cập nhật chi nhánh',
+  ORGANIZATION_UPDATED: 'Đã cập nhật tổ chức',
+  CHAIR_CREATED: 'Đã tạo ghế khám',
+  CHAIR_UPDATED: 'Đã cập nhật ghế khám',
+  OPENING_HOURS_REPLACED: 'Đã cập nhật giờ mở cửa',
+  HOLIDAY_CREATED: 'Đã tạo ngày nghỉ',
+  HOLIDAY_DELETED: 'Đã xóa ngày nghỉ',
+  HOLIDAY_UPDATED: 'Đã cập nhật ngày nghỉ',
+  BRANCH_SERVICE_CREATED: 'Đã thêm dịch vụ tại chi nhánh',
+  BRANCH_SERVICE_UPDATED: 'Đã cập nhật dịch vụ tại chi nhánh',
+  SERVICE_CREATED: 'Đã tạo dịch vụ',
+  SERVICE_UPDATED: 'Đã cập nhật dịch vụ',
+  DENTIST_CREATED: 'Đã tạo hồ sơ nha sĩ',
+  DENTIST_UPDATED: 'Đã cập nhật hồ sơ nha sĩ',
+  DENTIST_BRANCHES_ASSIGNED: 'Đã phân công chi nhánh cho nha sĩ',
+  DENTIST_BRANCHES_REPLACED: 'Đã thay đổi chi nhánh của nha sĩ',
+  DENTIST_SERVICES_REPLACED: 'Đã thay đổi dịch vụ của nha sĩ',
+  WORK_SHIFT_CREATED: 'Đã tạo ca làm việc',
+  WORK_SHIFT_UPDATED: 'Đã cập nhật ca làm việc',
+  TIME_OFF_CREATED: 'Đã tạo lịch nghỉ',
+  TIME_OFF_UPDATED: 'Đã cập nhật lịch nghỉ',
+  APPOINTMENT_CALENDAR_VIEWED: 'Đã xem lịch hẹn theo lịch',
+  APPOINTMENT_VIEWED: 'Đã xem lịch hẹn',
+  ORGANIZATION_APPOINTMENT_LIST_VIEWED: 'Đã xem danh sách lịch hẹn toàn tổ chức',
+  PATIENT_APPOINTMENT_LIST_VIEWED: 'Đã xem danh sách lịch hẹn bệnh nhân',
+  PATIENT_APPOINTMENT_VIEWED: 'Đã xem lịch hẹn bệnh nhân',
+  DENTIST_APPOINTMENT_VIEWED: 'Nha sĩ đã xem lịch hẹn',
+  DENTIST_SCHEDULE_VIEWED: 'Nha sĩ đã xem lịch làm việc',
+  INVOICE_CREATED: 'Đã tạo hóa đơn',
+  INVOICE_DRAFT_UPDATED: 'Đã cập nhật hóa đơn nháp',
+  INVOICE_ISSUED: 'Đã phát hành hóa đơn',
+  INVOICE_VIEWED: 'Đã xem hóa đơn',
+  INVOICE_VOIDED: 'Đã hủy hóa đơn',
+  PATIENT_INVOICE_LIST_VIEWED: 'Đã xem danh sách hóa đơn bệnh nhân',
+  PATIENT_INVOICE_VIEWED: 'Đã xem hóa đơn bệnh nhân',
+  PAYMENT_POSTED: 'Đã ghi nhận thanh toán',
+  PAYMENT_VOIDED: 'Đã hủy thanh toán',
+  CLINICAL_AMENDMENTS_VIEWED: 'Đã xem lịch sử chỉnh sửa bệnh án',
+  CLINICAL_ATTACHMENT_CREATED: 'Đã thêm tệp bệnh án',
+  CLINICAL_ATTACHMENT_DELETED: 'Đã xóa tệp bệnh án',
+  CLINICAL_ATTACHMENT_DOWNLOADED: 'Đã tải tệp bệnh án',
+  CLINICAL_ATTACHMENT_UPDATED: 'Đã cập nhật tệp bệnh án',
+  CLINICAL_ATTACHMENT_VIEWED: 'Đã xem tệp bệnh án',
+  CLINICAL_ATTACHMENTS_VIEWED: 'Đã xem danh sách tệp bệnh án',
+  CLINICAL_ENCOUNTER_CREATED: 'Đã tạo lượt khám',
+  CLINICAL_ENCOUNTER_UPDATED: 'Đã cập nhật lượt khám',
+  CLINICAL_ENCOUNTER_VIEWED: 'Đã xem lượt khám',
+  CLINICAL_PERFORMED_SERVICES_VIEWED: 'Đã xem dịch vụ đã thực hiện',
+  ODONTOGRAM_ENTRY_CREATED: 'Đã thêm ghi nhận sơ đồ răng',
+  ODONTOGRAM_ENTRY_DELETED: 'Đã xóa ghi nhận sơ đồ răng',
+  ODONTOGRAM_ENTRY_UPDATED: 'Đã cập nhật ghi nhận sơ đồ răng',
+  ODONTOGRAM_VIEWED: 'Đã xem sơ đồ răng',
+  PRESCRIPTION_CREATED: 'Đã tạo đơn thuốc',
+  PRESCRIPTION_ITEM_CREATED: 'Đã thêm thuốc trong đơn',
+  PRESCRIPTION_ITEM_DELETED: 'Đã xóa thuốc khỏi đơn',
+  PRESCRIPTION_ITEM_UPDATED: 'Đã cập nhật thuốc trong đơn',
+  PRESCRIPTION_ITEMS_VIEWED: 'Đã xem danh sách thuốc trong đơn',
+  PRESCRIPTION_UPDATED: 'Đã cập nhật đơn thuốc',
+  PRESCRIPTION_VIEWED: 'Đã xem đơn thuốc',
+  TREATMENT_PLAN_CREATED: 'Đã tạo kế hoạch điều trị',
+  TREATMENT_PLAN_ITEM_CREATED: 'Đã thêm hạng mục điều trị',
+  TREATMENT_PLAN_ITEM_DELETED: 'Đã xóa hạng mục điều trị',
+  TREATMENT_PLAN_ITEM_UPDATED: 'Đã cập nhật hạng mục điều trị',
+  TREATMENT_PLAN_UPDATED: 'Đã cập nhật kế hoạch điều trị',
+  TREATMENT_PLAN_VIEWED: 'Đã xem kế hoạch điều trị',
+  TREATMENT_PLANS_VIEWED: 'Đã xem danh sách kế hoạch điều trị',
+  PATIENT_SUMMARY_VIEWED: 'Đã xem tóm tắt hồ sơ bệnh nhân',
+  BRANCH_APPOINTMENT_REPORT_VIEWED: 'Đã xem báo cáo lịch hẹn chi nhánh',
+  BRANCH_CHAIR_UTILIZATION_REPORT_VIEWED: 'Đã xem báo cáo hiệu suất ghế chi nhánh',
+  BRANCH_REVENUE_REPORT_VIEWED: 'Đã xem báo cáo doanh thu chi nhánh',
+  ORGANIZATION_APPOINTMENT_REPORT_VIEWED: 'Đã xem báo cáo lịch hẹn toàn tổ chức',
+  ORGANIZATION_CHAIR_UTILIZATION_REPORT_VIEWED: 'Đã xem báo cáo hiệu suất ghế toàn tổ chức',
+  ORGANIZATION_REVENUE_REPORT_VIEWED: 'Đã xem báo cáo doanh thu toàn tổ chức',
+  AUDIT_EVENTS_LIST: 'Đã xem danh sách nhật ký hoạt động',
+}
+
+function auditActionLabel(action: string): string {
+  return auditActionLabels[action] || action
+}
+
 export function OrganizationAuditPage() {
   const scope = useOrganizationScope()
   const [branches, setBranches] = useState<OrganizationBranch[]>([])
@@ -256,7 +348,7 @@ export function OrganizationAuditPage() {
           placement="end"
           className="organization-audit-drawer"
           title="Chi tiết sự kiện"
-          description={`${selectedEvent.action} · ${formatAuditTimestamp(selectedEvent.created_at)}`}
+          description={`${auditActionLabel(selectedEvent.action)} · ${formatAuditTimestamp(selectedEvent.created_at)}`}
           onClose={() => setSelectedEvent(null)}
         >
           <AuditEventDetail event={selectedEvent} branchName={branchName(selectedEvent.branch_id)} />
@@ -280,7 +372,7 @@ function AuditRow({
         <td>{formatAuditTimestamp(event.created_at)}</td>
         <td>{event.actor_email || 'Hệ thống'}</td>
         <td>
-          <strong>{event.action}</strong>
+          <strong>{auditActionLabel(event.action)}</strong>
         </td>
         <td>
           {event.resource_type}
@@ -308,7 +400,7 @@ function AuditEventDetail({ event, branchName }: { event: AuditEvent; branchName
         <div><dt>Tài nguyên</dt><dd>{event.resource_type} · {event.resource_id || '—'}</dd></div>
         <div><dt>Loại truy cập</dt><dd>{auditAccessTypeLabel(event.access_type)}</dd></div>
         <div><dt>IP</dt><dd>{event.ip_address || '—'}</dd></div>
-        <div><dt>Request ID</dt><dd>{event.request_id || '—'}</dd></div>
+        <div><dt>Mã yêu cầu</dt><dd>{event.request_id || '—'}</dd></div>
         <div><dt>Thời điểm gốc</dt><dd>{event.created_at}</dd></div>
       </dl>
       <div className="organization-audit-json">

@@ -10,7 +10,7 @@ type PublicNavigationLink = {
 
 export function PublicMobileNavigation({
   links,
-  label = "Menu di Ä‘á»™ng",
+  label = "Menu di động",
 }: {
   links: PublicNavigationLink[];
   label?: string;
@@ -27,7 +27,7 @@ export function PublicMobileNavigation({
         ref={buttonRef}
         className={`mobile-menu-btn ${open ? "open" : ""}`}
         type="button"
-        aria-label={open ? "ÄĂ³ng menu" : "Má»Ÿ menu Ä‘iá»u hÆ°á»›ng"}
+        aria-label={open ? "Đóng menu" : "Mở menu điều hướng"}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
