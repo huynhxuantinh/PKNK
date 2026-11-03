@@ -77,6 +77,7 @@ export interface BranchDetail {
   province_name: string
   ward_code: string
   ward_name: string
+  address_line: string
   full_address: string
   location: {
     latitude: number
@@ -183,6 +184,7 @@ export interface Appointment {
   id_chair: number
   chair_name: string
   service_name_snapshot: string
+  service_price_snapshot: string
   contact_name_snapshot: string | null
   contact_phone_snapshot: string | null
   contact_email_snapshot: string | null

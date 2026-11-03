@@ -94,6 +94,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "id_chair",
             "chair_name",
             "service_name_snapshot",
+            "service_price_snapshot",
             "contact_name_snapshot",
             "contact_phone_snapshot",
             "contact_email_snapshot",

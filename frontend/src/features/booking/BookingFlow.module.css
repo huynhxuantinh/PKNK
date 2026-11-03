@@ -29,6 +29,16 @@
   color: var(--danger);
   font-size: 12px;
 }
+.heldLockBanner {
+  margin-bottom: 16px;
+  padding: 13px 16px;
+  border: 1px solid #f0d9a8;
+  border-radius: 8px;
+  background: #fffaef;
+  color: #7a5a12;
+  font-size: 12px;
+  line-height: 1.55;
+}
 
 @keyframes spin {
   to {
@@ -146,6 +156,20 @@
 .flow :global(.dentist-choice:hover) {
   border-color: #78b9af;
   transform: translateY(-1px);
+}
+.flow :global(.choice-card:disabled),
+.flow :global(.service-row:disabled),
+.flow :global(.slot-button:disabled),
+.flow :global(.dentist-choice:disabled) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.flow :global(.choice-card:disabled:not(.selected):hover),
+.flow :global(.service-row:disabled:not(.selected):hover),
+.flow :global(.slot-button:disabled:not(.selected):hover),
+.flow :global(.dentist-choice:disabled:not(.selected):hover) {
+  border-color: var(--line);
+  transform: none;
 }
 .flow :global(.choice-card.selected),
 .flow :global(.service-row.selected),

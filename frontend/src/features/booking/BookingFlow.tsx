@@ -6,6 +6,7 @@ import {
   confirmAppointment,
   createAppointmentHold,
   getActiveAppointmentHold,
+  getBranchDetail,
   listBranches,
   listBranchDentists,
   listBranchServices,
@@ -28,6 +29,7 @@ import {
   bookingIdempotencyKey,
   bookingSelectionReducer,
   BOOKING_DRAFT_STORAGE_KEY,
+  branchFromDetail,
   clearBookingAttempt,
   clearBookingHold,
   dateInputValue,
@@ -112,9 +114,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   });
   const [contactDraft, setContactDraft] = useState(contact);
   const [patientNote, setPatientNote] = useState("");
-  const initialBranchApplied = useRef(false);
+  const initialBranchApplied = useRef<number | null>(null);
   const restoredDraftBranchId = useRef(selection.branch?.id_branch ?? null);
-  const restoredHoldUserId = useRef<number | null>(null);
   const branchesRequestId = useRef(0);
   const servicesRequestId = useRef(0);
   const slotsRequestId = useRef(0);
@@ -143,22 +144,17 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   }, [selection]);
 
   useEffect(() => {
-    if (
-      !isAuthenticated ||
-      !user ||
-      isStaff ||
-      restoredHoldUserId.current === user.id_user
-    )
-      return;
-    restoredHoldUserId.current = user.id_user;
+    if (!isAuthenticated || !user || isStaff) return;
+    const controller = new AbortController();
     const restoredHold = restoreBookingHold(user.id_user);
     if (restoredHold) {
       setHeldAppointment(restoredHold);
-      return;
+      return () => controller.abort();
     }
     // The create response can be lost while the server already holds the slot.
     // Ask the API for any live hold before letting the patient book again.
-    const controller = new AbortController();
+    // StrictMode aborts the first effect run, so the lookup must happen on
+    // every run instead of being marked as done before the request finishes.
     getActiveAppointmentHold(undefined, controller.signal)
       .then((response) => {
         if (controller.signal.aborted) return;
@@ -205,13 +201,24 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     const requestId = ++branchesRequestId.current;
     setBranchesLoading(true);
     setError("");
-    listBranches(branchQuery, controller.signal)
-      .then((response) => {
+
+    // A branch pinned in the URL can sit outside the first paginated page, so
+    // load it from the detail endpoint instead of looking it up in the list.
+    const branchesRequest = initialBranchId
+      ? getBranchDetail(initialBranchId, controller.signal).then((response) => [
+          branchFromDetail(response.data),
+        ])
+      : listBranches(branchQuery, controller.signal).then(
+          (response) => response.data,
+        );
+
+    branchesRequest
+      .then((nextBranches) => {
         if (requestId !== branchesRequestId.current || controller.signal.aborted)
           return;
-        setBranches(response.data);
+        setBranches(nextBranches);
         if (!initialBranchId && restoredDraftBranchId.current !== null) {
-          const restoredBranch = response.data.find(
+          const restoredBranch = nextBranches.find(
             (branch) => branch.id_branch === restoredDraftBranchId.current,
           );
           restoredDraftBranchId.current = null;
@@ -219,9 +226,12 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             dispatch({ type: "select_branch", branch: restoredBranch });
           else dispatch({ type: "reset" });
         }
-        if (!initialBranchApplied.current && initialBranchId) {
-          initialBranchApplied.current = true;
-          const initialBranch = response.data.find(
+        if (
+          initialBranchId &&
+          initialBranchApplied.current !== initialBranchId
+        ) {
+          initialBranchApplied.current = initialBranchId;
+          const initialBranch = nextBranches.find(
             (branch) => branch.id_branch === initialBranchId,
           );
           if (initialBranch)
@@ -384,8 +394,38 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const displayedBranches = initialBranchId
     ? branches.filter((branch) => branch.id_branch === initialBranchId)
     : branches;
+  // A live hold owns the slot until it is confirmed or released, so the
+  // selection controls must not drift away from what the summary shows.
+  const selectionLocked = Boolean(heldAppointment);
+  const summaryContactName = heldAppointment
+    ? heldAppointment.contact_name_snapshot || contact.name || "Chưa cập nhật"
+    : contact.name || "Chưa đăng nhập";
+  const summaryContactPhone =
+    heldAppointment?.contact_phone_snapshot || contact.phone;
+  const summaryBranchName =
+    heldAppointment?.branch_name || selection.branch?.name || "Chưa chọn";
+  const summaryServiceName =
+    heldAppointment?.service_name_snapshot || selection.service?.name || "Chưa chọn";
+  const summaryStartsAt = heldAppointment
+    ? fullDateTime.format(new Date(heldAppointment.starts_at))
+    : selection.slot
+      ? fullDateTime.format(new Date(selection.slot.starts_at))
+      : "Chưa chọn";
+  const summaryDentistName =
+    heldAppointment?.dentist_name || selection.dentist?.full_name || "Chưa chọn";
+  const summaryPrice = heldAppointment
+    ? heldAppointment.service_price_snapshot
+      ? currency.format(Number(heldAppointment.service_price_snapshot))
+      : "—"
+    : selection.service
+      ? currency.format(Number(selection.service.price))
+      : "—";
+  const summaryNote = heldAppointment
+    ? heldAppointment.patient_note
+    : patientNote;
 
   function selectBranch(branch: Branch) {
+    if (selectionLocked) return;
     if (selection.branch?.id_branch !== branch.id_branch) {
       servicesRequestId.current += 1;
       slotsRequestId.current += 1;
@@ -398,6 +438,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   }
 
   function selectService(service: BranchService) {
+    if (selectionLocked) return;
     if (selection.service?.id_branch_service !== service.id_branch_service) {
       slotsRequestId.current += 1;
       dentistsRequestId.current += 1;
@@ -408,6 +449,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   }
 
   function selectDate(date: string) {
+    if (selectionLocked) return;
     if (selection.date !== date) {
       slotsRequestId.current += 1;
       setSlots([]);
@@ -701,6 +743,12 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             {error}
           </div>
         )}
+        {heldAppointment && (
+          <div className={styles.heldLockBanner} role="status">
+            Bạn đang giữ một chỗ cho lịch hẹn trong phần tóm tắt. Hãy xác
+            nhận hoặc chọn giờ khác trước khi thay đổi lựa chọn.
+          </div>
+        )}
 
         <div className="booking-context-grid">
           <section className="flow-section booking-panel booking-panel-branch">
@@ -723,8 +771,11 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                     placeholder="Tên hoặc địa chỉ…"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    disabled={selectionLocked}
                   />
-                  <button className="button button-secondary">Tìm</button>
+                  <button className="button button-secondary" disabled={selectionLocked}>
+                    Tìm
+                  </button>
                 </form>
               )}
             </div>
@@ -746,6 +797,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                         selectBranch(branch);
                     }}
                     aria-disabled={Boolean(initialBranchId)}
+                    disabled={selectionLocked}
                   >
                     <span
                       className={`status-dot ${branch.is_open_now ? "open" : ""}`}
@@ -770,7 +822,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
               <div>
                 <h2>Thông tin liên hệ</h2>
               </div>
-              {user && !isEditingContact && (
+              {user && !isEditingContact && !heldAppointment && (
                 <button
                   className="booking-profile-link"
                   type="button"
@@ -889,6 +941,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   key={service.id_branch_service}
                   className={`service-row ${selection.service?.id_branch_service === service.id_branch_service ? "selected" : ""}`}
                   onClick={() => selectService(service)}
+                  disabled={selectionLocked}
                 >
                   <span>
                     <strong>{service.name}</strong>
@@ -910,6 +963,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                 value={patientNote}
                 onChange={(event) => setPatientNote(event.target.value)}
                 placeholder="Ví dụ: Đau răng số 7 bên phải, đau nhiều khi nhai..."
+                disabled={selectionLocked}
               />
               <small>{patientNote.length}/1000 ký tự</small>
             </label>
@@ -931,7 +985,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                 max={dateInputValue(90)}
                 value={selection.date}
                 onChange={(event) => selectDate(event.target.value)}
-                disabled={!selection.service}
+                disabled={!selection.service || selectionLocked}
               />
             </label>
           </div>
@@ -949,6 +1003,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   key={slot.starts_at}
                   className={`slot-button ${selection.slot?.starts_at === slot.starts_at ? "selected" : ""}`}
                   onClick={() => dispatch({ type: "select_slot", slot })}
+                  disabled={selectionLocked}
                 >
                   {time.format(new Date(slot.starts_at))}
                   <small>{slot.available_dentist_count} nha sĩ</small>
@@ -980,6 +1035,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   key={dentist.id_dentist}
                   className={`dentist-choice ${selection.dentist?.id_dentist === dentist.id_dentist ? "selected" : ""}`}
                   onClick={() => dispatch({ type: "select_dentist", dentist })}
+                  disabled={selectionLocked}
                 >
                   <span className="dentist-choice-avatar" aria-hidden="true">
                     {dentist.full_name
@@ -1001,48 +1057,46 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
       <aside className="booking-summary booking-summary--refined">
         <h2>Tóm tắt lịch hẹn</h2>
+        {heldAppointment && (
+          <p className="summary-note warning">
+            Tóm tắt bên dưới là chỗ bạn đang giữ. Hãy xác nhận hoặc chọn giờ
+            khác trước khi thay đổi lựa chọn.
+          </p>
+        )}
         <dl>
           <div>
             <dt>Người đặt</dt>
             <dd>
-              {contact.name || "Chưa đăng nhập"}
-              {contact.phone ? (
-                <small className="summary-subvalue">{contact.phone}</small>
+              {summaryContactName}
+              {summaryContactPhone ? (
+                <small className="summary-subvalue">{summaryContactPhone}</small>
               ) : null}
             </dd>
           </div>
           <div>
             <dt>Chi nhánh</dt>
-            <dd>{selection.branch?.name || "Chưa chọn"}</dd>
+            <dd>{summaryBranchName}</dd>
           </div>
           <div>
             <dt>Dịch vụ</dt>
-            <dd>{selection.service?.name || "Chưa chọn"}</dd>
+            <dd>{summaryServiceName}</dd>
           </div>
           <div>
             <dt>Ngày giờ</dt>
-            <dd>
-              {selection.slot
-                ? fullDateTime.format(new Date(selection.slot.starts_at))
-                : "Chưa chọn"}
-            </dd>
+            <dd>{summaryStartsAt}</dd>
           </div>
           <div>
             <dt>Bác sĩ</dt>
-            <dd>{selection.dentist?.full_name || "Chưa chọn"}</dd>
+            <dd>{summaryDentistName}</dd>
           </div>
           <div>
             <dt>Chi phí dự kiến</dt>
-            <dd>
-              {selection.service
-                ? currency.format(Number(selection.service.price))
-                : "—"}
-            </dd>
+            <dd>{summaryPrice}</dd>
           </div>
-          {patientNote && (
+          {summaryNote && (
             <div>
               <dt>Ghi chú</dt>
-              <dd>{patientNote}</dd>
+              <dd>{summaryNote}</dd>
             </div>
           )}
         </dl>

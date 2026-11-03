@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
+import type { Appointment, Branch, BranchDentist, BranchDetail, BranchService, Slot } from '../../types/api'
 import {
   BOOKING_DRAFT_STORAGE_KEY,
   bookingIdempotencyKey,
   bookingSelectionReducer,
+  branchFromDetail,
   clearBookingAttempt,
   clearBookingHold,
   clearBookingHoldCaches,
@@ -207,5 +208,71 @@ describe('bookingIdempotencyKey', () => {
 
     expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
     expect(bookingIdempotencyKey(12, fingerprint, () => 'key-next-attempt')).toBe('key-next-attempt')
+  })
+})
+
+describe('branchFromDetail', () => {
+  const detail = {
+    id_branch: 5,
+    code: 'Q5',
+    name: 'PKNK Dental An Đông',
+    phone: '028 7300 1005',
+    email: 'q5@demo.pknk.vn',
+    province_code: '79',
+    province_name: 'Thành phố Hồ Chí Minh',
+    ward_code: '27316',
+    ward_name: 'Phường An Đông',
+    address_line: '412 Nguyễn Trãi',
+    full_address: '412 Nguyễn Trãi, Phường An Đông, Thành phố Hồ Chí Minh',
+    location: { latitude: 10.7544, longitude: 106.6692 },
+    opening_hours: [
+      {
+        weekday: 2,
+        weekday_label: 'Thứ ba',
+        is_closed: false,
+        open_time: '08:00:00',
+        close_time: '18:00:00',
+      },
+      {
+        weekday: 3,
+        weekday_label: 'Thứ tư',
+        is_closed: true,
+        open_time: null,
+        close_time: null,
+      },
+    ],
+    images: [
+      { id_branch_image: 1, storage_key: '/images/secondary.jpg', original_name: 'secondary.jpg', mime_type: 'image/jpeg', is_primary: false, sort_order: 1 },
+      { id_branch_image: 2, storage_key: '/images/primary.jpg', original_name: 'primary.jpg', mime_type: 'image/jpeg', is_primary: true, sort_order: 0 },
+    ],
+    services: [],
+    dentists: [],
+  } as unknown as BranchDetail
+
+  it('dựng chi nhánh từ API chi tiết và chọn đúng ảnh đại diện', () => {
+    const branch = branchFromDetail(detail, new Date('2026-11-03T02:00:00Z'))
+
+    expect(branch).toEqual({
+      id_branch: 5,
+      code: 'Q5',
+      name: 'PKNK Dental An Đông',
+      phone: '028 7300 1005',
+      province_code: '79',
+      province_name: 'Thành phố Hồ Chí Minh',
+      ward_code: '27316',
+      ward_name: 'Phường An Đông',
+      address_line: '412 Nguyễn Trãi',
+      full_address: '412 Nguyễn Trãi, Phường An Đông, Thành phố Hồ Chí Minh',
+      location: { latitude: 10.7544, longitude: 106.6692 },
+      distance_km: null,
+      is_open_now: true,
+      primary_image: detail.images[1],
+    })
+  })
+
+  it('đánh dấu đóng cửa ngoài giờ mở cửa hoặc vào ngày nghỉ', () => {
+    expect(branchFromDetail(detail, new Date('2026-11-03T02:00:00Z')).is_open_now).toBe(true)
+    expect(branchFromDetail(detail, new Date('2026-11-03T12:00:00Z')).is_open_now).toBe(false)
+    expect(branchFromDetail(detail, new Date('2026-11-04T02:00:00Z')).is_open_now).toBe(false)
   })
 })

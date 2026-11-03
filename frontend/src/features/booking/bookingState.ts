@@ -1,4 +1,13 @@
-import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
+import type {
+  Appointment,
+  Branch,
+  BranchDentist,
+  BranchDetail,
+  BranchOpeningHour,
+  BranchService,
+  Slot,
+} from '../../types/api'
+import { HCM_TIME_ZONE } from '../../utils/hcmDateTime'
 
 export const BOOKING_DRAFT_STORAGE_KEY = 'pknk_booking_draft'
 const BOOKING_HOLD_STORAGE_PREFIX = 'pknk_booking_hold:'
@@ -60,6 +69,82 @@ export function clearBookingAttempt(userId: number) {
     sessionStorage.removeItem(bookingAttemptStorageKey(userId))
   } catch {
     // Ignore unavailable session storage.
+  }
+}
+
+const HCM_WEEKDAY_NUMBERS: Record<string, number> = {
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+  Sun: 7,
+}
+
+function hcmWeekdayNumber(value: Date) {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: HCM_TIME_ZONE,
+    weekday: 'short',
+  }).format(value)
+  return HCM_WEEKDAY_NUMBERS[weekday] ?? 0
+}
+
+function hcmMinutesOfDay(value: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: HCM_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(value)
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0)
+  return hour * 60 + minute
+}
+
+function clockMinutes(value: string | null) {
+  if (!value) return null
+  const [hour, minute] = value.split(':').map(Number)
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+  return hour * 60 + minute
+}
+
+function branchIsOpenNow(hours: BranchOpeningHour[], now: Date) {
+  const weekday = hcmWeekdayNumber(now)
+  const today = hours.find((entry) => entry.weekday === weekday)
+  if (!today || today.is_closed) return false
+  const opens = clockMinutes(today.open_time)
+  const closes = clockMinutes(today.close_time)
+  if (opens === null || closes === null) return false
+  const minutes = hcmMinutesOfDay(now)
+  return closes < opens
+    ? minutes >= opens || minutes < closes
+    : minutes >= opens && minutes < closes
+}
+
+/**
+ * Converts the branch detail payload into the shape the booking branch card
+ * uses. The detail endpoint is authoritative for a branch pinned in the URL,
+ * while the paginated list may not include it at all.
+ */
+export function branchFromDetail(detail: BranchDetail, now = new Date()): Branch {
+  const primaryImage =
+    detail.images.find((image) => image.is_primary) ?? detail.images[0] ?? null
+  return {
+    id_branch: detail.id_branch,
+    code: detail.code,
+    name: detail.name,
+    phone: detail.phone,
+    province_code: detail.province_code,
+    province_name: detail.province_name,
+    ward_code: detail.ward_code,
+    ward_name: detail.ward_name,
+    address_line: detail.address_line,
+    full_address: detail.full_address,
+    location: detail.location,
+    distance_km: null,
+    is_open_now: branchIsOpenNow(detail.opening_hours, now),
+    primary_image: primaryImage,
   }
 }
 
