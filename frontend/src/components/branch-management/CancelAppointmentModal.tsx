@@ -25,13 +25,21 @@ export function CancelAppointmentModal({
   }
 
   return (
-    <div className={styles.backdrop}>
+    <div
+      className={styles.backdrop}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !busy) onClose()
+      }}
+    >
       <form
         className={styles.modal}
         onSubmit={submit}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-appointment-title"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && !busy) onClose()
+        }}
       >
         <h2 id="cancel-appointment-title">Hủy lịch hẹn</h2>
         <p>{appointment.patient_name} · {appointment.service_name_snapshot}</p>

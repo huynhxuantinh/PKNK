@@ -623,6 +623,27 @@
   grid-template-columns: 150px minmax(0, 1fr);
   gap: 10px;
 }
+@media (min-width: 761px) and (max-width: 900px) {
+  .page :global(.examination-main) {
+    width: min(calc(100% - 32px), 820px);
+  }
+  .page :global(.examination-patient) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.examination-patient dl) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page :global(.examination-layout) {
+    grid-template-columns: 1fr;
+  }
+  .page :global(.performed-services-list article) {
+    grid-template-columns: 29px minmax(0, 1fr) 88px minmax(0, 1fr);
+  }
+  .page :global(.performed-services-list article > label:nth-of-type(n + 3)),
+  .page :global(.performed-service-remove) {
+    grid-column: 2 / -1;
+  }
+}
 @media (max-width: 760px) {
   .page :global(.examination-main) {
     width: calc(100% - 24px);

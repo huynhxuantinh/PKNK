@@ -1,36 +1,46 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router-dom'
 
-import { EmailVerificationPendingPage, ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyEmailPage } from './pages/AuthPages'
-import { HomePage } from './pages/HomePage'
-import { BranchDetailPage } from './pages/BranchDetailPage'
-import { BookingPage } from './pages/BookingPage'
-import { PricingPage } from './pages/PricingPage'
-import { AboutDentaViePage } from './pages/AboutDentaViePage'
-import { PatientProfilePage } from './pages/PatientProfilePage'
-import { NotificationsPage, PatientAppointmentsPage, PatientHistoryPage, PatientInvoicesPage } from './pages/PatientRecordsPages'
-import { DentistDashboardPage } from './pages/DentistDashboardPage'
-import { DentistBranchSelectionPage } from './pages/DentistBranchSelectionPage'
-import { DentistExaminationPage } from './pages/DentistExaminationPage'
-import { BranchManagementPage } from './pages/BranchManagementPage'
-import { BranchDashboardPage } from './pages/BranchDashboardPage'
-import { BranchStaffSchedulePage } from './pages/BranchStaffSchedulePage'
-import { BranchReportsPage } from './pages/BranchReportsPage'
-import { BranchInvoicesPage } from './pages/BranchInvoicesPage'
-import { BranchConfigurationPage } from './pages/BranchConfigurationPage'
-import { PayosResultPage } from './pages/PayosResultPage'
-import { AcceptInvitationPage } from './pages/AcceptInvitationPage'
-import { OrganizationOverviewPage } from './pages/OrganizationOverviewPage'
-import { OrganizationAppointmentsPage } from './pages/OrganizationAppointmentsPage'
-import { OrganizationStaffSchedulePage } from './pages/OrganizationStaffSchedulePage'
-import { OrganizationFinancePage } from './pages/OrganizationFinancePage'
-import { OrganizationOperationsReportPage } from './pages/OrganizationOperationsReportPage'
-import { OrganizationBranchesPage } from './pages/OrganizationBranchesPage'
-import { OrganizationStaffPage } from './pages/OrganizationStaffPage'
-import { OrganizationServicesPage } from './pages/OrganizationServicesPage'
-import { OrganizationAuditPage } from './pages/OrganizationAuditPage'
-import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
-import { AccountSecurityPage } from './pages/AccountSecurityPage'
-import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages'
+const HomePage = lazy(() => import('./pages/HomePage').then(({ HomePage: Page }) => ({ default: Page })))
+const BranchDetailPage = lazy(() => import('./pages/BranchDetailPage').then(({ BranchDetailPage: Page }) => ({ default: Page })))
+const BookingPage = lazy(() => import('./pages/BookingPage').then(({ BookingPage: Page }) => ({ default: Page })))
+const PricingPage = lazy(() => import('./pages/PricingPage').then(({ PricingPage: Page }) => ({ default: Page })))
+const AboutDentaViePage = lazy(() => import('./pages/AboutDentaViePage').then(({ AboutDentaViePage: Page }) => ({ default: Page })))
+const PatientProfilePage = lazy(() => import('./pages/PatientProfilePage').then(({ PatientProfilePage: Page }) => ({ default: Page })))
+const NotificationsPage = lazy(() => import('./pages/PatientRecordsPages').then(({ NotificationsPage: Page }) => ({ default: Page })))
+const PatientAppointmentsPage = lazy(() => import('./pages/PatientRecordsPages').then(({ PatientAppointmentsPage: Page }) => ({ default: Page })))
+const PatientHistoryPage = lazy(() => import('./pages/PatientRecordsPages').then(({ PatientHistoryPage: Page }) => ({ default: Page })))
+const PatientInvoicesPage = lazy(() => import('./pages/PatientRecordsPages').then(({ PatientInvoicesPage: Page }) => ({ default: Page })))
+const DentistDashboardPage = lazy(() => import('./pages/DentistDashboardPage').then(({ DentistDashboardPage: Page }) => ({ default: Page })))
+const DentistBranchSelectionPage = lazy(() => import('./pages/DentistBranchSelectionPage').then(({ DentistBranchSelectionPage: Page }) => ({ default: Page })))
+const DentistExaminationPage = lazy(() => import('./pages/DentistExaminationPage').then(({ DentistExaminationPage: Page }) => ({ default: Page })))
+const BranchManagementPage = lazy(() => import('./pages/BranchManagementPage').then(({ BranchManagementPage: Page }) => ({ default: Page })))
+const BranchDashboardPage = lazy(() => import('./pages/BranchDashboardPage').then(({ BranchDashboardPage: Page }) => ({ default: Page })))
+const BranchStaffSchedulePage = lazy(() => import('./pages/BranchStaffSchedulePage').then(({ BranchStaffSchedulePage: Page }) => ({ default: Page })))
+const BranchReportsPage = lazy(() => import('./pages/BranchReportsPage').then(({ BranchReportsPage: Page }) => ({ default: Page })))
+const BranchInvoicesPage = lazy(() => import('./pages/BranchInvoicesPage').then(({ BranchInvoicesPage: Page }) => ({ default: Page })))
+const BranchConfigurationPage = lazy(() => import('./pages/BranchConfigurationPage').then(({ BranchConfigurationPage: Page }) => ({ default: Page })))
+const PayosResultPage = lazy(() => import('./pages/PayosResultPage').then(({ PayosResultPage: Page }) => ({ default: Page })))
+const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage').then(({ AcceptInvitationPage: Page }) => ({ default: Page })))
+const OrganizationOverviewPage = lazy(() => import('./pages/OrganizationOverviewPage').then(({ OrganizationOverviewPage: Page }) => ({ default: Page })))
+const OrganizationAppointmentsPage = lazy(() => import('./pages/OrganizationAppointmentsPage').then(({ OrganizationAppointmentsPage: Page }) => ({ default: Page })))
+const OrganizationStaffSchedulePage = lazy(() => import('./pages/OrganizationStaffSchedulePage').then(({ OrganizationStaffSchedulePage: Page }) => ({ default: Page })))
+const OrganizationFinancePage = lazy(() => import('./pages/OrganizationFinancePage').then(({ OrganizationFinancePage: Page }) => ({ default: Page })))
+const OrganizationOperationsReportPage = lazy(() => import('./pages/OrganizationOperationsReportPage').then(({ OrganizationOperationsReportPage: Page }) => ({ default: Page })))
+const OrganizationBranchesPage = lazy(() => import('./pages/OrganizationBranchesPage').then(({ OrganizationBranchesPage: Page }) => ({ default: Page })))
+const OrganizationStaffPage = lazy(() => import('./pages/OrganizationStaffPage').then(({ OrganizationStaffPage: Page }) => ({ default: Page })))
+const OrganizationServicesPage = lazy(() => import('./pages/OrganizationServicesPage').then(({ OrganizationServicesPage: Page }) => ({ default: Page })))
+const OrganizationAuditPage = lazy(() => import('./pages/OrganizationAuditPage').then(({ OrganizationAuditPage: Page }) => ({ default: Page })))
+const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettingsPage').then(({ OrganizationSettingsPage: Page }) => ({ default: Page })))
+const AccountSecurityPage = lazy(() => import('./pages/AccountSecurityPage').then(({ AccountSecurityPage: Page }) => ({ default: Page })))
+const PrivacyPolicyPage = lazy(() => import('./pages/LegalPages').then(({ PrivacyPolicyPage: Page }) => ({ default: Page })))
+const TermsPage = lazy(() => import('./pages/LegalPages').then(({ TermsPage: Page }) => ({ default: Page })))
+const EmailVerificationPendingPage = lazy(() => import('./pages/AuthPages').then(({ EmailVerificationPendingPage: Page }) => ({ default: Page })))
+const ForgotPasswordPage = lazy(() => import('./pages/AuthPages').then(({ ForgotPasswordPage: Page }) => ({ default: Page })))
+const LoginPage = lazy(() => import('./pages/AuthPages').then(({ LoginPage: Page }) => ({ default: Page })))
+const RegisterPage = lazy(() => import('./pages/AuthPages').then(({ RegisterPage: Page }) => ({ default: Page })))
+const ResetPasswordPage = lazy(() => import('./pages/AuthPages').then(({ ResetPasswordPage: Page }) => ({ default: Page })))
+const VerifyEmailPage = lazy(() => import('./pages/AuthPages').then(({ VerifyEmailPage: Page }) => ({ default: Page })))
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AdminShell } from './components/admin/AdminShell'
 import { RequireRole } from './auth/RequireRole'
@@ -96,5 +106,11 @@ const router = createBrowserRouter(createRoutesFromElements(
 ))
 
 export default function App() {
-  return <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<div className="route-auth-loading" role="status">Đang tải trang...</div>}>
+        <RouterProvider router={router} />
+      </Suspense>
+    </ErrorBoundary>
+  )
 }

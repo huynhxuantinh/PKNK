@@ -17,6 +17,56 @@ interface BranchMapProps {
   showBranchPopup?: boolean
 }
 
+function createBranchPopup(branch: Branch): HTMLDivElement {
+  const popup = document.createElement('div')
+  popup.className = 'map-popup-card'
+
+  if (branch.primary_image?.storage_key) {
+    const image = document.createElement('img')
+    image.className = 'map-popup-img'
+    image.src = branch.primary_image.storage_key
+    image.alt = ''
+    popup.append(image)
+  }
+
+  const body = document.createElement('div')
+  body.className = 'map-popup-body'
+  const status = document.createElement('span')
+  status.className = `open-status${branch.is_open_now ? ' is-open' : ''}`
+  status.append(document.createElement('i'))
+  status.append(branch.is_open_now ? 'Đang mở cửa' : 'Đang đóng cửa')
+  body.append(status)
+
+  const name = document.createElement('strong')
+  name.textContent = branch.name
+  body.append(name)
+
+  const address = document.createElement('p')
+  address.textContent = branch.full_address
+  body.append(address)
+
+  if (branch.phone) {
+    const phone = document.createElement('small')
+    phone.textContent = `☎ ${branch.phone}`
+    body.append(phone)
+  }
+
+  if (branch.distance_km !== null && branch.distance_km !== undefined) {
+    const distance = document.createElement('small')
+    distance.className = 'branch-distance'
+    distance.textContent = `⌖ Cách bạn ${branch.distance_km} km`
+    body.append(distance)
+  }
+
+  const link = document.createElement('a')
+  link.className = 'map-popup-link'
+  link.href = `/chi-nhanh/${branch.id_branch}`
+  link.textContent = 'Chi tiết phòng khám →'
+  body.append(link)
+  popup.append(body)
+  return popup
+}
+
 export function BranchMap({
   branches,
   selectedId,
@@ -241,21 +291,9 @@ export function BranchMap({
           }),
         })
 
-        const popupHtml = `
-          <div class="map-popup-card">
-            ${branch.primary_image ? `<img src="${branch.primary_image.storage_key}" alt="" class="map-popup-img" />` : ''}
-            <div class="map-popup-body">
-              <span class="open-status ${branch.is_open_now ? 'is-open' : ''}"><i></i>${branch.is_open_now ? 'Đang mở cửa' : 'Đang đóng cửa'}</span>
-              <strong>${branch.name}</strong>
-              <p>${branch.full_address}</p>
-              ${branch.phone ? `<small>📞 ${branch.phone}</small>` : ''}
-              ${branch.distance_km !== null && branch.distance_km !== undefined ? `<small class="branch-distance">📍 Cách bạn ${branch.distance_km} km</small>` : ''}
-              <a href="/chi-nhanh/${branch.id_branch}" class="map-popup-link">Chi tiết phòng khám →</a>
-            </div>
-          </div>
-        `
+        const popupContent = createBranchPopup(branch)
         if (showBranchPopup) {
-          marker.bindPopup(popupHtml, {
+          marker.bindPopup(popupContent, {
             className: 'custom-map-popup',
             maxWidth: 230,
             minWidth: 190,

@@ -8,6 +8,7 @@ import { isStaffUser } from "../auth/roles";
 import { BranchMap } from "../components/BranchMap";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Seo } from "../seo/Seo";
+import { useMobileNavigationDrawer } from "../hooks/useMobileNavigationDrawer";
 import { SITE_URL, absoluteUrl } from "../seo/seoConfig";
 import { shouldShowRoadRoute } from "../services/routeDisplay";
 import { fetchRoadRoute, type RoadRoute } from "../services/routing";
@@ -60,6 +61,14 @@ export function BranchDetailPage() {
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuDrawerRef = useRef<HTMLDivElement>(null);
+  useMobileNavigationDrawer(
+    mobileMenuOpen,
+    () => setMobileMenuOpen(false),
+    mobileMenuButtonRef,
+    mobileMenuDrawerRef,
+  );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const galleryTouchStartX = useRef<number | null>(null);
 
@@ -343,6 +352,7 @@ export function BranchDetailPage() {
         <div className="header-actions">
           <AuthBar />
           <button
+            ref={mobileMenuButtonRef}
             className={`mobile-menu-btn ${mobileMenuOpen ? "open" : ""}`}
             type="button"
             aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu điều hướng"}
@@ -357,8 +367,12 @@ export function BranchDetailPage() {
       </header>
 
       <div
+        ref={mobileMenuDrawerRef}
         className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}
         role="dialog"
+        aria-modal="true"
+        aria-hidden={!mobileMenuOpen}
+        tabIndex={-1}
         aria-label="Menu di động"
       >
         <nav className="mobile-nav-links">

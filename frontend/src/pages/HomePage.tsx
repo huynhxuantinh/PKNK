@@ -6,6 +6,7 @@ import { AuthBar } from "../auth/AuthBar";
 import { BranchMap } from "../components/BranchMap";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Seo } from "../seo/Seo";
+import { useMobileNavigationDrawer } from "../hooks/useMobileNavigationDrawer";
 import { homeSeo, organizationSchema, websiteSchema } from "../seo/seoConfig";
 import type { Branch } from "../types/api";
 import "./HomePage.css";
@@ -271,6 +272,14 @@ export function HomePage() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<"list" | "map">("list");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuDrawerRef = useRef<HTMLDivElement>(null);
+  useMobileNavigationDrawer(
+    mobileMenuOpen,
+    () => setMobileMenuOpen(false),
+    mobileMenuButtonRef,
+    mobileMenuDrawerRef,
+  );
   const [isLocating, setIsLocating] = useState(false);
   const [showLocationConsent, setShowLocationConsent] = useState(false);
   const [locationError, setLocationError] = useState("");
@@ -458,6 +467,7 @@ export function HomePage() {
         <div className="header-actions">
           <AuthBar />
           <button
+            ref={mobileMenuButtonRef}
             className={`mobile-menu-btn ${mobileMenuOpen ? "open" : ""}`}
             type="button"
             aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu điều hướng"}
@@ -472,8 +482,12 @@ export function HomePage() {
       </header>
 
       <div
+        ref={mobileMenuDrawerRef}
         className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}
         role="dialog"
+        aria-modal="true"
+        aria-hidden={!mobileMenuOpen}
+        tabIndex={-1}
         aria-label="Menu di động"
       >
         <nav className="mobile-nav-links">

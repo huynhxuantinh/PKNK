@@ -134,7 +134,22 @@
 @media (max-width: 900px) {
   .admin-shell { display: block; }
   .admin-shell.is-sidebar-compact { display: block; }
-  .admin-sidebar { position: fixed; left: 0; width: min(280px, 82vw); transform: translateX(-105%); transition: transform .2s ease; box-shadow: 12px 0 30px rgba(9, 49, 65, .18); }
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(280px, 82vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    transform: translateX(-105%);
+    transition: transform .2s ease;
+    box-shadow: 12px 0 30px rgba(9, 49, 65, .18);
+  }
   .admin-shell.is-sidebar-compact .admin-sidebar { align-items: stretch; padding: 20px 14px 16px; }
   .admin-shell.is-sidebar-compact .admin-sidebar-brand-row { width: auto; justify-content: space-between; }
   .admin-shell.is-sidebar-compact .admin-brand { overflow: visible; width: auto; padding: 0 var(--admin-space-1); }

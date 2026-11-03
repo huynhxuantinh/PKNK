@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AuthBar } from "../auth/AuthBar";
@@ -8,6 +8,7 @@ import {
 } from "../features/pricing/pricingData";
 import { Seo } from "../seo/Seo";
 import { SITE_URL, pricingSeo } from "../seo/seoConfig";
+import { useMobileNavigationDrawer } from "../hooks/useMobileNavigationDrawer";
 import styles from "./PricingPage.module.css";
 
 const pricingStructuredData = [
@@ -38,6 +39,14 @@ export function PricingPage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuDrawerRef = useRef<HTMLDivElement>(null);
+  useMobileNavigationDrawer(
+    mobileMenuOpen,
+    () => setMobileMenuOpen(false),
+    mobileMenuButtonRef,
+    mobileMenuDrawerRef,
+  );
 
   const visibleGroups = useMemo(() => {
     const groups =
@@ -68,6 +77,7 @@ export function PricingPage() {
         <div className="header-actions">
           <AuthBar />
           <button
+            ref={mobileMenuButtonRef}
             className={`mobile-menu-btn ${mobileMenuOpen ? "open" : ""}`}
             type="button"
             aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu điều hướng"}
@@ -82,8 +92,12 @@ export function PricingPage() {
       </header>
 
       <div
+        ref={mobileMenuDrawerRef}
         className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}
         role="dialog"
+        aria-modal="true"
+        aria-hidden={!mobileMenuOpen}
+        tabIndex={-1}
         aria-label="Menu di động"
       >
         <nav className="mobile-nav-links">

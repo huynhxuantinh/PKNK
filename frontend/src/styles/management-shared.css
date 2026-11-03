@@ -65,6 +65,16 @@
   text-align: center;
 }
 
+.management-error {
+  margin: 0;
+  padding: 0.8125rem 0.9375rem;
+  border: 1px solid #f0c7c4;
+  border-radius: 10px;
+  background: #fff6f5;
+  color: #ad3f38;
+  font-size: 0.75rem;
+}
+
 /* Reusable report/table primitives used by both branch and organization screens. */
 .branch-report-loading {
   color: #638095;
