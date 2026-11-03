@@ -4,6 +4,7 @@ from .views import (
     AppointmentConfirmAPIView,
     AppointmentHoldCancelAPIView,
     AppointmentHoldCreateAPIView,
+    ActiveAppointmentHoldAPIView,
     SlotListAPIView,
 )
 
@@ -16,6 +17,11 @@ urlpatterns = [
         "appointments/holds/",
         AppointmentHoldCreateAPIView.as_view(),
         name="appointment-hold",
+    ),
+    path(
+        "appointments/holds/current/",
+        ActiveAppointmentHoldAPIView.as_view(),
+        name="active-appointment-hold",
     ),
     path(
         "appointments/<str:public_code>/confirm/",

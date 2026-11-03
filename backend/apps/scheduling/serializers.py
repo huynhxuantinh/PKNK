@@ -45,11 +45,26 @@ class AppointmentHoldCreateSerializer(serializers.Serializer):
     )
     contact_email = serializers.EmailField(required=False)
     patient_note = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+    idempotency_key = serializers.RegexField(
+        regex=r"^[A-Za-z0-9._:-]+$",
+        min_length=8,
+        max_length=64,
+        required=False,
+    )
 
     def validate_starts_at(self, value):
         if value <= timezone.now():
             raise serializers.ValidationError("Thời gian đặt lịch phải ở tương lai.")
         return value
+
+
+class AppointmentHoldQuerySerializer(serializers.Serializer):
+    idempotency_key = serializers.RegexField(
+        regex=r"^[A-Za-z0-9._:-]+$",
+        min_length=8,
+        max_length=64,
+        required=False,
+    )
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

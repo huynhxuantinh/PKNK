@@ -43,6 +43,7 @@ class BookingService:
         contact_phone=None,
         contact_email=None,
         patient_note="",
+        idempotency_key=None,
         request=None,
     ):
         # Availability intentionally stays read-only. Before claiming a slot, clear
@@ -60,6 +61,26 @@ class BookingService:
                 code="patient_profile_required",
             ) from error
         now = timezone.now()
+        if idempotency_key:
+            replay = Appointment.objects.filter(
+                patient_profile=patient_profile,
+                hold_idempotency_key=idempotency_key,
+            ).first()
+            if replay is not None:
+                is_live = replay.status in ACTIVE_APPOINTMENT_STATUSES and (
+                    replay.status != Appointment.Status.HELD
+                    or replay.expires_at > now
+                )
+                if is_live:
+                    # A retry after a lost response must return the same booking
+                    # instead of failing on the one-appointment-per-day rule.
+                    return replay
+                # The earlier attempt expired, was cancelled or no longer holds
+                # the slot. Free the key so this retry can book a fresh slot
+                # instead of replaying a dead appointment.
+                Appointment.objects.filter(pk=replay.pk).update(
+                    hold_idempotency_key=None
+                )
         active_hold_count = Appointment.objects.filter(
             patient_profile=patient_profile,
             status=Appointment.Status.HELD,
@@ -181,6 +202,7 @@ class BookingService:
                             contact_phone_snapshot=(contact_phone or patient_user.phone or "").strip() or None,
                             contact_email_snapshot=(contact_email or patient_user.email).strip().lower(),
                             patient_note=patient_note.strip(),
+                            hold_idempotency_key=idempotency_key,
                             duration_minutes=duration_minutes,
                             buffer_minutes=buffer_minutes,
                             starts_at=current_option.starts_at,
@@ -210,7 +232,29 @@ class BookingService:
                         )
                         return appointment
                 except IntegrityError as error:
-                    if cls._constraint_name(error) not in cls.EXCLUSION_CONSTRAINTS:
+                    constraint = cls._constraint_name(error)
+                    if (
+                        constraint
+                        and "hold_idempotency_key" in constraint
+                        and idempotency_key
+                    ):
+                        # Two retries raced past the replay lookup; both tried to
+                        # insert the same key. Return the appointment that won.
+                        replay = Appointment.objects.filter(
+                            patient_profile=patient_profile,
+                            hold_idempotency_key=idempotency_key,
+                        ).first()
+                        if (
+                            replay is not None
+                            and replay.status in ACTIVE_APPOINTMENT_STATUSES
+                            and (
+                                replay.status != Appointment.Status.HELD
+                                or replay.expires_at > timezone.now()
+                            )
+                        ):
+                            return replay
+                        raise
+                    if constraint not in cls.EXCLUSION_CONSTRAINTS:
                         raise
 
         raise SlotUnavailableError("Khung giờ vừa được người khác giữ chỗ.")

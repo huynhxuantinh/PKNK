@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type {
+  Appointment,
   AppointmentResponse,
   Branch,
   BranchDentist,
@@ -101,6 +102,7 @@ export function createAppointmentHold(
     contactEmail: string
     patientNote: string
   },
+  idempotencyKey?: string,
 ) {
   return apiRequest<AppointmentResponse>(
     '/scheduling/appointments/holds/',
@@ -116,8 +118,28 @@ export function createAppointmentHold(
           contact_email: bookingDetails.contactEmail,
           patient_note: bookingDetails.patientNote,
         } : {}),
+        ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
       }),
     },
+    { auth: true },
+  )
+}
+
+/**
+ * Returns the hold this patient still owns, so a booking can be recovered
+ * after the create response was lost. Pass the idempotency key of the attempt
+ * to look up that specific retry first.
+ */
+export function getActiveAppointmentHold(
+  idempotencyKey?: string,
+  signal?: AbortSignal,
+) {
+  const query = idempotencyKey
+    ? `?${new URLSearchParams({ idempotency_key: idempotencyKey })}`
+    : ''
+  return apiRequest<{ data: Appointment | null }>(
+    `/scheduling/appointments/holds/current/${query}`,
+    { signal },
     { auth: true },
   )
 }

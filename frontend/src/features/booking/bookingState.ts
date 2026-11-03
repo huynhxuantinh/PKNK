@@ -2,9 +2,65 @@ import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '..
 
 export const BOOKING_DRAFT_STORAGE_KEY = 'pknk_booking_draft'
 const BOOKING_HOLD_STORAGE_PREFIX = 'pknk_booking_hold:'
+const BOOKING_ATTEMPT_STORAGE_PREFIX = 'pknk_booking_attempt:'
 
 function bookingHoldStorageKey(userId: number) {
   return `${BOOKING_HOLD_STORAGE_PREFIX}${userId}`
+}
+
+function bookingAttemptStorageKey(userId: number) {
+  return `${BOOKING_ATTEMPT_STORAGE_PREFIX}${userId}`
+}
+
+export interface BookingAttempt {
+  key: string
+  fingerprint: string
+}
+
+function newIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `hold-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+}
+
+/**
+ * Returns the idempotency key for one booking attempt. Retrying the same
+ * selection reuses the key so the server can replay the hold it already
+ * created; changing the selection starts a new attempt.
+ */
+export function bookingIdempotencyKey(
+  userId: number,
+  fingerprint: string,
+  createKey: () => string = newIdempotencyKey,
+) {
+  const storageKey = bookingAttemptStorageKey(userId)
+  try {
+    const stored = sessionStorage.getItem(storageKey)
+    if (stored) {
+      const attempt = JSON.parse(stored) as BookingAttempt
+      if (attempt.fingerprint === fingerprint && typeof attempt.key === 'string') {
+        return attempt.key
+      }
+    }
+  } catch {
+    sessionStorage.removeItem(storageKey)
+  }
+  const key = createKey()
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify({ key, fingerprint }))
+  } catch {
+    // Session storage may be unavailable; retries fall back to a new key.
+  }
+  return key
+}
+
+export function clearBookingAttempt(userId: number) {
+  try {
+    sessionStorage.removeItem(bookingAttemptStorageKey(userId))
+  } catch {
+    // Ignore unavailable session storage.
+  }
 }
 
 export function storeBookingHold(userId: number, appointment: Appointment) {
@@ -45,7 +101,12 @@ export function clearBookingHoldCaches() {
   try {
     for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
       const key = sessionStorage.key(index)
-      if (key?.startsWith(BOOKING_HOLD_STORAGE_PREFIX)) sessionStorage.removeItem(key)
+      if (
+        key?.startsWith(BOOKING_HOLD_STORAGE_PREFIX)
+        || key?.startsWith(BOOKING_ATTEMPT_STORAGE_PREFIX)
+      ) {
+        sessionStorage.removeItem(key)
+      }
     }
   } catch {
     // Ignore unavailable session storage.

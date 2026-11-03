@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Appointment, Branch, BranchDentist, BranchService, Slot } from '../../types/api'
 import {
   BOOKING_DRAFT_STORAGE_KEY,
+  bookingIdempotencyKey,
   bookingSelectionReducer,
+  clearBookingAttempt,
   clearBookingHold,
+  clearBookingHoldCaches,
   dateInputValue,
   initialBookingSelection,
   restoreBookingHold,
@@ -149,5 +152,60 @@ describe('bookingSelectionReducer', () => {
     expect(restoreBookingHold(12, new Date('2026-10-10T10:00:00+07:00').getTime())).toBeNull()
     expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
     clearBookingHold(12)
+  })
+})
+
+describe('bookingIdempotencyKey', () => {
+  beforeEach(() => sessionStorageMock.clear())
+
+  it('dùng lại khóa khi thử lại cùng một lựa chọn đặt lịch', () => {
+    const createKey = vi.fn(() => 'key-first-attempt')
+    const fingerprint = '10|2026-10-10T09:00:00+07:00|20'
+
+    const first = bookingIdempotencyKey(12, fingerprint, createKey)
+    const retry = bookingIdempotencyKey(12, fingerprint, createKey)
+
+    expect(first).toBe('key-first-attempt')
+    expect(retry).toBe(first)
+    expect(createKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('tạo khóa mới khi người bệnh đổi khung giờ hoặc bác sĩ', () => {
+    const keys = ['key-first-attempt', 'key-second-attempt']
+    const createKey = vi.fn(() => keys.shift() ?? 'key-fallback')
+
+    bookingIdempotencyKey(12, '10|2026-10-10T09:00:00+07:00|20', createKey)
+    const changed = bookingIdempotencyKey(12, '10|2026-10-10T10:00:00+07:00|20', createKey)
+
+    expect(changed).toBe('key-second-attempt')
+    expect(createKey).toHaveBeenCalledTimes(2)
+  })
+
+  it('tách khóa theo tài khoản để không dùng chung giữa hai người bệnh', () => {
+    const first = bookingIdempotencyKey(12, 'same-selection', () => 'key-patient-12')
+    const second = bookingIdempotencyKey(13, 'same-selection', () => 'key-patient-13')
+
+    expect(first).toBe('key-patient-12')
+    expect(second).toBe('key-patient-13')
+  })
+
+  it('xóa khóa thử lại khi chỗ giữ đã được xác nhận hoặc hủy', () => {
+    const fingerprint = '10|2026-10-10T09:00:00+07:00|20'
+    bookingIdempotencyKey(12, fingerprint, () => 'key-first-attempt')
+
+    clearBookingAttempt(12)
+
+    expect(bookingIdempotencyKey(12, fingerprint, () => 'key-next-attempt')).toBe('key-next-attempt')
+  })
+
+  it('xóa toàn bộ bộ nhớ đệm chỗ giữ và khóa thử lại khi đăng xuất', () => {
+    const fingerprint = '10|2026-10-10T09:00:00+07:00|20'
+    storeBookingHold(12, heldAppointment)
+    bookingIdempotencyKey(12, fingerprint, () => 'key-first-attempt')
+
+    clearBookingHoldCaches()
+
+    expect(restoreBookingHold(12, new Date('2026-10-10T09:55:00+07:00').getTime())).toBeNull()
+    expect(bookingIdempotencyKey(12, fingerprint, () => 'key-next-attempt')).toBe('key-next-attempt')
   })
 })

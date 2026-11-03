@@ -467,6 +467,173 @@ class SchedulingApiTests(APITestCase):
             retry_response.data["data"]["status"], Appointment.Status.CONFIRMED
         )
 
+    def hold_payload(self, **overrides):
+        payload = {
+            "branch_service_id": self.branch_service.id_branch_service,
+            "starts_at": self.start_at().isoformat(),
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_create_hold_replays_the_same_idempotency_key(self):
+        self.client.force_authenticate(self.patient_user)
+        payload = self.hold_payload(idempotency_key="retry-hold-key-0001")
+
+        first = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+        second = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            second.data["data"]["public_code"], first.data["data"]["public_code"]
+        )
+        self.assertEqual(
+            Appointment.objects.filter(patient_profile=self.patient).count(), 1
+        )
+
+    def test_create_hold_replay_returns_the_confirmed_appointment(self):
+        self.client.force_authenticate(self.patient_user)
+        payload = self.hold_payload(idempotency_key="retry-hold-key-0002")
+        first = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+        public_code = first.data["data"]["public_code"]
+        self.client.post(
+            reverse(
+                "scheduling:appointment-confirm",
+                kwargs={"public_code": public_code},
+            ),
+            format="json",
+        )
+
+        replay = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+
+        self.assertEqual(replay.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(replay.data["data"]["public_code"], public_code)
+        self.assertEqual(replay.data["data"]["status"], Appointment.Status.CONFIRMED)
+        self.assertEqual(
+            Appointment.objects.filter(patient_profile=self.patient).count(), 1
+        )
+
+    def test_create_hold_replay_after_expiry_books_a_new_slot(self):
+        self.client.force_authenticate(self.patient_user)
+        payload = self.hold_payload(idempotency_key="retry-hold-key-0003")
+        first = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+        stale_code = first.data["data"]["public_code"]
+        stale = Appointment.objects.get(public_code=stale_code)
+        stale.held_at = timezone.now() - timedelta(hours=2)
+        stale.expires_at = timezone.now() - timedelta(hours=1)
+        stale.save(update_fields=["held_at", "expires_at"])
+
+        retry = self.client.post(
+            reverse("scheduling:appointment-hold"), payload, format="json"
+        )
+
+        self.assertEqual(retry.status_code, status.HTTP_201_CREATED)
+        self.assertNotEqual(retry.data["data"]["public_code"], stale_code)
+        stale.refresh_from_db()
+        self.assertEqual(stale.status, Appointment.Status.EXPIRED)
+        self.assertIsNone(stale.hold_idempotency_key)
+        self.assertEqual(
+            Appointment.objects.filter(patient_profile=self.patient).count(), 2
+        )
+
+    def test_create_hold_rejects_malformed_idempotency_key(self):
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            self.hold_payload(idempotency_key="bad key!"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_active_hold_endpoint_returns_the_held_appointment(self):
+        self.client.force_authenticate(self.patient_user)
+        hold = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            self.hold_payload(idempotency_key="current-hold-key-0001"),
+            format="json",
+        )
+        public_code = hold.data["data"]["public_code"]
+
+        response = self.client.get(reverse("scheduling:active-appointment-hold"))
+        by_key = self.client.get(
+            reverse("scheduling:active-appointment-hold"),
+            {"idempotency_key": "current-hold-key-0001"},
+        )
+        wrong_key = self.client.get(
+            reverse("scheduling:active-appointment-hold"),
+            {"idempotency_key": "current-hold-key-9999"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["public_code"], public_code)
+        self.assertEqual(by_key.data["data"]["public_code"], public_code)
+        self.assertIsNone(wrong_key.data["data"])
+
+    def test_active_hold_endpoint_hides_expired_holds(self):
+        self.client.force_authenticate(self.patient_user)
+        hold = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            self.hold_payload(),
+            format="json",
+        )
+        stale = Appointment.objects.get(
+            public_code=hold.data["data"]["public_code"]
+        )
+        stale.held_at = timezone.now() - timedelta(hours=2)
+        stale.expires_at = timezone.now() - timedelta(hours=1)
+        stale.save(update_fields=["held_at", "expires_at"])
+
+        response = self.client.get(reverse("scheduling:active-appointment-hold"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["data"])
+
+    def test_active_hold_endpoint_is_scoped_to_the_signed_in_patient(self):
+        self.client.force_authenticate(self.patient_user)
+        self.client.post(
+            reverse("scheduling:appointment-hold"),
+            self.hold_payload(),
+            format="json",
+        )
+        other_patient_user = User.objects.create_user(
+            email="other-patient-hold@example.com",
+            password="safe-test-password",
+            email_verified_at=timezone.now(),
+            full_name="Bệnh nhân khác",
+        )
+        PatientProfile.objects.create(user=other_patient_user)
+        Membership.objects.create(
+            user=other_patient_user,
+            organization=self.organization,
+            role=Membership.Role.PATIENT,
+        )
+
+        self.client.force_authenticate(other_patient_user)
+        response = self.client.get(reverse("scheduling:active-appointment-hold"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["data"])
+
+    def test_active_hold_endpoint_requires_a_patient_account(self):
+        self.client.force_authenticate(self.dentist_user)
+
+        response = self.client.get(reverse("scheduling:active-appointment-hold"))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_patient_can_cancel_own_held_appointment(self):
         self.client.force_authenticate(self.patient_user)
         hold_response = self.client.post(

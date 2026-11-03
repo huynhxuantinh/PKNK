@@ -5,6 +5,7 @@ import {
   cancelAppointmentHold,
   confirmAppointment,
   createAppointmentHold,
+  getActiveAppointmentHold,
   listBranches,
   listBranchDentists,
   listBranchServices,
@@ -24,8 +25,10 @@ import type {
   Slot,
 } from "../../types/api";
 import {
+  bookingIdempotencyKey,
   bookingSelectionReducer,
   BOOKING_DRAFT_STORAGE_KEY,
+  clearBookingAttempt,
   clearBookingHold,
   dateInputValue,
   initialBookingSelection,
@@ -60,6 +63,14 @@ function EmptyState({ label }: { label: string }) {
 
 function holdIsNoLongerUsable(reason: unknown) {
   return reason instanceof ApiError && [404, 409].includes(reason.status);
+}
+
+function bookingAttemptFingerprint(
+  branchServiceId: number,
+  startsAt: string,
+  dentistId: number,
+) {
+  return `${branchServiceId}|${startsAt}|${dentistId}`;
 }
 
 interface BookingFlowProps {
@@ -104,6 +115,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const initialBranchApplied = useRef(false);
   const restoredDraftBranchId = useRef(selection.branch?.id_branch ?? null);
   const restoredHoldUserId = useRef<number | null>(null);
+  const branchesRequestId = useRef(0);
+  const servicesRequestId = useRef(0);
+  const slotsRequestId = useRef(0);
+  const dentistsRequestId = useRef(0);
   const holdMinutes =
     heldAppointment?.held_at && heldAppointment.expires_at
       ? Math.max(
@@ -137,7 +152,25 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       return;
     restoredHoldUserId.current = user.id_user;
     const restoredHold = restoreBookingHold(user.id_user);
-    if (restoredHold) setHeldAppointment(restoredHold);
+    if (restoredHold) {
+      setHeldAppointment(restoredHold);
+      return;
+    }
+    // The create response can be lost while the server already holds the slot.
+    // Ask the API for any live hold before letting the patient book again.
+    const controller = new AbortController();
+    getActiveAppointmentHold(undefined, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        const serverHold = response.data;
+        if (!serverHold || serverHold.status !== "HELD") return;
+        setHeldAppointment(serverHold);
+        storeBookingHold(user.id_user, serverHold);
+      })
+      .catch(() => {
+        // A failed lookup must not block booking; stale holds expire on their own.
+      });
+    return () => controller.abort();
   }, [isAuthenticated, isStaff, user]);
 
   useEffect(() => {
@@ -169,10 +202,13 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestId = ++branchesRequestId.current;
     setBranchesLoading(true);
     setError("");
     listBranches(branchQuery, controller.signal)
       .then((response) => {
+        if (requestId !== branchesRequestId.current || controller.signal.aborted)
+          return;
         setBranches(response.data);
         if (!initialBranchId && restoredDraftBranchId.current !== null) {
           const restoredBranch = response.data.find(
@@ -193,6 +229,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         }
       })
       .catch((reason) => {
+        if (requestId !== branchesRequestId.current || controller.signal.aborted)
+          return;
         if (reason instanceof DOMException && reason.name === "AbortError")
           return;
         setError(
@@ -201,37 +239,57 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             : "Không tải được chi nhánh.",
         );
       })
-      .finally(() => setBranchesLoading(false));
+      .finally(() => {
+        if (requestId === branchesRequestId.current && !controller.signal.aborted)
+          setBranchesLoading(false);
+      });
     return () => controller.abort();
   }, [branchQuery, initialBranchId]);
 
   useEffect(() => {
     if (!selection.branch) {
+      servicesRequestId.current += 1;
       setServices([]);
+      setServicesLoading(false);
       return;
     }
     const controller = new AbortController();
+    const requestId = ++servicesRequestId.current;
+    setServices([]);
     setServicesLoading(true);
     setError("");
     listBranchServices(selection.branch.id_branch, controller.signal)
-      .then((response) => setServices(response.data))
+      .then((response) => {
+        if (requestId !== servicesRequestId.current || controller.signal.aborted)
+          return;
+        setServices(response.data);
+      })
       .catch((reason) => {
+        if (requestId !== servicesRequestId.current || controller.signal.aborted)
+          return;
         if (reason instanceof DOMException && reason.name === "AbortError")
           return;
         setError(
           reason instanceof Error ? reason.message : "Không tải được dịch vụ.",
         );
       })
-      .finally(() => setServicesLoading(false));
+      .finally(() => {
+        if (requestId === servicesRequestId.current && !controller.signal.aborted)
+          setServicesLoading(false);
+      });
     return () => controller.abort();
   }, [selection.branch]);
 
   useEffect(() => {
     if (!selection.service || !selection.date) {
+      slotsRequestId.current += 1;
       setSlots([]);
+      setSlotsLoading(false);
       return;
     }
     const controller = new AbortController();
+    const requestId = ++slotsRequestId.current;
+    setSlots([]);
     setSlotsLoading(true);
     setError("");
     listSlots(
@@ -239,24 +297,37 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       selection.date,
       controller.signal,
     )
-      .then((response) => setSlots(response.data))
+      .then((response) => {
+        if (requestId !== slotsRequestId.current || controller.signal.aborted)
+          return;
+        setSlots(response.data);
+      })
       .catch((reason) => {
+        if (requestId !== slotsRequestId.current || controller.signal.aborted)
+          return;
         if (reason instanceof DOMException && reason.name === "AbortError")
           return;
         setError(
           reason instanceof Error ? reason.message : "Không tải được slot.",
         );
       })
-      .finally(() => setSlotsLoading(false));
+      .finally(() => {
+        if (requestId === slotsRequestId.current && !controller.signal.aborted)
+          setSlotsLoading(false);
+      });
     return () => controller.abort();
   }, [selection.date, selection.service]);
 
   useEffect(() => {
     if (!selection.branch || !selection.service) {
+      dentistsRequestId.current += 1;
       setDentists([]);
+      setDentistsLoading(false);
       return;
     }
     const controller = new AbortController();
+    const requestId = ++dentistsRequestId.current;
+    setDentists([]);
     setDentistsLoading(true);
     setError("");
     listBranchDentists(
@@ -264,8 +335,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       selection.service.id_service,
       controller.signal,
     )
-      .then((response) => setDentists(response.data))
+      .then((response) => {
+        if (requestId !== dentistsRequestId.current || controller.signal.aborted)
+          return;
+        setDentists(response.data);
+      })
       .catch((reason) => {
+        if (requestId !== dentistsRequestId.current || controller.signal.aborted)
+          return;
         if (reason instanceof DOMException && reason.name === "AbortError")
           return;
         setError(
@@ -274,7 +351,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             : "Không tải được danh sách bác sĩ.",
         );
       })
-      .finally(() => setDentistsLoading(false));
+      .finally(() => {
+        if (requestId === dentistsRequestId.current && !controller.signal.aborted)
+          setDentistsLoading(false);
+      });
     return () => controller.abort();
   }, [selection.branch, selection.service]);
 
@@ -283,9 +363,57 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         selection.slot?.available_dentist_ids.includes(dentist.id_dentist),
       )
     : [];
+  const bookingSelectionIsConsistent = Boolean(
+    selection.branch &&
+      selection.service &&
+      selection.slot &&
+      selection.dentist &&
+      services.some(
+        (service) =>
+          service.id_branch_service === selection.service?.id_branch_service,
+      ) &&
+      slots.some(
+        (slot) =>
+          slot.starts_at === selection.slot?.starts_at &&
+          slot.available_dentist_ids.includes(selection.dentist?.id_dentist ?? -1),
+      ) &&
+      dentists.some(
+        (dentist) => dentist.id_dentist === selection.dentist?.id_dentist,
+      ),
+  );
   const displayedBranches = initialBranchId
     ? branches.filter((branch) => branch.id_branch === initialBranchId)
     : branches;
+
+  function selectBranch(branch: Branch) {
+    if (selection.branch?.id_branch !== branch.id_branch) {
+      servicesRequestId.current += 1;
+      slotsRequestId.current += 1;
+      dentistsRequestId.current += 1;
+      setServices([]);
+      setSlots([]);
+      setDentists([]);
+    }
+    dispatch({ type: "select_branch", branch });
+  }
+
+  function selectService(service: BranchService) {
+    if (selection.service?.id_branch_service !== service.id_branch_service) {
+      slotsRequestId.current += 1;
+      dentistsRequestId.current += 1;
+      setSlots([]);
+      setDentists([]);
+    }
+    dispatch({ type: "select_service", service });
+  }
+
+  function selectDate(date: string) {
+    if (selection.date !== date) {
+      slotsRequestId.current += 1;
+      setSlots([]);
+    }
+    dispatch({ type: "select_date", date });
+  }
 
   function rememberHeldAppointment(held: Appointment) {
     setHeldAppointment(held);
@@ -294,7 +422,29 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
   function forgetHeldAppointment() {
     setHeldAppointment(null);
-    if (user) clearBookingHold(user.id_user);
+    if (user) {
+      clearBookingHold(user.id_user);
+      clearBookingAttempt(user.id_user);
+    }
+  }
+
+  async function recoverHeldAppointment(idempotencyKey?: string) {
+    if (!user) return false;
+    try {
+      let response = await getActiveAppointmentHold(idempotencyKey);
+      if (!response.data && idempotencyKey) {
+        // The key may have been rotated (for example after a reload), so fall
+        // back to whatever live hold the account still owns.
+        response = await getActiveAppointmentHold();
+      }
+      const recovered = response.data;
+      if (!recovered || recovered.status !== "HELD") return false;
+      rememberHeldAppointment(recovered);
+      return true;
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) logout();
+      return false;
+    }
   }
 
   async function confirmHeld(held: Appointment) {
@@ -303,21 +453,40 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     forgetHeldAppointment();
   }
 
-  async function releaseHeldAppointment() {
-    if (!heldAppointment) return;
-    const releasedCode = heldAppointment.public_code;
-    forgetHeldAppointment();
+  async function refreshSlots() {
+    if (!selection.service || !selection.date) return;
+    const requestId = ++slotsRequestId.current;
+    const branchServiceId = selection.service.id_branch_service;
+    const date = selection.date;
+    setSlots([]);
+    setSlotsLoading(true);
     try {
-      await cancelAppointmentHold(releasedCode);
+      const response = await listSlots(branchServiceId, date);
+      if (requestId === slotsRequestId.current) setSlots(response.data);
     } catch {
-      // The hold may already have expired or been confirmed; either way it cannot be reused.
+      // The original booking error is already displayed to the user.
+    } finally {
+      if (requestId === slotsRequestId.current) setSlotsLoading(false);
     }
-    if (selection.service && selection.date) {
-      const response = await listSlots(
-        selection.service.id_branch_service,
-        selection.date,
-      ).catch(() => null);
-      if (response) setSlots(response.data);
+  }
+
+  async function releaseHeldAppointment(hold = heldAppointment) {
+    if (!hold) return false;
+    setBooking(true);
+    setError("");
+    try {
+      await cancelAppointmentHold(hold.public_code);
+      forgetHeldAppointment();
+      await refreshSlots();
+      return true;
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) logout();
+      setError(
+        "Chưa thể xác nhận chỗ giữ đã được hủy. Chỗ này vẫn được lưu; vui lòng thử lại hoặc xác nhận lịch đang giữ.",
+      );
+      return false;
+    } finally {
+      setBooking(false);
     }
   }
 
@@ -333,6 +502,12 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
   async function handleBooking() {
     if (!selection.service || !selection.slot || !selection.dentist) return;
+    if (!bookingSelectionIsConsistent) {
+      setError(
+        "Lựa chọn chi nhánh, dịch vụ, khung giờ hoặc bác sĩ đã thay đổi. Vui lòng chọn lại trước khi đặt lịch.",
+      );
+      return;
+    }
     if (!isAuthenticated) {
       setError("Bạn cần đăng nhập trước khi đặt lịch.");
       return;
@@ -344,6 +519,16 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
 
     setBooking(true);
     setError("");
+    const attemptKey = user
+      ? bookingIdempotencyKey(
+          user.id_user,
+          bookingAttemptFingerprint(
+            selection.service.id_branch_service,
+            selection.slot.starts_at,
+            selection.dentist.id_dentist,
+          ),
+        )
+      : undefined;
     let createdHold: Appointment | null = null;
     try {
       const hold = await createAppointmentHold(
@@ -356,8 +541,16 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           contactEmail: contact.email,
           patientNote,
         },
+        attemptKey,
       );
       createdHold = hold.data;
+      if (hold.data.status !== "HELD") {
+        // The retry replayed a booking that was already confirmed after the
+        // first response was lost, so there is nothing left to confirm.
+        setAppointment(hold.data);
+        forgetHeldAppointment();
+        return;
+      }
       rememberHeldAppointment(hold.data);
       await confirmHeld(hold.data);
     } catch (reason) {
@@ -365,32 +558,25 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       const message =
         reason instanceof Error ? reason.message : "Không thể đặt lịch.";
       if (createdHold && holdIsNoLongerUsable(reason)) {
-        forgetHeldAppointment();
-        await cancelAppointmentHold(createdHold.public_code).catch(
-          () => undefined,
-        );
-        if (selection.service && selection.date) {
-          const response = await listSlots(
-            selection.service.id_branch_service,
-            selection.date,
-          ).catch(() => null);
-          if (response) setSlots(response.data);
-        }
+        const released = await releaseHeldAppointment(createdHold);
         setError(
-          `${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`,
+          released
+            ? `${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`
+            : `${message} Chưa thể xác minh trạng thái chỗ giữ. Vui lòng thử xác nhận lại hoặc hủy lại sau.`,
         );
       } else if (createdHold) {
         setError(
           `${message} Chỗ của bạn vẫn đang được giữ, hãy thử xác nhận lại.`,
         );
       } else {
-        setError(message);
-        if (selection.service && selection.date) {
-          const response = await listSlots(
-            selection.service.id_branch_service,
-            selection.date,
-          ).catch(() => null);
-          if (response) setSlots(response.data);
+        const recovered = await recoverHeldAppointment(attemptKey);
+        if (recovered) {
+          setError(
+            `${message} Hệ thống đã khôi phục chỗ giữ của bạn, hãy bấm “Xác nhận chỗ đang giữ” để hoàn tất.`,
+          );
+        } else {
+          setError(message);
+          await refreshSlots();
         }
       }
     } finally {
@@ -409,9 +595,11 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       const message =
         reason instanceof Error ? reason.message : "Không thể xác nhận lịch.";
       if (holdIsNoLongerUsable(reason)) {
-        await releaseHeldAppointment();
+        const released = await releaseHeldAppointment();
         setError(
-          `${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`,
+          released
+            ? `${message} Chỗ giữ không còn hiệu lực, vui lòng chọn giờ khác.`
+            : `${message} Chưa thể xác minh trạng thái chỗ giữ. Vui lòng thử xác nhận lại hoặc hủy lại sau.`,
         );
       } else {
         setError(
@@ -555,7 +743,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                     className={`choice-card ${selection.branch?.id_branch === branch.id_branch ? "selected" : ""}`}
                     onClick={() => {
                       if (!initialBranchId)
-                        dispatch({ type: "select_branch", branch });
+                        selectBranch(branch);
                     }}
                     aria-disabled={Boolean(initialBranchId)}
                   >
@@ -700,7 +888,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   type="button"
                   key={service.id_branch_service}
                   className={`service-row ${selection.service?.id_branch_service === service.id_branch_service ? "selected" : ""}`}
-                  onClick={() => dispatch({ type: "select_service", service })}
+                  onClick={() => selectService(service)}
                 >
                   <span>
                     <strong>{service.name}</strong>
@@ -742,9 +930,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                 min={dateInputValue()}
                 max={dateInputValue(90)}
                 value={selection.date}
-                onChange={(event) =>
-                  dispatch({ type: "select_date", date: event.target.value })
-                }
+                onChange={(event) => selectDate(event.target.value)}
                 disabled={!selection.service}
               />
             </label>
@@ -904,6 +1090,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
               !contact.name ||
               !contact.phone ||
               !contact.email ||
+              !bookingSelectionIsConsistent ||
               booking
             }
             onClick={handleBooking}

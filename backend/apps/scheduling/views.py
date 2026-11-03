@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.urls import reverse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -18,6 +19,7 @@ from .exceptions import BookingValidationError, SchedulingError, SlotUnavailable
 from .models import Appointment, AppointmentStatusHistory
 from .serializers import (
     AppointmentHoldCreateSerializer,
+    AppointmentHoldQuerySerializer,
     AppointmentSerializer,
     SlotQuerySerializer,
 )
@@ -136,6 +138,7 @@ class AppointmentHoldCreateAPIView(APIView):
                 contact_phone=data.get("contact_phone"),
                 contact_email=data.get("contact_email"),
                 patient_note=data.get("patient_note", ""),
+                idempotency_key=data.get("idempotency_key"),
                 request=request,
             )
         except SlotUnavailableError as error:
@@ -152,6 +155,35 @@ class AppointmentHoldCreateAPIView(APIView):
             {"data": response_serializer.data},
             status=status.HTTP_201_CREATED,
             headers={"Location": location},
+        )
+
+
+class ActiveAppointmentHoldAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsPatientOnly]
+
+    @extend_schema(
+        parameters=[OpenApiParameter("idempotency_key", str, required=False)],
+        responses={200: AppointmentSerializer},
+    )
+    def get(self, request):
+        query = AppointmentHoldQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        holds = Appointment.objects.select_related(
+            "branch",
+            "dentist__user",
+            "chair",
+        ).filter(
+            patient_profile__user=request.user,
+            status=Appointment.Status.HELD,
+            expires_at__gt=timezone.now(),
+        )
+        idempotency_key = query.validated_data.get("idempotency_key")
+        if idempotency_key:
+            holds = holds.filter(hold_idempotency_key=idempotency_key)
+        appointment = holds.order_by("-held_at").first()
+        return Response(
+            {"data": AppointmentSerializer(appointment).data if appointment else None}
         )
 
 
