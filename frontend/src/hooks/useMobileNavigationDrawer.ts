@@ -59,4 +59,15 @@ export function useMobileNavigationDrawer(
       previousFocus?.focus()
     }
   }, [drawerRef, open, triggerRef])
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return
+    const desktopQuery = window.matchMedia('(min-width: 1121px)')
+    const closeOnDesktop = () => {
+      if (desktopQuery.matches) onCloseRef.current()
+    }
+    desktopQuery.addEventListener('change', closeOnDesktop)
+    closeOnDesktop()
+    return () => desktopQuery.removeEventListener('change', closeOnDesktop)
+  }, [open])
 }

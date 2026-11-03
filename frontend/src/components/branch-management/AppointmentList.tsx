@@ -68,7 +68,7 @@ export function AppointmentList({
     );
   }, [items, query]);
 
-  if (!items) return <div className="dentist-empty">Đang tải lịch hẹn...</div>;
+  if (!items) return <div className={styles.loading} role="status">Đang tải lịch hẹn...</div>;
 
   return (
     <div className={styles.root}>

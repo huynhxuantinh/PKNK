@@ -100,7 +100,12 @@ export function PricingPage() {
         tabIndex={-1}
         aria-label="Menu di động"
       >
-        <nav className="mobile-nav-links">
+        <nav
+          className="mobile-nav-links"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false)
+          }}
+        >
           <Link to="/bang-gia">Bảng giá</Link>
           <Link to="/ve-dentavie">Về DentaVie</Link>
           <Link to="/#chi-nhanh">Hệ thống chi nhánh</Link>

@@ -63,10 +63,14 @@
   display: flex;
   transition: transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.hero-slides img {
+.hero-slides > picture {
   width: 100%;
   height: 100%;
   flex: 0 0 100%;
+}
+.hero-slides img {
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: cover;
 }
@@ -375,6 +379,10 @@
   height: 100%;
   display: block;
   object-fit: contain;
+}
+.recognition-image-wrap picture {
+  width: 100%;
+  height: 100%;
 }
 .recognition-card figcaption {
   min-height: 108px;
@@ -1103,10 +1111,25 @@
     grid-template-columns: 1fr;
   }
   .service-card {
-    min-height: 320px;
+    min-height: 270px;
   }
   .service-image-wrap {
-    height: 132px;
+    height: 112px;
+  }
+  .service-card-body {
+    min-height: 142px;
+    padding: 16px 18px 18px;
+  }
+  .service-card h3 {
+    font-size: 15px;
+  }
+  .service-card p {
+    margin: 7px 0 14px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .service-card a {
+    font-size: 11px;
   }
   .recognition-section {
     padding-block: 68px;
@@ -1201,5 +1224,18 @@
   }
 }
 
+@media (max-width: 400px) {
+  .service-card {
+    min-height: 250px;
+  }
+
+  .service-image-wrap {
+    height: 104px;
+  }
+
+  .service-card-body {
+    min-height: 130px;
+    padding: 14px 16px 16px;
+  }
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext'
 import { activeBranchIdsForRole, hasActiveRole } from '../auth/roles'
 import { Seo } from '../seo/Seo'
 import type { BranchDetail } from '../types/api'
+import './DentistLegacy.css'
 
 export function DentistBranchSelectionPage() {
   const { isAuthenticated, user } = useAuth()

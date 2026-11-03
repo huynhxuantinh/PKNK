@@ -14,18 +14,21 @@ import "./HomePage.css";
 const slides = [
   {
     src: "/hero/banner-cham-soc-gia-dinh.png",
+    webpSrcSet: "/hero/banner-cham-soc-gia-dinh-768.webp 768w, /hero/banner-cham-soc-gia-dinh-1440.webp 1440w",
     alt: "Chăm sóc răng toàn diện cho cả gia đình",
     width: 1916,
     height: 821,
   },
   {
     src: "/hero/banner-nieng-rang.png",
+    webpSrcSet: "/hero/banner-nieng-rang-768.webp 768w, /hero/banner-nieng-rang-1440.webp 1440w",
     alt: "Niềng răng trong suốt thẩm mỹ",
     width: 1942,
     height: 809,
   },
   {
     src: "/hero/banner-he-uu-dai.png",
+    webpSrcSet: "/hero/banner-he-uu-dai-768.webp 768w, /hero/banner-he-uu-dai-1440.webp 1440w",
     alt: "Chương trình chăm sóc răng miệng DentaVie",
     width: 1983,
     height: 793,
@@ -88,26 +91,31 @@ const services = [
 const recognitions = [
   {
     image: "/images/recognition/dental-care-award.png",
+    webpSrcSet: "/images/recognition/dental-care-award-400.webp 400w, /images/recognition/dental-care-award-800.webp 800w",
     title: "DentaVie Awards 2024",
     description: "Dấu ấn trong hoạt động chăm sóc sức khỏe răng miệng.",
   },
   {
     image: "/images/recognition/iso-9001-certificate.png",
+    webpSrcSet: "/images/recognition/iso-9001-certificate-400.webp 400w, /images/recognition/iso-9001-certificate-800.webp 800w",
     title: "Chứng nhận ISO 9001:2015",
     description: "Hệ thống quản lý chất lượng dịch vụ khám và chữa răng.",
   },
   {
     image: "/images/recognition/national-brand-award.png",
+    webpSrcSet: "/images/recognition/national-brand-award-400.webp 400w, /images/recognition/national-brand-award-800.webp 800w",
     title: "Top 10 thương hiệu mạnh",
     description: "Chứng nhận thương hiệu mạnh quốc gia năm 2025.",
   },
   {
     image: "/images/recognition/appreciation-certificate-gold.png",
+    webpSrcSet: "/images/recognition/appreciation-certificate-gold-400.webp 400w, /images/recognition/appreciation-certificate-gold-800.webp 800w",
     title: "Certificate of Appreciation",
     description: "Ghi nhận đóng góp cho giáo dục và sức khỏe cộng đồng.",
   },
   {
     image: "/images/recognition/appreciation-certificate.png",
+    webpSrcSet: "/images/recognition/appreciation-certificate-400.webp 400w, /images/recognition/appreciation-certificate-800.webp 800w",
     title: "Global Leadership Program",
     description: "Ghi nhận sự đồng hành và đóng góp trong chương trình.",
   },
@@ -167,16 +175,22 @@ function HeroSlider() {
         style={{ transform: `translateX(-${active * 100}%)` }}
       >
         {slides.map((slide, index) => (
-          <img
-            key={slide.src}
-            src={slide.src}
-            alt={slide.alt}
-            width={slide.width}
-            height={slide.height}
-            loading={index === 0 ? "eager" : "lazy"}
-            fetchPriority={index === 0 ? "high" : "auto"}
-            decoding="async"
-          />
+          <picture key={slide.src}>
+            <source
+              type="image/webp"
+              srcSet={slide.webpSrcSet}
+              sizes="(max-width: 768px) 100vw, min(100vw - 48px, 1280px)"
+            />
+            <img
+              src={slide.src}
+              alt={slide.alt}
+              width={slide.width}
+              height={slide.height}
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "auto"}
+              decoding="async"
+            />
+          </picture>
         ))}
       </div>
       <button
@@ -241,7 +255,14 @@ function RecognitionCarousel() {
         {recognitions.map((item) => (
           <figure className="recognition-card" key={item.image}>
             <div className="recognition-image-wrap">
-              <img src={item.image} alt={item.title} loading="lazy" />
+              <picture>
+                <source
+                  type="image/webp"
+                  srcSet={item.webpSrcSet}
+                  sizes="(max-width: 760px) min(252px, calc(100vw - 76px)), 230px"
+                />
+                <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
+              </picture>
             </div>
             <figcaption>
               <strong>{item.title}</strong>
