@@ -239,6 +239,29 @@ class AppointmentWebNotificationTests(APITestCase):
         self.assert_web_only(booked)
         self.assert_web_only(confirmed)
 
+    def test_no_show_notifies_patient_idempotently(self):
+        appointment = self.appointment(
+            "APT-WEB-NO-SHOW",
+            starts_at=timezone.now() - timedelta(hours=1),
+            appointment_status=Appointment.Status.CONFIRMED,
+        )
+
+        AppointmentService.transition_status(
+            appointment_id=appointment.pk,
+            to_status=Appointment.Status.NO_SHOW,
+            actor_type=AppointmentStatusHistory.ActorType.BRANCH_ADMIN,
+            actor_user=self.admin,
+            reason="Không liên hệ được với bệnh nhân.",
+        )
+
+        notification = Notification.objects.get(
+            type=Notification.Type.APPOINTMENT_NO_SHOW,
+            recipient=self.patient_user,
+            resource_id=str(appointment.pk),
+        )
+        self.assertEqual(notification.payload["status"], Appointment.Status.NO_SHOW)
+        self.assert_web_only(notification)
+
     def test_pending_booking_notifies_branch_manager_when_auto_confirm_is_disabled(self):
         self.organization.auto_confirm = False
         self.organization.save(update_fields=["auto_confirm"])

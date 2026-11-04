@@ -32,6 +32,10 @@ class NotificationService:
             "Lịch hẹn đã được hủy",
             "Lịch hẹn của bạn đã được hủy.",
         ),
+        Notification.Type.APPOINTMENT_NO_SHOW: (
+            "Lịch hẹn được ghi nhận không đến",
+            "Phòng khám đã ghi nhận bạn không đến lịch hẹn. Vui lòng liên hệ phòng khám nếu cần hỗ trợ.",
+        ),
         Notification.Type.APPOINTMENT_RESCHEDULED: (
             "Lịch hẹn đã được dời",
             "Lịch hẹn của bạn đã được chuyển sang thời gian mới.",
@@ -94,6 +98,7 @@ class NotificationService:
             ("PENDING", "CANCELLED"): Notification.Type.APPOINTMENT_CANCELLED,
             ("CONFIRMED", "CANCELLED"): Notification.Type.APPOINTMENT_CANCELLED,
             ("CHECKED_IN", "CANCELLED"): Notification.Type.APPOINTMENT_CANCELLED,
+            ("CONFIRMED", "NO_SHOW"): Notification.Type.APPOINTMENT_NO_SHOW,
         }.get((from_status, to_status))
         if event_type is None:
             return None

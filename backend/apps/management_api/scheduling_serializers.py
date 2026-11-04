@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import Dentist
 from apps.scheduling.models import Appointment, TimeOff, WorkShift
+from apps.scheduling.services import AppointmentService
 
 
 class WorkShiftManagementSerializer(serializers.ModelSerializer):
@@ -89,6 +90,18 @@ class CalendarAppointmentSerializer(serializers.ModelSerializer):
     rescheduled_from_code = serializers.CharField(
         source="rescheduled_from.public_code", read_only=True, allow_null=True
     )
+    check_in_opens_at = serializers.SerializerMethodField()
+    no_show_opens_at = serializers.SerializerMethodField()
+
+    def get_check_in_opens_at(self, appointment):
+        return appointment.starts_at - timedelta(
+            minutes=AppointmentService.CHECK_IN_EARLY_MINUTES
+        )
+
+    def get_no_show_opens_at(self, appointment):
+        return appointment.starts_at + timedelta(
+            minutes=appointment.branch.organization.no_show_grace_minutes
+        )
 
     class Meta:
         model = Appointment
@@ -98,6 +111,7 @@ class CalendarAppointmentSerializer(serializers.ModelSerializer):
             "contact_phone_snapshot", "contact_email_snapshot", "patient_note",
             "dentist_id", "dentist_name",
             "chair_id", "chair_name", "starts_at", "ends_at", "occupied_until",
+            "check_in_opens_at", "no_show_opens_at",
             "status", "confirmed_at", "checked_in_at", "cancelled_at", "no_show_at",
             "cancel_reason", "rescheduled_from_code", "created_at", "updated_at",
         )

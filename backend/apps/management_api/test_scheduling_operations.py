@@ -374,7 +374,7 @@ class BranchSchedulingManagementTests(APITestCase):
     def test_check_in_is_rejected_before_check_in_window(self):
         appointment = self.create_appointment(
             "APT-CHECK-IN-TOO-EARLY",
-            starts_at=timezone.now() + timedelta(hours=2),
+            starts_at=timezone.now() + timedelta(hours=2, minutes=1),
         )
         self.client.force_authenticate(self.branch_admin)
 
@@ -407,9 +407,56 @@ class BranchSchedulingManagementTests(APITestCase):
         appointment = self.create_appointment("APT-NO-SHOW", starts_at=timezone.now() + timedelta(hours=1))
         self.client.force_authenticate(self.branch_admin)
 
-        response = self.client.post(reverse("management:appointment-no-show", kwargs={"public_code": appointment.public_code}))
+        response = self.client.post(
+            reverse("management:appointment-no-show", kwargs={"public_code": appointment.public_code}),
+            {"reason": "Patient has not arrived."},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_no_show_requires_reason(self):
+        appointment = self.create_appointment(
+            "APT-NO-SHOW-REASON",
+            starts_at=timezone.now() - timedelta(hours=1),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse("management:appointment-no-show", kwargs={"public_code": appointment.public_code}),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
+
+    def test_no_show_records_required_reason_in_history_and_audit(self):
+        appointment = self.create_appointment(
+            "APT-NO-SHOW-AUDIT",
+            starts_at=timezone.now() - timedelta(hours=1),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.post(
+            reverse("management:appointment-no-show", kwargs={"public_code": appointment.public_code}),
+            {"reason": "Không liên hệ được với bệnh nhân."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.NO_SHOW)
+        self.assertEqual(
+            appointment.status_histories.latest("id_appointment_status_history").reason,
+            "Không liên hệ được với bệnh nhân.",
+        )
+        audit = AuditEvent.objects.filter(
+            resource_id=str(appointment.pk),
+            action="APPOINTMENT_STATUS_CHANGED",
+        ).latest("created_at")
+        self.assertEqual(audit.after_data["reason"], "Không liên hệ được với bệnh nhân.")
 
     def test_reschedule_creates_successor_and_is_idempotent(self):
         self.create_shift()

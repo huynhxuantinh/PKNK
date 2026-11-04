@@ -82,7 +82,7 @@ ALLOWED_ACTORS = {
 
 
 class AppointmentService:
-    CHECK_IN_EARLY_MINUTES = 30
+    CHECK_IN_EARLY_MINUTES = 120
 
     @classmethod
     def expire_due_holds(cls, *, now=None, branch_id=None):
@@ -173,7 +173,7 @@ class AppointmentService:
             raise ValidationError("Người dùng không có quyền quản lý lịch hẹn này.")
 
     @staticmethod
-    def _validate_time_rules(appointment, to_status, actor_type, occurred_at):
+    def _validate_time_rules(appointment, to_status, actor_type, occurred_at, reason=None):
         if appointment.status == Appointment.Status.HELD and to_status in {
             Appointment.Status.PENDING,
             Appointment.Status.CONFIRMED,
@@ -198,6 +198,8 @@ class AppointmentService:
                 raise ValidationError("Đã quá hạn bệnh nhân được phép hủy lịch.")
 
         if to_status == Appointment.Status.NO_SHOW:
+            if not reason or not reason.strip():
+                raise ValidationError("Đánh dấu không đến phải có lý do.")
             grace = timedelta(
                 minutes=appointment.branch.organization.no_show_grace_minutes
             )
@@ -213,7 +215,7 @@ class AppointmentService:
             )
             if occurred_at < check_in_opens_at:
                 raise ValidationError(
-                    "Chỉ có thể check-in trong vòng 30 phút trước giờ hẹn."
+                    "Chỉ có thể check-in trong vòng 2 giờ trước giờ hẹn."
                 )
             if occurred_at > check_in_closes_at:
                 raise ValidationError(
@@ -258,7 +260,9 @@ class AppointmentService:
             actor_type,
             actor_user,
         )
-        cls._validate_time_rules(appointment, to_status, actor_type, occurred_at)
+        cls._validate_time_rules(
+            appointment, to_status, actor_type, occurred_at, reason=reason
+        )
         if to_status == Appointment.Status.COMPLETED:
             from apps.clinical.services import validate_appointment_completion
 
@@ -304,7 +308,10 @@ class AppointmentService:
             resource_type="Appointment",
             resource_id=appointment.pk,
             before_data={"status": from_status},
-            after_data={"status": to_status},
+            after_data={
+                "status": to_status,
+                **({"reason": reason.strip()} if reason else {}),
+            },
             request=request,
         )
         if notify:

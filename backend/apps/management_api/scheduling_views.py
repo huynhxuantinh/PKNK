@@ -283,7 +283,10 @@ class BranchAppointmentCalendarAPIView(ManagementAPIView):
             branch=branch,
             starts_at__lt=data["date_to"],
             occupied_until__gt=data["date_from"],
-        ).select_related("patient_profile__user", "dentist__user", "chair", "rescheduled_from")
+        ).select_related(
+            "branch__organization", "patient_profile__user", "dentist__user",
+            "chair", "rescheduled_from",
+        )
         if data.get("status"):
             appointments = appointments.filter(status=data["status"])
         if data.get("dentist_id"):
@@ -319,7 +322,8 @@ class OrganizationAppointmentListAPIView(ManagementAPIView):
             starts_at__lt=data["date_to"],
             occupied_until__gt=data["date_from"],
         ).select_related(
-            "branch", "patient_profile__user", "dentist__user", "chair", "rescheduled_from"
+            "branch__organization", "patient_profile__user", "dentist__user",
+            "chair", "rescheduled_from",
         )
         if data.get("branch_id"):
             appointments = appointments.filter(branch_id=data["branch_id"])
@@ -405,10 +409,16 @@ class AppointmentRescheduleSlotsAPIView(ManagementAPIView):
 
 class AppointmentActionAPIView(ManagementAPIView):
     serializer_class = CalendarAppointmentSerializer
+    request_serializer_class = None
     target_status = None
 
     @extend_schema(request=None, responses={200: CalendarAppointmentSerializer})
     def post(self, request, public_code):
+        reason = None
+        if self.request_serializer_class is not None:
+            payload = self.request_serializer_class(data=request.data)
+            payload.is_valid(raise_exception=True)
+            reason = payload.validated_data["reason"]
         appointment = scoped_appointment(request.user, public_code)
         try:
             changed = AppointmentService.transition_status(
@@ -416,6 +426,7 @@ class AppointmentActionAPIView(ManagementAPIView):
                 to_status=self.target_status,
                 actor_type=actor_type_for(request.user, appointment),
                 actor_user=request.user,
+                reason=reason,
                 request=request,
             )
         except DjangoValidationError as error:
@@ -432,6 +443,7 @@ class AppointmentCheckInAPIView(AppointmentActionAPIView):
 
 
 class AppointmentNoShowAPIView(AppointmentActionAPIView):
+    request_serializer_class = CancellationSerializer
     target_status = Appointment.Status.NO_SHOW
 
 

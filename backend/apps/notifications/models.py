@@ -10,6 +10,7 @@ class Notification(models.Model):
         APPOINTMENT_PENDING_REVIEW = "APPOINTMENT_PENDING_REVIEW", "Lịch hẹn chờ xác nhận"
         APPOINTMENT_CONFIRMED = "APPOINTMENT_CONFIRMED", "Lịch hẹn đã xác nhận"
         APPOINTMENT_CANCELLED = "APPOINTMENT_CANCELLED", "Lịch hẹn đã hủy"
+        APPOINTMENT_NO_SHOW = "APPOINTMENT_NO_SHOW", "Lịch hẹn được đánh dấu không đến"
         APPOINTMENT_RESCHEDULED = "APPOINTMENT_RESCHEDULED", "Lịch hẹn đã dời"
         APPOINTMENT_REMINDER_24H = "APPOINTMENT_REMINDER_24H", "Nhắc lịch trước 24 giờ"
         APPOINTMENT_REMINDER_2H = "APPOINTMENT_REMINDER_2H", "Nhắc lịch trước 2 giờ"
@@ -44,6 +45,7 @@ class Notification(models.Model):
                     "APPOINTMENT_PENDING_REVIEW",
                     "APPOINTMENT_CONFIRMED",
                     "APPOINTMENT_CANCELLED",
+                    "APPOINTMENT_NO_SHOW",
                     "APPOINTMENT_RESCHEDULED",
                     "APPOINTMENT_REMINDER_24H",
                     "APPOINTMENT_REMINDER_2H",
