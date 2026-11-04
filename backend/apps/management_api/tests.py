@@ -1437,6 +1437,75 @@ class ManagementAPITests(APITestCase):
         chair.refresh_from_db()
         self.assertTrue(chair.is_active)
 
+    def move_appointment_to_status(self, public_code, status):
+        appointment = Appointment.objects.get(public_code=public_code)
+        now = timezone.now()
+        appointment.starts_at = now - timedelta(minutes=10)
+        appointment.ends_at = now + timedelta(minutes=20)
+        appointment.occupied_until = appointment.ends_at
+        appointment.status = status
+        appointment.save(
+            update_fields=["starts_at", "ends_at", "occupied_until", "status"]
+        )
+        return appointment
+
+    def test_cannot_deactivate_service_with_in_progress_appointment(self):
+        self.create_dentist_with_future_appointment("APT-SERVICE-IN-PROGRESS")
+        appointment = self.move_appointment_to_status(
+            "APT-SERVICE-IN-PROGRESS", Appointment.Status.IN_PROGRESS
+        )
+        service = appointment.branch_service.service
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:service-detail", kwargs={"service_id": service.pk}),
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        service.refresh_from_db()
+        self.assertTrue(service.is_active)
+
+    def test_cannot_deactivate_branch_service_with_checked_in_appointment(self):
+        self.create_dentist_with_future_appointment("APT-BRANCH-SERVICE-CHECKED-IN")
+        appointment = self.move_appointment_to_status(
+            "APT-BRANCH-SERVICE-CHECKED-IN", Appointment.Status.CHECKED_IN
+        )
+        branch_service = appointment.branch_service
+        self.client.force_authenticate(self.branch_admin)
+
+        response = self.client.patch(
+            reverse(
+                "management:branch-service-detail",
+                kwargs={"branch_service_id": branch_service.pk},
+            ),
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        branch_service.refresh_from_db()
+        self.assertTrue(branch_service.is_active)
+
+    def test_can_deactivate_service_after_appointment_completed(self):
+        self.create_dentist_with_future_appointment("APT-SERVICE-COMPLETED")
+        appointment = self.move_appointment_to_status(
+            "APT-SERVICE-COMPLETED", Appointment.Status.COMPLETED
+        )
+        service = appointment.branch_service.service
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:service-detail", kwargs={"service_id": service.pk}),
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        service.refresh_from_db()
+        self.assertFalse(service.is_active)
+
     def test_inactive_membership_is_denied(self):
         Membership.objects.filter(user=self.branch_admin).update(is_active=False)
         self.client.force_authenticate(self.branch_admin)

@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.audit.services import AuditService
@@ -8,10 +9,23 @@ from .exceptions import ManagementConflict
 
 
 def active_future_appointments(**filters):
+    """Active appointments that still depend on the current assignment.
+
+    A started appointment must block too: its service is recorded after the
+    slot began, so deactivating the service then would leave the dentist
+    unable to finish the encounter.
+    """
     return Appointment.objects.select_for_update().filter(
         status__in=ACTIVE_APPOINTMENT_STATUSES,
-        starts_at__gte=timezone.now(),
         **filters,
+    ).filter(
+        Q(starts_at__gte=timezone.now())
+        | Q(
+            status__in=[
+                Appointment.Status.CHECKED_IN,
+                Appointment.Status.IN_PROGRESS,
+            ]
+        )
     )
 
 

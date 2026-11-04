@@ -206,7 +206,7 @@ class BranchDetailAPIView(ManagementAPIView):
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data.get("is_active") is False and branch.is_active:
             ensure_no_active_future_appointments(
-                "Không thể ngưng chi nhánh còn lịch tương lai.", branch=branch
+                "Không thể ngưng chi nhánh còn lịch tương lai hoặc lượt khám đang thực hiện.", branch=branch
             )
         code = serializer.validated_data.get("code")
         if code and Branch.objects.filter(organization=branch.organization, code=code).exclude(pk=branch.pk).exists():
@@ -398,7 +398,7 @@ class ChairDetailAPIView(ManagementAPIView):
             raise ValidationError({"code": "Mã ghế/phòng đã tồn tại."})
         if serializer.validated_data.get("is_active") is False and chair.is_active:
             ensure_no_active_future_appointments(
-                "Không thể ngưng ghế/phòng còn lịch tương lai.", chair=chair
+                "Không thể ngưng ghế/phòng còn lịch tương lai hoặc lượt khám đang thực hiện.", chair=chair
             )
         serializer.save()
         audit_model_change(request=request, instance=chair, action="CHAIR_UPDATED")
@@ -449,7 +449,7 @@ class ServiceDetailAPIView(ManagementAPIView):
             raise ValidationError({"code": "Mã dịch vụ đã tồn tại."})
         if serializer.validated_data.get("is_active") is False and service.is_active:
             ensure_no_active_future_appointments(
-                "Không thể ngưng dịch vụ còn lịch tương lai.", branch_service__service=service
+                "Không thể ngưng dịch vụ còn lịch tương lai hoặc lượt khám đang thực hiện.", branch_service__service=service
             )
         serializer.save()
         audit_model_change(request=request, instance=service, action="SERVICE_UPDATED")
@@ -497,7 +497,7 @@ class BranchServiceDetailAPIView(ManagementAPIView):
             raise ValidationError({"service_id": "Dịch vụ không thuộc organization của chi nhánh."})
         if serializer.validated_data.get("is_active") is False and row.is_active:
             ensure_no_active_future_appointments(
-                "Không thể ngưng giá/dịch vụ còn lịch tương lai.", branch_service=row
+                "Không thể ngưng giá/dịch vụ còn lịch tương lai hoặc lượt khám đang thực hiện.", branch_service=row
             )
         serializer.save()
         audit_model_change(request=request, instance=row, action="BRANCH_SERVICE_UPDATED")
@@ -790,7 +790,7 @@ class MembershipDetailAPIView(ManagementAPIView):
             ).first()
             if dentist is not None:
                 ensure_no_active_future_appointments(
-                    "Không thể gỡ nha sĩ khỏi chi nhánh đang có lịch tương lai.",
+                    "Không thể gỡ nha sĩ khỏi chi nhánh đang có lịch tương lai hoặc lượt khám đang thực hiện.",
                     dentist=dentist,
                     branch_id=membership.branch_id,
                 )
@@ -929,7 +929,7 @@ class DentistDetailAPIView(ManagementAPIView):
             raise ValidationError({"license_number": "Số giấy phép đã tồn tại trong organization."})
         if serializer.validated_data.get("is_active") is False and dentist.is_active:
             ensure_no_active_future_appointments(
-                "Không thể ngưng nha sĩ còn lịch tương lai.", dentist=dentist
+                "Không thể ngưng nha sĩ còn lịch tương lai hoặc lượt khám đang thực hiện.", dentist=dentist
             )
         serializer.save()
         audit_model_change(request=request, instance=dentist, action="DENTIST_UPDATED")
@@ -969,7 +969,7 @@ class DentistServicesAPIView(ManagementAPIView):
         removed_ids = set(DentistService.objects.filter(dentist=dentist).values_list("service_id", flat=True)) - {s.pk for s in services}
         if removed_ids:
             ensure_no_active_future_appointments(
-                "Không thể bỏ năng lực dịch vụ đang có lịch tương lai.",
+                "Không thể bỏ năng lực dịch vụ đang có lịch tương lai hoặc lượt khám đang thực hiện.",
                 dentist=dentist, branch_service__service_id__in=removed_ids,
             )
         DentistService.objects.filter(dentist=dentist).exclude(service__in=services).delete()
@@ -1049,7 +1049,7 @@ class DentistBranchesAPIView(ManagementAPIView):
         removed_ids = set(memberships.filter(is_active=True).values_list("branch_id", flat=True)) - target_ids
         if removed_ids:
             ensure_no_active_future_appointments(
-                "Không thể gỡ nha sĩ khỏi chi nhánh đang có lịch tương lai.",
+                "Không thể gỡ nha sĩ khỏi chi nhánh đang có lịch tương lai hoặc lượt khám đang thực hiện.",
                 dentist=dentist, branch_id__in=removed_ids,
             )
         memberships.exclude(branch_id__in=target_ids).update(is_active=False)
