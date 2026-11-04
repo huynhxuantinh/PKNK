@@ -93,7 +93,7 @@ LEGACY_DEMO_WARD_CODES = (
 BRANCHES = (
     {
         "code": "Q1",
-        "name": "PKNK Dental Sài Gòn",
+        "name": "DentaVie Sài Gòn",
         "ward_code": "26740",
         "ward_name": "Phường Sài Gòn",
         "address": "125 Nguyễn Huệ",
@@ -106,7 +106,7 @@ BRANCHES = (
     },
     {
         "code": "TD",
-        "name": "PKNK Dental An Khánh",
+        "name": "DentaVie An Khánh",
         "ward_code": "27094",
         "ward_name": "Phường An Khánh",
         "address": "42 Quốc Hương",
@@ -119,7 +119,7 @@ BRANCHES = (
     },
     {
         "code": "PN",
-        "name": "PKNK Dental Cầu Kiệu",
+        "name": "DentaVie Cầu Kiệu",
         "ward_code": "27058",
         "ward_name": "Phường Cầu Kiệu",
         "address": "68 Phan Xích Long",
@@ -132,7 +132,7 @@ BRANCHES = (
     },
     {
         "code": "Q3",
-        "name": "PKNK Dental Bàn Cờ",
+        "name": "DentaVie Bàn Cờ",
         "ward_code": "27154",
         "ward_name": "Phường Bàn Cờ",
         "address": "215 Võ Văn Tần",
@@ -145,7 +145,7 @@ BRANCHES = (
     },
     {
         "code": "Q5",
-        "name": "PKNK Dental An Đông",
+        "name": "DentaVie An Đông",
         "ward_code": "27316",
         "ward_name": "Phường An Đông",
         "address": "412 Nguyễn Trãi",
@@ -158,7 +158,7 @@ BRANCHES = (
     },
     {
         "code": "Q7",
-        "name": "PKNK Dental Tân Thuận",
+        "name": "DentaVie Tân Thuận",
         "ward_code": "27478",
         "ward_name": "Phường Tân Thuận",
         "address": "86 Nguyễn Thị Thập",
@@ -171,7 +171,7 @@ BRANCHES = (
     },
     {
         "code": "BT",
-        "name": "PKNK Dental Thạnh Mỹ Tây",
+        "name": "DentaVie Thạnh Mỹ Tây",
         "ward_code": "26956",
         "ward_name": "Phường Thạnh Mỹ Tây",
         "address": "214 Xô Viết Nghệ Tĩnh",
@@ -184,7 +184,7 @@ BRANCHES = (
     },
     {
         "code": "GV",
-        "name": "PKNK Dental Thông Tây Hội",
+        "name": "DentaVie Thông Tây Hội",
         "ward_code": "26898",
         "ward_name": "Phường Thông Tây Hội",
         "address": "615 Quang Trung",
@@ -197,7 +197,7 @@ BRANCHES = (
     },
     {
         "code": "TB",
-        "name": "PKNK Dental Bảy Hiền",
+        "name": "DentaVie Bảy Hiền",
         "ward_code": "26983",
         "ward_name": "Phường Bảy Hiền",
         "address": "172 Cộng Hòa",

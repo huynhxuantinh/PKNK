@@ -1,226 +1,141 @@
-# PKNK - Dental Clinic Chain
+# DentaVie — Quản lý chuỗi phòng khám nha khoa
 
-Frontend đặt lịch React chạy tại `http://127.0.0.1:5173/` với luồng chi nhánh → dịch vụ → slot → giữ và xác nhận lịch.
+DentaVie là ứng dụng quản lý phòng khám và đặt lịch khám trực tuyến. Backend dùng Django REST Framework, PostgreSQL/PostGIS, Redis và Celery; frontend dùng React, TypeScript và Vite.
 
-## API danh sách chi nhánh
+## Cấu trúc repository
 
-- `GET /api/v1/branches/`
-- `GET /api/v1/branches/{id_branch}/services/`: dịch vụ và bảng giá chi nhánh.
-- `GET /api/v1/branches/{id_branch}/dentists/?service_id=1`: nha sĩ theo dịch vụ.
-- Lọc bằng: `q`, `province_code`, `ward_code`, `service_id`, `dentist_id`, `open_now`.
-- Tìm gần bằng: `latitude`, `longitude`, `radius_km` (tối đa 100 km).
-- Phân trang bằng: `page`, `page_size` (tối đa 100 dòng).
+| Thư mục / file | Nội dung |
+| --- | --- |
+| `backend/` | Django API, nghiệp vụ và test |
+| `frontend/` | Ứng dụng React/Vite |
+| `docker/` | Cấu hình container và Caddy |
+| `scripts/` | Sao lưu, kiểm tra khôi phục và kiểm tra container |
+| `plans/` | Tài liệu kế hoạch và baseline dữ liệu |
+| `backups/` | Database dump local; không được Git theo dõi |
+| `openapi.yml` | Đặc tả API OpenAPI |
+| `compose*.yaml` | Cấu hình Docker Compose cho local và production |
 
-Backend Django 6 + Django REST Framework + PostgreSQL/PostGIS cho hệ thống quản lý và đặt lịch chuỗi phòng khám nha khoa.
+## Chạy local bằng Docker
 
-## Chạy bằng Docker
-
-Yêu cầu: Docker Desktop đang chạy.
+Cần cài Docker Desktop. Tại thư mục repository:
 
 ```powershell
-cd C:\Users\ASUS\OneDrive\Documents\PKNK
-Copy-Item .env.example .env   # bỏ qua nếu đã có .env
-# Sửa DJANGO_SECRET_KEY, DB_PASSWORD và các secret dịch vụ trong .env
+Copy-Item .env.example .env # bỏ qua nếu đã có .env
+# Điền các secret và cấu hình cần thiết trong .env
 docker compose up --build -d
 docker compose ps
-docker compose exec web python manage.py createsuperuser
 ```
 
-Khi triển khai production, đặt `DJANGO_SETTINGS_MODULE=config.settings.production`,
-`REDIS_CACHE_URL` trỏ tới Redis dùng chung và `DRF_NUM_PROXIES` đúng bằng số reverse
-proxy tin cậy phía trước Django. Không commit `.env`; file này chứa khóa Django, mật khẩu
-database, SMTP và object storage.
+Compose local khởi chạy frontend, Django, PostgreSQL/PostGIS, Redis, MinIO và Celery. Frontend chạy tại `http://127.0.0.1:5173`; API tại `http://127.0.0.1:8000`.
 
-Image backend mặc định chạy Gunicorn và tự chạy `collectstatic` trước khi khởi động.
-WhiteNoise phục vụ `/static/`; reverse proxy phía trước chịu trách nhiệm TLS và chuyển
-tiếp request. `compose.yaml` chỉ dành cho local/dev nên ghi đè về Django `runserver`.
-Image nginx của frontend chuyển tiếp `/api/`, đường dẫn quản trị và `/static/` tới service
-`web:8000`, đồng thời giữ nguyên thông tin giao thức và IP qua các header `X-Forwarded-*`.
-Production bắt buộc đặt cùng một `DJANGO_ADMIN_PATH` ngẫu nhiên (12–64 ký tự chữ, số,
-`_` hoặc `-`) cho backend và frontend; giá trị mặc định `admin` sẽ làm backend từ chối
-khởi động. `/api/docs/` và `/api/schema/` chỉ bật ở môi trường development và trả 404
-trên production. Đường dẫn quản trị ẩn không thay thế xác thực; production nên giới hạn
-thêm bằng VPN hoặc allowlist IP tại reverse proxy nếu hạ tầng hỗ trợ.
+```powershell
+docker compose logs -f web
+docker compose exec web python manage.py createsuperuser
+docker compose exec web python manage.py seed_demo
+docker compose down
+```
 
-### Chạy production bằng Docker Compose
+`docker compose down` giữ dữ liệu trong volume. Chỉ dùng `docker compose down -v` khi chủ động muốn xóa database, Redis, MinIO và các volume local. Không commit `.env` hoặc `.env.production`.
 
-Sao chép `.env.production.example` thành `.env.production`, thay toàn bộ giá trị
-`replace-...` và trỏ `SITE_ADDRESS`/URL về tên miền thật. DNS của tên miền phải trỏ
-về máy chủ và cổng 80, 443 phải được mở để Caddy tự cấp HTTPS.
+### Chạy riêng frontend
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Các lệnh frontend: `npm run build`, `npm run lint`, `npm test` và `npm run preview`.
+
+## Tài khoản demo
+
+Chạy `seed_demo` để tạo tài khoản cơ bản; chạy thêm `seed_full_demo` để tạo đủ nha sĩ theo dịch vụ và chi nhánh trước khi đăng nhập. Mật khẩu chung: **`Demo123!`** (chỉ dùng local/demo).
+
+| Vai trò | Email |
+| --- | --- |
+| Bệnh nhân | `patient@demo.pknk.vn`, `patient2@demo.pknk.vn` |
+| Quản trị toàn hệ thống | `admin@demo.pknk.vn` |
+| Quản lý chi nhánh | `branch.admin.q1@demo.pknk.vn`, `branch.admin.td@demo.pknk.vn`, `branch.admin.pn@demo.pknk.vn`, `branch.admin.q3@demo.pknk.vn`, `branch.admin.q5@demo.pknk.vn`, `branch.admin.q7@demo.pknk.vn`, `branch.admin.bt@demo.pknk.vn`, `branch.admin.gv@demo.pknk.vn`, `branch.admin.tb@demo.pknk.vn` |
+| Nha sĩ | `minh.dentist@demo.pknk.vn`, `lan.dentist@demo.pknk.vn`, `huy.dentist@demo.pknk.vn`, `an.dentist@demo.pknk.vn`, `thao.dentist@demo.pknk.vn`, `khoa.dentist@demo.pknk.vn`, `nhu.dentist@demo.pknk.vn`, `phong.dentist@demo.pknk.vn`, `mai.dentist@demo.pknk.vn`, `son.dentist@demo.pknk.vn` |
+
+`seed_full_demo` bổ sung nha sĩ theo chi nhánh và chuyên môn khi thiếu người phụ trách dịch vụ. Email có dạng `staff.<mã-chi-nhánh>.<mã-chuyên-môn>@demo.pknk.vn` (ví dụ: `staff.q5.pediatric@demo.pknk.vn`); các tài khoản demo dùng chung mật khẩu `Demo123!`.
+
+Danh sách 21 nha sĩ được bổ sung trong database local:
+
+| Họ tên | Email |
+| --- | --- |
+| BS. Nguyễn Minh Anh | `staff.bt.implant@demo.pknk.vn` |
+| BS. Trần Quốc Bảo | `staff.bt.orthodontics@demo.pknk.vn` |
+| BS. Lê Ngọc Hân | `staff.bt.root_canal@demo.pknk.vn` |
+| BS. Phạm Hoàng Nam | `staff.gv.cosmetic@demo.pknk.vn` |
+| BS. Võ Thị Thanh Trúc | `staff.gv.implant@demo.pknk.vn` |
+| BS. Huỳnh Gia Huy | `staff.gv.orthodontics@demo.pknk.vn` |
+| BS. Đặng Thảo Nguyên | `staff.pn.cosmetic@demo.pknk.vn` |
+| BS. Bùi Đức Anh | `staff.pn.orthodontics@demo.pknk.vn` |
+| BS. Nguyễn Khánh Linh | `staff.q1.implant@demo.pknk.vn` |
+| BS. Trương Minh Khang | `staff.q3.implant@demo.pknk.vn` |
+| BS. Phan Bảo Ngọc | `staff.q3.orthodontics@demo.pknk.vn` |
+| BS. Lý Thành Đạt | `staff.q3.pediatric@demo.pknk.vn` |
+| BS. Đỗ Phương Thảo | `staff.q5.cosmetic@demo.pknk.vn` |
+| BS. Nguyễn Anh Tuấn | `staff.q5.orthodontics@demo.pknk.vn` |
+| BS. Trần Mỹ Duyên | `staff.q5.pediatric@demo.pknk.vn` |
+| BS. Lê Hoàng Phúc | `staff.q7.cosmetic@demo.pknk.vn` |
+| BS. Phạm Quỳnh Như | `staff.q7.implant@demo.pknk.vn` |
+| BS. Võ Nhật Minh | `staff.q7.root_canal@demo.pknk.vn` |
+| BS. Huỳnh Ngọc Diệp | `staff.tb.implant@demo.pknk.vn` |
+| BS. Đặng Quốc Hưng | `staff.tb.pediatric@demo.pknk.vn` |
+| BS. Bùi Thanh Hằng | `staff.tb.root_canal@demo.pknk.vn` |
+
+### Tạo bộ dữ liệu demo đầy đủ
+
+`seed_full_demo` bổ sung dữ liệu bệnh nhân, lịch hẹn, bệnh án, kế hoạch điều trị, hóa đơn và ảnh chi nhánh minh họa. Tên chi nhánh theo mẫu `DentaVie + tên phường`, ví dụ `DentaVie Cầu Kiệu`. Lệnh chạy được nhiều lần mà không tạo bản ghi trùng. Mặc định tạo 40 bệnh nhân và 100 lịch hẹn; có thể điều chỉnh trong khoảng 30–50 bệnh nhân và 80–150 lịch hẹn.
+
+```powershell
+$env:DJANGO_SETTINGS_MODULE = 'config.settings.development'
+$env:PYTHONIOENCODING = 'utf-8'
+.\.venv\Scripts\python.exe backend\manage.py seed_full_demo --dry-run --media-dir .\media\img
+.\.venv\Scripts\python.exe backend\manage.py seed_full_demo --patients 40 --appointments 100 --seed 42 --media-dir .\media\img
+```
+
+Chạy từ repository root trên database local đã cấu hình; kiểm tra `--dry-run` trước. `--dry-run` không ghi database hoặc file. Ảnh nguồn giữ nguyên; ảnh cơ sở/tư vấn phù hợp được tối ưu vào `frontend/public/images/demo/branches/`, kèm ghi công nguồn. Ảnh stock không được gắn vào bệnh án. Lệnh không tạo giao dịch PayOS và không gửi email. `--reset-demo` hiện bị từ chối vì lịch sử lịch hẹn, bệnh án và hóa đơn có ràng buộc append-only/immutable; hãy dựng database local/test mới nếu cần bộ dữ liệu sạch.
+
+Database Docker local `pknk` hiện đã được làm mới và seed: 9 chi nhánh, 11 dịch vụ, 31 nha sĩ (gồm 21 tài khoản bổ sung theo chi nhánh), 40 bệnh nhân, 100 lịch hẹn đủ trạng thái, 61 bệnh án, 12 kế hoạch điều trị, 32 hóa đơn và 20 payment tiền mặt. Không có giao dịch PayOS hoặc file đính kèm bệnh án demo vì thư mục nguồn không có ảnh X-quang phù hợp. Có 9 ảnh chi nhánh được tạo trong `frontend/public/images/demo/branches/` cùng `ATTRIBUTION.md`. Cả 99 cặp dịch vụ-chi nhánh hoạt động đều có nha sĩ đủ chuyên môn, được phân công và có ca trực.
+
+Muốn xóa toàn bộ database local trước khi seed lại, trước tiên xác minh đúng container/database Docker local và tạo rồi kiểm tra backup PostgreSQL. `flush` xóa mọi bản ghi trong database, gồm tài khoản, hóa đơn và lịch sử; không dùng trên Neon/production. `flush` không xóa object MinIO: nếu cần dọn file cũ, hãy sao lưu riêng và chỉ thao tác trên MinIO local đã xác minh. Không xóa file nguồn trong `media/img`.
+
+Không chạy lệnh seed lên Neon production. Để chuẩn bị dữ liệu cho Neon demo, dùng database riêng mới có tên chứa `demo` hoặc `seed`, xác minh database không có tài khoản/lịch/hóa đơn ngoài demo, rồi mới cấp quyền remote bằng `--allow-remote-demo-seed`. Ảnh công khai cần được đưa vào build Cloudflare Pages; tệp đính kèm bệnh án riêng tư thuộc storage backend R2 và không được thay bằng ảnh stock.
+
+## Kiểm tra và tài liệu API
+
+```powershell
+docker compose exec web python manage.py test apps
+docker compose exec web python manage.py makemigrations --check --dry-run
+```
+
+Tài liệu API tương tác trong development: `http://127.0.0.1:8000/api/docs/`. Đặc tả đầy đủ nằm ở [`openapi.yml`](openapi.yml). API health: `http://127.0.0.1:8000/api/health/`; Django Admin: `http://127.0.0.1:8000/admin/`; MinIO console: `http://127.0.0.1:9001/`.
+
+Các nhóm API chính gồm xác thực, chi nhánh/dịch vụ, đặt và quản lý lịch, hồ sơ bệnh nhân, bệnh án và tệp đính kèm, hóa đơn và thanh toán. API yêu cầu đăng nhập dùng `Authorization: Bearer <access_token>`. Quyền truy cập hồ sơ được giới hạn theo bệnh nhân, nha sĩ và phạm vi chi nhánh.
+
+## Production
+
+Sao chép `.env.production.example` thành `.env.production`, thay toàn bộ giá trị mẫu và cấu hình tên miền/DNS trước khi chạy. Cổng 80 và 443 cần truy cập được để Caddy cấp HTTPS.
 
 ```bash
 docker compose --env-file .env.production -f compose.production.yaml up -d --build
 docker compose --env-file .env.production -f compose.production.yaml ps
 ```
 
-Stack production gồm Caddy, frontend Nginx, Gunicorn, Celery worker, Celery beat,
-PostGIS, Redis và MinIO. Chỉ Caddy mở cổng ra host; database, cache và object storage
-nằm trong mạng Docker nội bộ. Beat chạy lịch hết hạn hold, nhắc lịch và đối soát payOS
-mỗi 5 phút. Không commit `.env.production`; cần sao lưu định kỳ các volume PostgreSQL
-và MinIO.
+Production dùng Caddy, Nginx, Gunicorn, Celery worker/beat, PostgreSQL/PostGIS, Redis và MinIO. Chỉ Caddy mở cổng ra host; dữ liệu database và MinIO nằm trong Docker volumes. Sao lưu định kỳ và giữ các khóa Django, database, SMTP, MinIO và PayOS trong secret/environment của máy chủ. Không dùng tài khoản demo hoặc secret mẫu ở production. API docs chỉ bật trong development.
 
-Tạo dữ liệu demo (có thể chạy lại, không nhân bản dữ liệu):
-
-```powershell
-docker compose exec web python manage.py seed_demo
-```
-
-## Tài khoản demo
-
-Chạy `seed_demo` trước khi đăng nhập. Tất cả tài khoản dưới đây dùng chung mật
-khẩu **`Demo123!`** (chỉ dùng cho môi trường demo/local).
-
-| Vai trò | Họ tên | Email |
-| --- | --- | --- |
-| Bệnh nhân | Nguyễn Minh Anh | `patient@demo.pknk.vn` |
-| Bệnh nhân | Trần Gia Hân | `patient2@demo.pknk.vn` |
-| Quản trị toàn hệ thống | Quản trị PKNK Dental | `admin@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Sài Gòn | `branch.admin.q1@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental An Khánh | `branch.admin.td@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Cầu Kiệu | `branch.admin.pn@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Bàn Cờ | `branch.admin.q3@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental An Đông | `branch.admin.q5@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Tân Thuận | `branch.admin.q7@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Thạnh Mỹ Tây | `branch.admin.bt@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Thông Tây Hội | `branch.admin.gv@demo.pknk.vn` |
-| Quản lý chi nhánh | Quản lý PKNK Dental Bảy Hiền | `branch.admin.tb@demo.pknk.vn` |
-| Nha sĩ | BS. Nguyễn Hoàng Minh | `minh.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Trần Ngọc Lan | `lan.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Lê Quốc Huy | `huy.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Phạm Thùy An | `an.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Đặng Minh Thảo | `thao.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Vũ Anh Khoa | `khoa.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Nguyễn Quỳnh Như | `nhu.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Trương Quốc Phong | `phong.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Lê Thanh Mai | `mai.dentist@demo.pknk.vn` |
-| Nha sĩ | BS. Phan Hoàng Sơn | `son.dentist@demo.pknk.vn` |
-
-Sau đăng nhập, bệnh nhân vào trang chủ; nha sĩ vào màn hình chọn chi nhánh làm
-việc; quản trị và quản lý chi nhánh vào khu vực quản lý.
-
-- API health: `http://127.0.0.1:8000/api/health/`
-- React đặt lịch: `http://127.0.0.1:5173/`
-- Swagger: `http://127.0.0.1:8000/api/docs/`
-- Admin: `http://127.0.0.1:8000/admin/`
-- MinIO console: `http://127.0.0.1:9001/`
-- PostgreSQL từ máy host: `127.0.0.1:5433`
-
-Xem log và dừng hệ thống:
-
-```powershell
-docker compose logs -f web
-docker compose down
-```
-
-`docker compose down` giữ lại dữ liệu. Chỉ dùng `docker compose down -v` khi muốn xóa cả database Docker.
-
-## Backup và kiểm tra restore database
+## Backup và khôi phục kiểm thử
 
 ```powershell
 $backup = .\scripts\backup_database.ps1
 .\scripts\restore_verify_database.ps1 -BackupPath $backup.BackupPath
 ```
 
-Backup dùng PostgreSQL custom format và SHA-256. Restore chỉ được phép vào database kiểm thử có tiền tố `pknk_restore_`; script đối chiếu số bản ghi, schema, migration và PostGIS extension với database nguồn.
+Script khôi phục chỉ chấp nhận database kiểm thử có tiền tố `pknk_restore_`. Các file dump trong `backups/` chứa dữ liệu và được Git bỏ qua; không xóa nếu chưa xác nhận bản sao lưu khác đã an toàn.
 
-## Các dịch vụ
+## Tích hợp thanh toán và email
 
-- `frontend`: React/Vite, proxy API sang Django trong Docker.
-
-## Deploy frontend
-
-Frontend production được phục vụ bằng Nginx và đã có CSP, chống nhúng trang,
-`nosniff`, `Referrer-Policy` và `Permissions-Policy`. Build image bằng:
-
-```bash
-docker build -f frontend/Dockerfile -t dentavie-frontend frontend
-```
-
-Đặt TLS/HSTS ở reverse proxy hoặc nền tảng deploy phía trước container. CSP chỉ
-cho phép API cùng origin, tile bản đồ HTTPS và dịch vụ định tuyến OSRM.
-- `web`: Django API; tự chạy migration khi khởi động.
-- `db`: PostgreSQL 16 + PostGIS 3.4.
-- `redis`: broker/result backend của Celery.
-- `minio`: kho S3 private cho ảnh X-quang và tài liệu bệnh án.
-- `storage-init`: tự tạo bucket private và bật versioning.
-- `worker`: xử lý tác vụ nền.
-- `beat`: quét chỗ giữ lịch hết hạn mỗi phút.
-
-## API đặt lịch
-
-- `GET /api/v1/scheduling/slots/?branch_service_id=1&date=2026-10-10`
-- `POST /api/v1/scheduling/appointments/holds/`
-- `POST /api/v1/scheduling/appointments/{public_code}/confirm/`
-
-## Patient appointment API
-
-- `GET /api/v1/patients/me/appointments/?scope=UPCOMING|HISTORY`
-- `GET /api/v1/patients/me/appointments/{public_code}/`
-- `POST /api/v1/patients/me/appointments/{public_code}/cancel/`
-- `POST /api/v1/patients/me/appointments/{public_code}/reschedule/`
-
-Patients can only cancel or reschedule their own `PENDING` or `CONFIRMED`
-appointments before the organization cutoff, which defaults to 24 hours.
-
-Khi tạo chỗ giữ, hệ thống tự chọn nha sĩ nếu không truyền `dentist_id`, đồng thời luôn tự chọn ghế/phòng.
-Hồ sơ bệnh nhân luôn được xác định bằng tài khoản đang đăng nhập; API không nhận ID hồ sơ.
-
-## API chi nhánh
-
-- `GET /api/v1/branches/{id_branch}/`: xem chi tiết chi nhánh công khai.
-
-Response gồm địa chỉ, tọa độ bản đồ, giờ mở cửa, ảnh, dịch vụ/giá và nha sĩ đang hoạt động tại chi nhánh.
-
-## API hồ sơ bệnh nhân
-
-- `GET /api/v1/patients/me/`: xem hồ sơ cá nhân.
-- `PATCH /api/v1/patients/me/`: sửa họ tên, ngày sinh, giới tính, SĐT và địa chỉ.
-
-Mỗi tài khoản chỉ có một hồ sơ bệnh nhân và chỉ thao tác trên hồ sơ của chính mình.
-
-## API hồ sơ khám và file bệnh án
-
-- Nha sĩ: `GET/POST /api/v1/dentist/me/clinical-encounters/{id}/attachments/`
-- Nha sĩ: `GET/PATCH/DELETE /api/v1/dentist/me/clinical-attachments/{id}/`
-- Nha sĩ: `GET /api/v1/dentist/me/clinical-attachments/{id}/download/`
-- Bệnh nhân: `GET /api/v1/patients/me/clinical-encounters/`
-- Bệnh nhân: `GET /api/v1/patients/me/clinical-encounters/{id}/`
-- Bệnh nhân: `GET /api/v1/patients/me/clinical-attachments/{id}/download/`
-
-Chấp nhận JPG, PNG, PDF và DICOM, tối đa 15 MB. File được lưu bằng tên ngẫu nhiên trong bucket private; API không trả storage key hoặc URL MinIO. Nha sĩ chỉ sửa/xóa file khi bệnh án còn `DRAFT`; bệnh nhân chỉ xem file của lượt khám `COMPLETED` có bệnh án `FINALIZED`. Mọi lượt xem và tải xuống đều được audit.
-
-## API xác thực cho React
-
-- `POST /api/v1/auth/register/`
-- `POST /api/v1/auth/login/`
-- `POST /api/v1/auth/refresh/`
-- `POST /api/v1/auth/logout/`
-- `GET /api/v1/auth/me/`
-- `POST /api/v1/auth/email-verification/confirm/`
-- `POST /api/v1/auth/email-verification/resend/`
-- `POST /api/v1/auth/password-reset/request/`
-- `POST /api/v1/auth/password-reset/confirm/`
-
-Các API cần đăng nhập sử dụng header `Authorization: Bearer <access_token>`.
-Sau khi đăng ký, hệ thống gửi link xác minh có hiệu lực 24 giờ. Tài khoản chưa xác minh vẫn đăng nhập được nhưng không thể giữ hoặc xác nhận lịch hẹn.
-
-Link đặt lại mật khẩu có hiệu lực 60 phút và chỉ dùng một lần. API yêu cầu đặt lại luôn trả phản hồi chung, không tiết lộ email có tồn tại trong hệ thống. Đổi mật khẩu thành công sẽ vô hiệu các JWT đã cấp trước đó.
-
-Môi trường phát triển dùng email console. Muốn gửi email thật, đổi `EMAIL_BACKEND` sang `django.core.mail.backends.smtp.EmailBackend` và cấu hình các biến `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` trong `.env`.
-
-## Thanh toán payOS
-
-Chỉ đặt `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` và `PAYOS_CHECKSUM_KEY` thật trong
-`.env` của môi trường chạy; không commit các giá trị này. Cập nhật
-`PAYOS_RETURN_URL` và `PAYOS_CANCEL_URL` sang HTTPS của frontend khi deploy.
-Sequence `order_code` được khởi tạo từ `202610260000000` để tách dải mã của
-PKNK khỏi các hệ thống khác có thể dùng chung tài khoản payOS.
-
-- Bệnh nhân tạo link: `POST /api/v1/patients/me/invoices/{id}/payos/`.
-- Webhook công khai: `POST /api/v1/payments/payos/webhook/`.
-- URL webhook production phải là HTTPS và truy cập được từ Internet, ví dụ
-  `https://api.example.com/api/v1/payments/payos/webhook/`.
-
-Đăng ký URL đó trong kênh thanh toán payOS hoặc gọi `webhooks.confirm(...)`
-bằng SDK ở môi trường đã nạp biến bí mật. Không coi query redirect là kết quả
-thanh toán; hệ thống chỉ ghi nhận sau webhook hợp lệ hoặc tác vụ đối soát.
+Local mặc định ghi email vào console. Muốn gửi email thật, cấu hình SMTP trong `.env`. Chỉ cấu hình thông tin PayOS thật trong secret của môi trường chạy; dùng URL HTTPS cho `PAYOS_RETURN_URL`, `PAYOS_CANCEL_URL` và webhook. Webhook công khai là `POST /api/v1/payments/payos/webhook/`. Chỉ webhook hợp lệ hoặc quy trình đối soát mới xác nhận thanh toán; không dựa vào URL redirect để đánh dấu hóa đơn đã thanh toán.
