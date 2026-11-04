@@ -256,6 +256,12 @@ class BookingService:
                             request=request,
                         )
                         return appointment
+                except Dentist.DoesNotExist:
+                    # This dentist was disabled after the availability check.
+                    break
+                except Chair.DoesNotExist:
+                    # This chair was disabled after the availability check.
+                    continue
                 except IntegrityError as error:
                     constraint = cls._constraint_name(error)
                     if (

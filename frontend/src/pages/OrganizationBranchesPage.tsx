@@ -162,12 +162,14 @@ export function OrganizationBranchesPage() {
         });
       })
       .catch((caught) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          setBranchDetails({ dentists: 0, activeServices: 0, activeChairs: 0 });
           setDetailsError(
             caught instanceof Error
               ? caught.message
               : "Không thể tải thông tin vận hành chi nhánh.",
           );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setDetailsLoading(false);
@@ -211,6 +213,13 @@ export function OrganizationBranchesPage() {
     setWards([]);
     setFormError("");
     setModalOpen(true);
+  }
+
+  function openBranchDetails(branch: OrganizationBranch) {
+    setBranchDetails({ dentists: 0, activeServices: 0, activeChairs: 0 });
+    setDetailsLoading(true);
+    setDetailsError("");
+    setSelectedBranch(branch);
   }
 
   function openEdit(branch: OrganizationBranch) {
@@ -425,7 +434,7 @@ export function OrganizationBranchesPage() {
                   <div className="organization-row-actions">
                     <button
                       type="button"
-                      onClick={() => setSelectedBranch(branch)}
+                      onClick={() => openBranchDetails(branch)}
                     >
                       Chi tiết
                     </button>
@@ -534,7 +543,7 @@ export function OrganizationBranchesPage() {
             </dl>
             {detailsLoading ? (
               <p role="status">Đang tải tình hình vận hành...</p>
-            ) : (
+            ) : !detailsError ? (
               <section className="organization-detail-kpis">
                 <article>
                   <span>Nha sĩ hoạt động</span>
@@ -549,7 +558,7 @@ export function OrganizationBranchesPage() {
                   <strong>{branchDetails.activeChairs}</strong>
                 </article>
               </section>
-            )}
+            ) : null}
             <div className="organization-row-actions organization-detail-links">
               <Link
                 to={`/quan-ly-chi-nhanh?chi-nhanh=${selectedBranch.id_branch}`}

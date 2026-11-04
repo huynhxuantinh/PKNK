@@ -5,8 +5,11 @@ from zoneinfo import ZoneInfo
 
 from django.db import close_old_connections, transaction
 from django.test import TransactionTestCase
+from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.catalog.models import BranchService, DentistService, Service
@@ -22,7 +25,7 @@ from apps.management_api.scheduling_services import RescheduleService
 
 
 class BookingScheduleConcurrencyTests(TransactionTestCase):
-    """A schedule edit and a hold must share the dentist-row lock."""
+    """Schedule edits and holds must share their resource locks."""
 
     def setUp(self):
         province = Province.objects.create(code="79", name="HCM", full_name="HCM")
@@ -277,6 +280,118 @@ class BookingScheduleConcurrencyTests(TransactionTestCase):
         self.assertEqual(len(booking_result), 1)
         self.assertIsInstance(booking_result[0], SlotUnavailableError)
         self.assertFalse(Appointment.objects.exists())
+
+    def test_opening_hours_change_serializes_with_booking_hold(self):
+        target_weekday = self.target_date.isoweekday()
+        BranchOpeningHour.objects.filter(
+            branch=self.branch, weekday=target_weekday
+        ).update(close_time=time(18))
+        WorkShift.objects.filter(
+            branch=self.branch, dentist=self.dentist, weekday=target_weekday
+        ).update(end_time=time(18))
+        starts_at = self.starts_at.replace(hour=17, minute=30)
+
+        organization_admin = User.objects.create_user(
+            email="concurrency-org-admin@example.com",
+            password="StrongPassword!2026",
+            full_name="Organization Admin",
+            email_verified_at=timezone.now(),
+        )
+        Membership.objects.create(
+            user=organization_admin,
+            organization=self.organization,
+            role=Membership.Role.ORGANIZATION_ADMIN,
+        )
+        opening_hours = [
+            {
+                "weekday": weekday,
+                "is_closed": weekday != target_weekday,
+                "open_time": "08:00" if weekday == target_weekday else None,
+                "close_time": "17:00" if weekday == target_weekday else None,
+            }
+            for weekday in range(1, 8)
+        ]
+        slot_read = Event()
+        allow_booking_to_finish = Event()
+        update_started = Event()
+        update_finished = Event()
+        booking_result = []
+        update_result = []
+        worker_errors = []
+        original_list_slots = AvailabilityService.list_slots
+
+        def list_slots_with_pause(**kwargs):
+            options = original_list_slots(**kwargs)
+            slot_read.set()
+            self.assertTrue(allow_booking_to_finish.wait(timeout=5))
+            return options
+
+        def create_hold():
+            close_old_connections()
+            try:
+                BookingService.create_hold(
+                    patient_user=User.objects.get(pk=self.patient_user.pk),
+                    branch_service=BranchService.objects.select_related(
+                        "branch__organization", "service"
+                    ).get(pk=self.branch_service.pk),
+                    starts_at=starts_at,
+                )
+                booking_result.append("held")
+            except Exception as error:  # pragma: no cover - surfaced below
+                worker_errors.append(error)
+            finally:
+                close_old_connections()
+
+        def change_opening_hours():
+            close_old_connections()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=organization_admin)
+                update_started.set()
+                response = client.put(
+                    reverse(
+                        "management:branch-opening-hours",
+                        kwargs={"branch_id": self.branch.pk},
+                    ),
+                    {"opening_hours": opening_hours},
+                    format="json",
+                )
+                update_result.append(response.status_code)
+            except Exception as error:  # pragma: no cover - surfaced below
+                worker_errors.append(error)
+            finally:
+                update_finished.set()
+                close_old_connections()
+
+        booking_worker = Thread(target=create_hold)
+        update_worker = Thread(target=change_opening_hours)
+        with patch.object(
+            AvailabilityService,
+            "list_slots",
+            side_effect=list_slots_with_pause,
+        ):
+            booking_worker.start()
+            self.assertTrue(slot_read.wait(timeout=5))
+            update_worker.start()
+            self.assertTrue(update_started.wait(timeout=5))
+            self.assertFalse(update_finished.wait(timeout=0.2))
+            allow_booking_to_finish.set()
+            booking_worker.join(timeout=5)
+            update_worker.join(timeout=5)
+
+        self.assertFalse(booking_worker.is_alive())
+        self.assertFalse(update_worker.is_alive())
+        self.assertEqual(worker_errors, [])
+        self.assertEqual(booking_result, ["held"])
+        self.assertEqual(update_result, [status.HTTP_409_CONFLICT])
+        appointment = Appointment.objects.get(patient_profile__user=self.patient_user)
+        self.assertEqual(appointment.starts_at, starts_at)
+        self.assertEqual(
+            BranchOpeningHour.objects.get(
+                branch=self.branch, weekday=target_weekday
+            ).close_time,
+            time(18),
+        )
 
     def test_reschedule_rechecks_availability_after_concurrent_time_off(self):
         dentist_two_user = User.objects.create_user(

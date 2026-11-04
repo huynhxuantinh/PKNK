@@ -39,7 +39,6 @@ from apps.organizations.services import (
     validate_staff_role_separation,
 )
 from apps.organizations.tasks import send_staff_invitation_email
-from apps.scheduling.models import ACTIVE_APPOINTMENT_STATUSES, Appointment
 
 from .exceptions import ManagementConflict
 from .serializers import (
@@ -61,7 +60,12 @@ from .serializers import (
     StaffInvitationManagementSerializer,
     StaffInvitationPreviewSerializer,
 )
-from .services import audit_model_change, ensure_no_active_future_appointments
+from .services import (
+    active_future_appointments,
+    audit_model_change,
+    ensure_no_active_future_appointments,
+    lock_branch_opening_hours_scope,
+)
 
 
 ORG_ADMIN = [Membership.Role.ORGANIZATION_ADMIN]
@@ -199,8 +203,12 @@ class BranchDetailAPIView(ManagementAPIView):
     @extend_schema(request=BranchManagementSerializer, responses={200: BranchManagementSerializer})
     @transaction.atomic
     def patch(self, request, branch_id):
-        branch = self.branch(branch_id)
-        self.organization(branch.organization_id)
+        branch = get_object_or_404(
+            Branch.objects.select_related("organization", "province", "ward").filter(
+                organization_id__in=organization_ids_for(request.user, ORG_ADMIN)
+            ),
+            pk=branch_id,
+        )
         branch = Branch.objects.select_for_update().get(pk=branch.pk)
         serializer = BranchManagementSerializer(branch, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -232,15 +240,12 @@ class BranchOpeningHoursAPIView(ManagementAPIView):
     def put(self, request, branch_id):
         branch = self.branch(branch_id)
         self.organization(branch.organization_id)
+        branch = lock_branch_opening_hours_scope(branch)
         payload = OpeningHoursReplaceSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         rows = payload.validated_data["opening_hours"]
         new_hours = {row["weekday"]: row for row in rows}
-        appointments = Appointment.objects.select_for_update().filter(
-            branch=branch,
-            status__in=ACTIVE_APPOINTMENT_STATUSES,
-            starts_at__gte=timezone.now(),
-        )
+        appointments = active_future_appointments(branch=branch)
         local_tz = ZoneInfo(branch.organization.timezone)
         for appointment in appointments:
             local_start = appointment.starts_at.astimezone(local_tz)
@@ -252,7 +257,7 @@ class BranchOpeningHoursAPIView(ManagementAPIView):
                 or local_start.time() < day["open_time"]
                 or local_end.time() > day["close_time"]
             ):
-                raise ManagementConflict("Giờ mở cửa mới xung đột với lịch tương lai.")
+                raise ManagementConflict("Giờ mở cửa mới xung đột với lịch đang hoạt động.")
         BranchOpeningHour.objects.filter(branch=branch).delete()
         BranchOpeningHour.objects.bulk_create(
             [BranchOpeningHour(branch=branch, **row) for row in rows]

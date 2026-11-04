@@ -37,7 +37,12 @@ import {
   BranchServiceList,
   OpeningHoursEditor,
 } from "../components/branch-management/BranchConfigurationSections";
-import { buildHolidayPayload } from "../components/branch-management/branchConfigurationPresentation";
+import {
+  branchServiceFormValues,
+  buildBranchServicePayload,
+  buildHolidayPayload,
+  type BranchServiceFormValues,
+} from "../components/branch-management/branchConfigurationPresentation";
 import styles from "./BranchConfigurationPage.module.css";
 import "./BranchConfigurationPage.legacy.css";
 
@@ -53,11 +58,11 @@ const emptyChair = (): {
   name: string;
   resource_type: "CHAIR" | "ROOM";
 } => ({ code: "", name: "", resource_type: "CHAIR" });
-const emptyService = () => ({
+const emptyService = (): BranchServiceFormValues => ({
   service_id: "",
   price: "",
-  duration_minutes: "30",
-  buffer_minutes: "0",
+  duration_minutes: "",
+  buffer_minutes: "",
 });
 const emptyHoliday = () => ({ holiday_date: "", name: "", is_closed: true });
 
@@ -209,6 +214,9 @@ export function BranchConfigurationPage() {
       ),
     [catalog, services],
   );
+  const selectedCatalogService = catalog.find(
+    (item) => item.id_service === Number(serviceForm.service_id),
+  );
   const showSuccess = (message: string) => {
     setNotice(message);
     setError("");
@@ -281,12 +289,7 @@ export function BranchConfigurationPage() {
     event.preventDefault();
     if (!scopeReady || busy) return;
     setBusy(true);
-    const data = {
-      service_id: Number(serviceForm.service_id),
-      price: serviceForm.price,
-      duration_minutes: Number(serviceForm.duration_minutes),
-      buffer_minutes: Number(serviceForm.buffer_minutes),
-    };
+    const data = buildBranchServicePayload(serviceForm);
     try {
       if (editingService) await patchManagedBranchService(editingService, data);
       else
@@ -310,12 +313,7 @@ export function BranchConfigurationPage() {
   function editService(item: ManagedBranchService) {
     if (!scopeReady) return;
     setEditingService(item.id_branch_service);
-    setServiceForm({
-      service_id: String(item.service_id),
-      price: item.price,
-      duration_minutes: String(item.duration_minutes ?? 30),
-      buffer_minutes: String(item.buffer_minutes ?? 0),
-    });
+    setServiceForm(branchServiceFormValues(item));
   }
   async function toggleService(item: ManagedBranchService) {
     if (!scopeReady || busy) return;
@@ -573,10 +571,10 @@ export function BranchConfigurationPage() {
                   <label>
                     Phút
                     <input
-                      required
                       min="1"
                       type="number"
                       value={serviceForm.duration_minutes}
+                      placeholder={String(selectedCatalogService?.standard_duration_minutes ?? "")}
                       onChange={(event) =>
                         setServiceForm({
                           ...serviceForm,
@@ -584,14 +582,20 @@ export function BranchConfigurationPage() {
                         })
                       }
                     />
+                    <small>
+                      Để trống để kế thừa thời lượng chuẩn
+                      {selectedCatalogService
+                        ? `: ${selectedCatalogService.standard_duration_minutes} phút`
+                        : "."}
+                    </small>
                   </label>
                   <label>
                     Đệm
                     <input
-                      required
                       min="0"
                       type="number"
                       value={serviceForm.buffer_minutes}
+                      placeholder={String(selectedCatalogService?.buffer_minutes ?? "")}
                       onChange={(event) =>
                         setServiceForm({
                           ...serviceForm,
@@ -599,6 +603,12 @@ export function BranchConfigurationPage() {
                         })
                       }
                     />
+                    <small>
+                      Để trống để kế thừa thời gian đệm chuẩn
+                      {selectedCatalogService
+                        ? `: ${selectedCatalogService.buffer_minutes} phút`
+                        : "."}
+                    </small>
                   </label>
                   <button disabled={busy || !scopeReady}>
                     {editingService ? "Lưu" : "Thêm"}

@@ -3,6 +3,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.audit.services import AuditService
+from apps.locations.models import Branch
+from apps.organizations.models import Organization
 from apps.scheduling.models import ACTIVE_APPOINTMENT_STATUSES, Appointment
 
 from .exceptions import ManagementConflict
@@ -32,6 +34,12 @@ def active_future_appointments(**filters):
 def ensure_no_active_future_appointments(message, **filters):
     if active_future_appointments(**filters).exists():
         raise ManagementConflict(message)
+
+
+def lock_branch_opening_hours_scope(branch):
+    """Serialize opening-hour changes with booking holds for this organization."""
+    Organization.objects.select_for_update().get(pk=branch.organization_id)
+    return Branch.objects.select_related("organization").get(pk=branch.pk)
 
 
 def audit_model_change(
