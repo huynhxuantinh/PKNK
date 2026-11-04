@@ -780,6 +780,50 @@ export function PatientHistoryPage() {
                   <p>{encounter.aftercare_instructions}</p>
                 </section>
               )}
+              {encounter.treatment_plans.filter((plan) => plan.status !== "DRAFT").length > 0 && (
+                <section className="patient-treatment-plans" aria-label="Kế hoạch điều trị">
+                  <h3>Kế hoạch điều trị</h3>
+                  {encounter.treatment_plans
+                    .filter((plan) => plan.status !== "DRAFT")
+                    .map((plan) => (
+                      <article key={plan.id_treatment_plan}>
+                        <header>
+                          <div>
+                            <strong>{plan.title}</strong>
+                            <span>{plan.status === "ACTIVE" ? "Đang điều trị" : plan.status === "COMPLETED" ? "Hoàn thành" : "Đã hủy"}</span>
+                          </div>
+                          <strong>{Number(plan.total_estimate).toLocaleString("vi-VN")} ₫</strong>
+                        </header>
+                        {plan.description && <p>{plan.description}</p>}
+                        <ol>
+                          {plan.items.map((item) => (
+                            <li key={item.id_treatment_plan_item}>
+                              <span>{item.sequence}. {item.service_name}</span>
+                              <span>{Number(item.planned_price).toLocaleString("vi-VN")} ₫ · {item.status === "PLANNED" ? "Dự kiến" : item.status === "IN_PROGRESS" ? "Đang thực hiện" : item.status === "COMPLETED" ? "Hoàn thành" : "Đã hủy"}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </article>
+                    ))}
+                </section>
+              )}
+              {encounter.amendments.length > 0 && (
+                <section className="patient-clinical-amendments" aria-label="Bổ sung bệnh án">
+                  <h3>Bổ sung bệnh án</h3>
+                  <ol>
+                    {encounter.amendments.map((amendment) => (
+                      <li key={amendment.id_clinical_amendment}>
+                        <header>
+                          <strong>{amendment.author_name}</strong>
+                          <time dateTime={amendment.created_at}>{formatDateTime(amendment.created_at)}</time>
+                        </header>
+                        <p>{amendment.content}</p>
+                        <small>Lý do: {amendment.reason}</small>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
               {encounter.attachments.length > 0 && (
                 <div className="record-attachments">
                   <strong>Hình ảnh và tệp bệnh án</strong>

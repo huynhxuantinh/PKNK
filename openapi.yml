@@ -976,107 +976,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClinicalEncounter'
           description: ''
-  /api/v1/dentist/me/clinical-encounters/{encounter_id}/odontogram/:
-    get:
-      operationId: v1_dentist_me_clinical_encounters_odontogram_retrieve
-      parameters:
-      - in: path
-        name: encounter_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OdontogramEntry'
-          description: ''
-    post:
-      operationId: v1_dentist_me_clinical_encounters_odontogram_create
-      parameters:
-      - in: path
-        name: encounter_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OdontogramEntry'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/OdontogramEntry'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/OdontogramEntry'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OdontogramEntry'
-          description: ''
-  /api/v1/dentist/me/clinical-encounters/{encounter_id}/prescription/:
-    get:
-      operationId: v1_dentist_me_clinical_encounters_prescription_retrieve
-      parameters:
-      - in: path
-        name: encounter_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
-    post:
-      operationId: v1_dentist_me_clinical_encounters_prescription_create
-      parameters:
-      - in: path
-        name: encounter_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
   /api/v1/dentist/me/clinical-encounters/{encounter_id}/treatment-plans/:
     get:
       operationId: v1_dentist_me_clinical_encounters_treatment_plans_retrieve
@@ -1128,52 +1027,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/TreatmentPlan'
           description: ''
-  /api/v1/dentist/me/odontogram/{item_id}/:
-    patch:
-      operationId: v1_dentist_me_odontogram_partial_update
-      parameters:
-      - in: path
-        name: item_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedOdontogramEntry'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedOdontogramEntry'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedOdontogramEntry'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OdontogramEntry'
-          description: ''
-    delete:
-      operationId: v1_dentist_me_odontogram_destroy
-      parameters:
-      - in: path
-        name: item_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/v1/dentist/me/patients/{patient_profile_id}/summary/:
     get:
       operationId: v1_dentist_me_patients_summary_retrieve
@@ -1201,286 +1054,6 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
-          description: ''
-  /api/v1/dentist/me/prescription-items/{item_id}/:
-    patch:
-      operationId: v1_dentist_me_prescription_items_partial_update
-      parameters:
-      - in: path
-        name: item_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PrescriptionItem'
-          description: ''
-    delete:
-      operationId: v1_dentist_me_prescription_items_destroy
-      parameters:
-      - in: path
-        name: item_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/v1/dentist/me/prescriptions/{prescription_id}/:
-    patch:
-      operationId: v1_dentist_me_prescriptions_partial_update
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
-  /api/v1/dentist/me/prescriptions/{prescription_id}/issue/:
-    post:
-      operationId: v1_dentist_me_prescriptions_issue_create
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
-    patch:
-      operationId: v1_dentist_me_prescriptions_issue_partial_update
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
-  /api/v1/dentist/me/prescriptions/{prescription_id}/items/:
-    get:
-      operationId: v1_dentist_me_prescriptions_items_retrieve
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PrescriptionItem'
-          description: ''
-    post:
-      operationId: v1_dentist_me_prescriptions_items_create
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PrescriptionItem'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PrescriptionItem'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PrescriptionItem'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PrescriptionItem'
-          description: ''
-    patch:
-      operationId: v1_dentist_me_prescriptions_items_partial_update
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescriptionItem'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PrescriptionItem'
-          description: ''
-  /api/v1/dentist/me/prescriptions/{prescription_id}/void/:
-    post:
-      operationId: v1_dentist_me_prescriptions_void_create
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Prescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
-          description: ''
-    patch:
-      operationId: v1_dentist_me_prescriptions_void_partial_update
-      parameters:
-      - in: path
-        name: prescription_id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPrescription'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Prescription'
           description: ''
   /api/v1/dentist/me/schedule/:
     get:
@@ -4898,19 +4471,15 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-        odontogram_entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/OdontogramEntry'
-          readOnly: true
         amendments:
           type: array
           items:
             $ref: '#/components/schemas/ClinicalAmendment'
           readOnly: true
-        prescription:
-          allOf:
-          - $ref: '#/components/schemas/Prescription'
+        treatment_plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentPlan'
           readOnly: true
         created_at:
           type: string
@@ -4932,8 +4501,6 @@ components:
       - created_at
       - finalized_at
       - id_clinical_encounter
-      - odontogram_entries
-      - prescription
       - status
       - updated_at
     ClinicalEncounterStatusEnum:
@@ -5429,41 +4996,6 @@ components:
     NullEnum:
       enum:
       - null
-    OdontogramEntry:
-      type: object
-      properties:
-        id_odontogram_entry:
-          type: integer
-          readOnly: true
-        tooth_number:
-          type: integer
-          maximum: 32767
-          minimum: -32768
-        surface:
-          $ref: '#/components/schemas/SurfaceEnum'
-        condition_code:
-          type: string
-          maxLength: 50
-        treatment_code:
-          type: string
-          maxLength: 50
-        note:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-      required:
-      - condition_code
-      - created_at
-      - id_odontogram_entry
-      - surface
-      - tooth_number
-      - updated_at
     OpeningHourManagement:
       type: object
       properties:
@@ -5733,19 +5265,15 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-        odontogram_entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/OdontogramEntry'
-          readOnly: true
         amendments:
           type: array
           items:
             $ref: '#/components/schemas/ClinicalAmendment'
           readOnly: true
-        prescription:
-          allOf:
-          - $ref: '#/components/schemas/Prescription'
+        treatment_plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentPlan'
           readOnly: true
         created_at:
           type: string
@@ -5857,34 +5385,6 @@ components:
           type: string
           format: date-time
           readOnly: true
-    PatchedOdontogramEntry:
-      type: object
-      properties:
-        id_odontogram_entry:
-          type: integer
-          readOnly: true
-        tooth_number:
-          type: integer
-          maximum: 32767
-          minimum: -32768
-        surface:
-          $ref: '#/components/schemas/SurfaceEnum'
-        condition_code:
-          type: string
-          maxLength: 50
-        treatment_code:
-          type: string
-          maxLength: 50
-        note:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
     PatchedOrganizationManagement:
       type: object
       properties:
@@ -5967,79 +5467,6 @@ components:
         address_line:
           type: string
           nullable: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedPrescription:
-      type: object
-      properties:
-        id_prescription:
-          type: integer
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PrescriptionStatusEnum'
-          readOnly: true
-        instructions:
-          type: string
-        issued_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        voided_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        void_reason:
-          type: string
-          readOnly: true
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/PrescriptionItem'
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedPrescriptionItem:
-      type: object
-      properties:
-        id_prescription_item:
-          type: integer
-          readOnly: true
-        medicine_name:
-          type: string
-          maxLength: 200
-        strength:
-          type: string
-          maxLength: 100
-        dosage:
-          type: string
-          maxLength: 200
-        frequency:
-          type: string
-          maxLength: 200
-        duration:
-          type: string
-          maxLength: 200
-        quantity:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        note:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
         updated_at:
           type: string
           format: date-time
@@ -6426,20 +5853,10 @@ components:
           type: string
           format: date-time
           nullable: true
-        odontogram_entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/OdontogramEntry'
-          readOnly: true
         amendments:
           type: array
           items:
             $ref: '#/components/schemas/ClinicalAmendment'
-          readOnly: true
-        prescription:
-          allOf:
-          - $ref: '#/components/schemas/Prescription'
-          nullable: true
           readOnly: true
         treatment_plans:
           type: array
@@ -6462,8 +5879,6 @@ components:
       - dentist_name
       - examined_at
       - id_clinical_encounter
-      - odontogram_entries
-      - prescription
       - service_name
       - treatment_plans
     PatientProfile:
@@ -6590,107 +6005,6 @@ components:
       type: string
       description: |-
         * `POSTED` - Đã ghi nhận
-        * `VOID` - Đã hủy
-    Prescription:
-      type: object
-      properties:
-        id_prescription:
-          type: integer
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PrescriptionStatusEnum'
-          readOnly: true
-        instructions:
-          type: string
-        issued_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        voided_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        void_reason:
-          type: string
-          readOnly: true
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/PrescriptionItem'
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-      required:
-      - created_at
-      - id_prescription
-      - issued_at
-      - items
-      - status
-      - updated_at
-      - void_reason
-      - voided_at
-    PrescriptionItem:
-      type: object
-      properties:
-        id_prescription_item:
-          type: integer
-          readOnly: true
-        medicine_name:
-          type: string
-          maxLength: 200
-        strength:
-          type: string
-          maxLength: 100
-        dosage:
-          type: string
-          maxLength: 200
-        frequency:
-          type: string
-          maxLength: 200
-        duration:
-          type: string
-          maxLength: 200
-        quantity:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        note:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-      required:
-      - created_at
-      - dosage
-      - duration
-      - frequency
-      - id_prescription_item
-      - medicine_name
-      - quantity
-      - updated_at
-    PrescriptionStatusEnum:
-      enum:
-      - DRAFT
-      - ISSUED
-      - VOID
-      type: string
-      description: |-
-        * `DRAFT` - Bản nháp
-        * `ISSUED` - Đã phát hành
         * `VOID` - Đã hủy
     Reason:
       type: object

@@ -701,3 +701,167 @@
     margin-left: 0;
   }
 }
+
+.page :global(.clinical-workflow-panel) {
+  display: grid;
+  gap: 14px;
+}
+.page :global(.clinical-plan-card),
+.page :global(.clinical-amendment-list li) {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #dce9eb;
+  border-radius: 8px;
+  background: #fbfeff;
+}
+.page :global(.clinical-plan-card__header),
+.page :global(.clinical-plan-card__header > div),
+.page :global(.clinical-amendment-list__meta) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.page :global(.clinical-plan-card__header h3),
+.page :global(.clinical-plan-create h3),
+.page :global(.clinical-amendment-form h3) {
+  margin: 0;
+  color: #173f50;
+  font-size: 13px;
+}
+.page :global(.clinical-plan-card__header span),
+.page :global(.clinical-amendment-list time),
+.page :global(.clinical-amendment-list small) {
+  color: #718892;
+  font-size: 10px;
+}
+.page :global(.clinical-plan-card__header > strong) {
+  color: #08745c;
+  white-space: nowrap;
+}
+.page :global(.clinical-plan-details),
+.page :global(.clinical-plan-create),
+.page :global(.clinical-plan-add-item),
+.page :global(.clinical-plan-item),
+.page :global(.clinical-amendment-form) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+.page :global(.clinical-plan-items) {
+  display: grid;
+  gap: 10px;
+}
+.page :global(.clinical-plan-items h4) {
+  margin: 0;
+  color: #234a5a;
+  font-size: 11px;
+}
+.page :global(.clinical-plan-item) {
+  padding: 10px;
+  border: 1px solid #e1ecee;
+  border-radius: 6px;
+}
+.page :global(.clinical-plan-item > strong) {
+  align-self: center;
+}
+.page :global(.clinical-plan-details label),
+.page :global(.clinical-plan-create label),
+.page :global(.clinical-plan-add-item label),
+.page :global(.clinical-plan-item label),
+.page :global(.clinical-amendment-form label) {
+  display: grid;
+  gap: 5px;
+  color: #536f7a;
+  font-size: 10px;
+  font-weight: 700;
+}
+.page :global(.clinical-plan-details input),
+.page :global(.clinical-plan-details textarea),
+.page :global(.clinical-plan-create input),
+.page :global(.clinical-plan-create textarea),
+.page :global(.clinical-plan-add-item input),
+.page :global(.clinical-plan-add-item select),
+.page :global(.clinical-plan-item input),
+.page :global(.clinical-plan-item select),
+.page :global(.clinical-amendment-form textarea) {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px;
+  border: 1px solid #dce9eb;
+  border-radius: 3px;
+  background: #fff;
+  color: #173f50;
+  font: inherit;
+}
+.page :global(.clinical-plan-details textarea),
+.page :global(.clinical-plan-create textarea),
+.page :global(.clinical-amendment-form textarea) {
+  min-height: 74px;
+  resize: vertical;
+}
+.page :global(.clinical-plan-details button),
+.page :global(.clinical-plan-create button),
+.page :global(.clinical-plan-add-item button),
+.page :global(.clinical-plan-item button),
+.page :global(.clinical-plan-actions button),
+.page :global(.clinical-amendment-form button) {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #087493;
+  border-radius: 3px;
+  background: #087493;
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page :global(.clinical-plan-item button + button),
+.page :global(.clinical-plan-actions button + button) {
+  margin-left: 7px;
+  border-color: #dce9eb;
+  background: #fff;
+  color: #385763;
+}
+.page :global(.clinical-plan-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.page :global(.clinical-amendment-list) {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+.page :global(.clinical-amendment-list p) {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #385763;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.page :global(.clinical-amendment-list small) {
+  display: block;
+}
+.page :global(.clinical-plan-details button:focus-visible),
+.page :global(.clinical-plan-create button:focus-visible),
+.page :global(.clinical-plan-add-item button:focus-visible),
+.page :global(.clinical-plan-item button:focus-visible),
+.page :global(.clinical-plan-actions button:focus-visible),
+.page :global(.clinical-amendment-form button:focus-visible) {
+  outline: 3px solid rgba(8, 127, 115, 0.28);
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .page :global(.clinical-plan-details),
+  .page :global(.clinical-plan-create),
+  .page :global(.clinical-plan-add-item),
+  .page :global(.clinical-plan-item),
+  .page :global(.clinical-amendment-form) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

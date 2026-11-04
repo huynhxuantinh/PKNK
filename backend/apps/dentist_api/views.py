@@ -186,9 +186,7 @@ class DentistPatientSummaryAPIView(DentistAPIView):
             "appointment__branch__organization",
             "appointment__branch_service__service",
         ).prefetch_related(
-            "odontogram_entries",
             "amendments",
-            "prescription__items",
             "performed_services",
         )
         AuditService.record_read(

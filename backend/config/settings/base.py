@@ -298,7 +298,6 @@ SPECTACULAR_SETTINGS = {
             ("EXPIRED", "Hết thời gian giữ chỗ"),
         ],
         "ClinicalEncounterStatusEnum": ["DRAFT", "FINALIZED"],
-        "PrescriptionStatusEnum": ["DRAFT", "ISSUED", "VOID"],
         "TreatmentPlanStatusEnum": ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"],
         "TreatmentPlanItemStatusEnum": ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
     },

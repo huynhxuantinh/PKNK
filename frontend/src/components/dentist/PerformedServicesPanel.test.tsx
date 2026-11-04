@@ -29,6 +29,8 @@ function encounter(updatedAt: string): ClinicalEncounter {
     notes: '',
     aftercare_instructions: '',
     performed_services_confirmed: false,
+    amendments: [],
+    treatment_plans: [],
     performed_services: [],
     finalized_at: null,
     updated_at: updatedAt,

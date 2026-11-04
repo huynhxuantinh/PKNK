@@ -14,9 +14,6 @@ from .models import (
     ClinicalAttachment,
     ClinicalEncounter,
     ClinicalPerformedService,
-    OdontogramEntry,
-    Prescription,
-    PrescriptionItem,
     TreatmentPlan,
     TreatmentPlanItem,
 )
@@ -46,16 +43,6 @@ class ClinicalAmendmentSerializer(serializers.ModelSerializer):
         model = ClinicalAmendment
         fields = ("id_clinical_amendment", "content", "reason", "author_name", "created_at")
         read_only_fields = ("id_clinical_amendment", "author_name", "created_at")
-
-
-class OdontogramEntrySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OdontogramEntry
-        fields = (
-            "id_odontogram_entry", "tooth_number", "surface", "condition_code",
-            "treatment_code", "note", "created_at", "updated_at",
-        )
-        read_only_fields = ("id_odontogram_entry", "created_at", "updated_at")
 
 
 class ClinicalAttachmentSerializer(serializers.ModelSerializer):
@@ -160,31 +147,6 @@ class ClinicalAttachmentSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(path) if request else path
 
 
-class PrescriptionItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PrescriptionItem
-        fields = (
-            "id_prescription_item", "medicine_name", "strength", "dosage",
-            "frequency", "duration", "quantity", "note", "created_at", "updated_at",
-        )
-        read_only_fields = ("id_prescription_item", "created_at", "updated_at")
-
-
-class PrescriptionSerializer(serializers.ModelSerializer):
-    items = PrescriptionItemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Prescription
-        fields = (
-            "id_prescription", "status", "instructions", "issued_at", "voided_at",
-            "void_reason", "items", "created_at", "updated_at",
-        )
-        read_only_fields = (
-            "id_prescription", "status", "issued_at", "voided_at", "void_reason",
-            "items", "created_at", "updated_at",
-        )
-
-
 class TreatmentPlanItemSerializer(serializers.ModelSerializer):
     service_id = serializers.PrimaryKeyRelatedField(source="service", queryset=Service.objects.all())
     service_name = serializers.CharField(source="service.name", read_only=True)
@@ -248,11 +210,10 @@ class ClinicalPerformedServiceReplaceSerializer(serializers.Serializer):
 
 
 class ClinicalEncounterSerializer(serializers.ModelSerializer):
-    odontogram_entries = OdontogramEntrySerializer(many=True, read_only=True)
     attachments = ClinicalAttachmentSerializer(many=True, read_only=True)
     amendments = ClinicalAmendmentSerializer(many=True, read_only=True)
-    prescription = PrescriptionSerializer(read_only=True)
     performed_services = ClinicalPerformedServiceSerializer(many=True, read_only=True)
+    treatment_plans = TreatmentPlanSerializer(many=True, read_only=True)
 
     class Meta:
         model = ClinicalEncounter
@@ -260,23 +221,21 @@ class ClinicalEncounterSerializer(serializers.ModelSerializer):
             "id_clinical_encounter", "appointment_id", "status", "chief_complaint",
             "medical_history", "diagnosis_summary", "notes", "aftercare_instructions",
             "performed_services_confirmed", "finalized_at",
-            "odontogram_entries", "amendments", "prescription", "performed_services",
+            "amendments", "performed_services", "treatment_plans",
             "created_at", "updated_at",
             "attachments",
         )
         read_only_fields = (
             "id_clinical_encounter", "appointment_id", "status", "performed_services_confirmed", "finalized_at",
-            "odontogram_entries", "amendments", "prescription", "performed_services",
+            "amendments", "performed_services", "treatment_plans",
             "created_at", "updated_at",
             "attachments",
         )
 
 
 class PatientClinicalEncounterSerializer(serializers.ModelSerializer):
-    odontogram_entries = OdontogramEntrySerializer(many=True, read_only=True)
     attachments = ClinicalAttachmentSerializer(many=True, read_only=True)
     amendments = ClinicalAmendmentSerializer(many=True, read_only=True)
-    prescription = serializers.SerializerMethodField()
     performed_services = ClinicalPerformedServiceSerializer(many=True, read_only=True)
     service_name = serializers.CharField(
         source="appointment.service_name_snapshot", read_only=True
@@ -302,28 +261,14 @@ class PatientClinicalEncounterSerializer(serializers.ModelSerializer):
             "examined_at", "completed_at",
             "chief_complaint", "medical_history", "diagnosis_summary",
             "aftercare_instructions",
-            "finalized_at", "odontogram_entries", "amendments", "prescription",
+            "finalized_at", "amendments",
             "performed_services", "treatment_plans", "attachments",
         )
-
-    @extend_schema_field(PrescriptionSerializer(allow_null=True))
-    def get_prescription(self, obj):
-        try:
-            prescription = obj.prescription
-        except Prescription.DoesNotExist:
-            return None
-        if prescription.status not in {Prescription.Status.ISSUED, Prescription.Status.VOID}:
-            return None
-        return PrescriptionSerializer(prescription).data
 
     @extend_schema_field(TreatmentPlanSerializer(many=True))
     def get_treatment_plans(self, obj):
         plans = getattr(obj, "patient_visible_treatment_plans", [])
         return TreatmentPlanSerializer(plans, many=True).data
-
-
-class VoidPrescriptionSerializer(serializers.Serializer):
-    reason = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
 
 class TreatmentPlanStatusSerializer(serializers.Serializer):

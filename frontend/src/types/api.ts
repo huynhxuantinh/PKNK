@@ -251,8 +251,49 @@ export interface PatientClinicalEncounter {
   diagnosis_summary: string
   aftercare_instructions: string
   finalized_at: string
+  amendments: ClinicalAmendment[]
   performed_services: ClinicalPerformedService[]
+  treatment_plans: TreatmentPlan[]
   attachments: ClinicalAttachment[]
+}
+
+export interface ClinicalAmendment {
+  id_clinical_amendment: number
+  content: string
+  reason: string
+  author_name: string
+  created_at: string
+}
+
+export type TreatmentPlanStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+export type TreatmentPlanItemStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export interface TreatmentPlanItem {
+  id_treatment_plan_item: number
+  service_id: number
+  service_name: string
+  tooth_number: number | null
+  sequence: number
+  planned_price: string
+  status: TreatmentPlanItemStatus
+  note: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TreatmentPlan {
+  id_treatment_plan: number
+  originating_encounter_id: number
+  patient_profile_id: number
+  dentist_id: number
+  branch_id: number
+  title: string
+  description: string
+  status: TreatmentPlanStatus
+  total_estimate: string
+  items: TreatmentPlanItem[]
+  created_at: string
+  updated_at: string
 }
 
 export interface ClinicalAttachment {
@@ -375,6 +416,8 @@ export interface ClinicalEncounter {
   notes: string
   aftercare_instructions: string
   performed_services_confirmed: boolean
+  amendments: ClinicalAmendment[]
+  treatment_plans: TreatmentPlan[]
   performed_services: ClinicalPerformedService[]
   finalized_at: string | null
   updated_at: string

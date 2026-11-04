@@ -23,6 +23,8 @@ import { useAuth } from "../auth/AuthContext";
 import "./DentistLegacy.css";
 import { hasActiveRole } from "../auth/roles";
 import { ConfirmationModal } from "../components/ConfirmationModal";
+import { ClinicalAmendmentsPanel } from "../components/clinical/ClinicalAmendmentsPanel";
+import { TreatmentPlanPanel } from "../components/clinical/TreatmentPlanPanel";
 import { ClinicalAttachmentPanel } from "../components/dentist/ClinicalAttachmentPanel";
 import { PerformedServicesPanel } from "../components/dentist/PerformedServicesPanel";
 import {
@@ -788,6 +790,35 @@ export function DentistExaminationPage() {
                 </>
               )}
             </section>
+            {isFinalized && (
+              <>
+                <TreatmentPlanPanel
+                  encounterId={encounter.id_clinical_encounter}
+                  plans={encounter.treatment_plans}
+                  services={branchServices}
+                  onChange={(plans) =>
+                    setEncounter((current) =>
+                      current ? { ...current, treatment_plans: plans } : current,
+                    )
+                  }
+                />
+                <ClinicalAmendmentsPanel
+                  encounterId={encounter.id_clinical_encounter}
+                  amendments={encounter.amendments}
+                  canCreate
+                  onCreated={(amendment) =>
+                    setEncounter((current) =>
+                      current
+                        ? {
+                            ...current,
+                            amendments: [...current.amendments, amendment],
+                          }
+                        : current,
+                    )
+                  }
+                />
+              </>
+            )}
             <ClinicalAttachmentPanel
               encounterId={encounter.id_clinical_encounter}
               attachments={encounter.attachments}

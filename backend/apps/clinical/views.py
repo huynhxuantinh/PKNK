@@ -21,9 +21,6 @@ from apps.scheduling.services import AppointmentService
 from .models import (
     ClinicalEncounter,
     ClinicalAttachment,
-    OdontogramEntry,
-    Prescription,
-    PrescriptionItem,
     TreatmentPlan,
     TreatmentPlanItem,
 )
@@ -33,13 +30,9 @@ from .serializers import (
     ClinicalEncounterSerializer,
     ClinicalPerformedServiceReplaceSerializer,
     ClinicalPerformedServiceSerializer,
-    OdontogramEntrySerializer,
-    PrescriptionItemSerializer,
-    PrescriptionSerializer,
     TreatmentPlanItemSerializer,
     TreatmentPlanSerializer,
     TreatmentPlanStatusSerializer,
-    VoidPrescriptionSerializer,
 )
 from .services import ClinicalWorkflowService
 
@@ -80,7 +73,7 @@ class ClinicalAPIView(DentistAPIView):
             "appointment__patient_profile__user",
             "appointment__dentist__user",
         ).prefetch_related(
-            "odontogram_entries", "attachments", "amendments", "prescription__items",
+            "attachments", "amendments", "treatment_plans__items__service",
             "performed_services__branch_service__service",
         )
 
@@ -227,76 +220,6 @@ class ClinicalAmendmentListCreateAPIView(ClinicalAPIView):
         except DjangoValidationError as error:
             raise conflict(error)
         return Response({"data": self.serializer_class(amendment).data}, status=status.HTTP_201_CREATED)
-
-
-class OdontogramListCreateAPIView(ClinicalAPIView):
-    serializer_class = OdontogramEntrySerializer
-
-    def get(self, request, encounter_id):
-        encounter = self.encounter(encounter_id)
-        self.audit_read(request, encounter, "ODONTOGRAM_VIEWED", "ClinicalEncounter")
-        return Response({"data": self.serializer_class(encounter.odontogram_entries.all(), many=True).data})
-
-    @transaction.atomic
-    def post(self, request, encounter_id):
-        encounter = ClinicalEncounter.objects.select_for_update().select_related("appointment").get(
-            pk=self.encounter(encounter_id).pk
-        )
-        try:
-            ClinicalWorkflowService.ensure_draft(encounter)
-        except DjangoValidationError as error:
-            raise conflict(error)
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        entry = serializer.save(encounter=encounter)
-        self._audit_write(request, encounter, entry.pk, "ODONTOGRAM_ENTRY_CREATED")
-        return Response({"data": self.serializer_class(entry).data}, status=status.HTTP_201_CREATED)
-
-    @staticmethod
-    def _audit_write(request, encounter, resource_id, action):
-        AuditService.record_write(
-            actor_user=request.user, organization=encounter.appointment.branch.organization,
-            branch=encounter.appointment.branch, action=action,
-            resource_type="OdontogramEntry", resource_id=resource_id, request=request,
-        )
-
-
-class OdontogramDetailAPIView(ClinicalAPIView):
-    serializer_class = OdontogramEntrySerializer
-
-    def item(self, item_id):
-        return get_object_or_404(
-            OdontogramEntry.objects.select_related("encounter__appointment__branch__organization").filter(
-                encounter__in=self.scoped_encounters()
-            ), pk=item_id,
-        )
-
-    @transaction.atomic
-    def patch(self, request, item_id):
-        item = self.item(item_id)
-        encounter = ClinicalEncounter.objects.select_for_update().select_related("appointment__branch__organization").get(pk=item.encounter_id)
-        try:
-            ClinicalWorkflowService.ensure_draft(encounter)
-        except DjangoValidationError as error:
-            raise conflict(error)
-        serializer = self.serializer_class(item, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        OdontogramListCreateAPIView._audit_write(request, encounter, item.pk, "ODONTOGRAM_ENTRY_UPDATED")
-        return Response({"data": serializer.data})
-
-    @transaction.atomic
-    def delete(self, request, item_id):
-        item = self.item(item_id)
-        encounter = ClinicalEncounter.objects.select_for_update().select_related("appointment__branch__organization").get(pk=item.encounter_id)
-        try:
-            ClinicalWorkflowService.ensure_draft(encounter)
-        except DjangoValidationError as error:
-            raise conflict(error)
-        resource_id = item.pk
-        item.delete()
-        OdontogramListCreateAPIView._audit_write(request, encounter, resource_id, "ODONTOGRAM_ENTRY_DELETED")
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ClinicalAttachmentListCreateAPIView(ClinicalAPIView):
@@ -449,140 +372,6 @@ class ClinicalAttachmentDownloadAPIView(ClinicalAttachmentDetailAPIView):
             request, attachment, "CLINICAL_ATTACHMENT_DOWNLOADED", "ClinicalAttachment"
         )
         return attachment_file_response(attachment)
-
-
-class PrescriptionAPIView(ClinicalAPIView):
-    serializer_class = PrescriptionSerializer
-
-    def get(self, request, encounter_id):
-        encounter = self.encounter(encounter_id)
-        prescription = get_object_or_404(Prescription.objects.prefetch_related("items"), encounter=encounter)
-        self.audit_read(request, prescription, "PRESCRIPTION_VIEWED", "Prescription")
-        return Response({"data": self.serializer_class(prescription).data})
-
-    @transaction.atomic
-    def post(self, request, encounter_id):
-        encounter = ClinicalEncounter.objects.select_for_update().select_related("appointment").get(pk=self.encounter(encounter_id).pk)
-        if encounter.status != ClinicalEncounter.Status.DRAFT or encounter.appointment.status != Appointment.Status.IN_PROGRESS:
-            raise DentistConflict("Chỉ tạo đơn thuốc khi bệnh án đang soạn.")
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        if Prescription.objects.filter(encounter=encounter).exists():
-            raise DentistConflict("Bệnh án đã có đơn thuốc.")
-        prescription = serializer.save(encounter=encounter, created_by=request.user)
-        self._audit(request, prescription, "PRESCRIPTION_CREATED")
-        return Response({"data": self.serializer_class(prescription).data}, status=status.HTTP_201_CREATED)
-
-    @staticmethod
-    def _audit(request, prescription, action):
-        appointment = prescription.encounter.appointment
-        AuditService.record_write(
-            actor_user=request.user, organization=appointment.branch.organization,
-            branch=appointment.branch, action=action, resource_type="Prescription",
-            resource_id=prescription.pk, request=request,
-        )
-
-
-class PrescriptionDetailAPIView(ClinicalAPIView):
-    serializer_class = PrescriptionSerializer
-
-    def item(self, prescription_id):
-        return get_object_or_404(
-            Prescription.objects.select_related("encounter__appointment__branch__organization").prefetch_related("items").filter(
-                encounter__in=self.scoped_encounters()
-            ), pk=prescription_id,
-        )
-
-    @transaction.atomic
-    def patch(self, request, prescription_id):
-        prescription = Prescription.objects.select_for_update().get(pk=self.item(prescription_id).pk)
-        if prescription.status != Prescription.Status.DRAFT:
-            raise DentistConflict("Đơn thuốc đã phát hành không thể sửa.")
-        serializer = self.serializer_class(prescription, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        PrescriptionAPIView._audit(request, self.item(prescription_id), "PRESCRIPTION_UPDATED")
-        return Response({"data": serializer.data})
-
-
-class PrescriptionIssueAPIView(PrescriptionDetailAPIView):
-    def post(self, request, prescription_id):
-        prescription = self.item(prescription_id)
-        try:
-            prescription = ClinicalWorkflowService.issue_prescription(
-                prescription_id=prescription.pk, actor_user=request.user, request=request
-            )
-        except DjangoValidationError as error:
-            raise conflict(error)
-        return Response({"data": self.serializer_class(prescription).data})
-
-
-class PrescriptionVoidAPIView(PrescriptionDetailAPIView):
-    def post(self, request, prescription_id):
-        payload = VoidPrescriptionSerializer(data=request.data)
-        payload.is_valid(raise_exception=True)
-        prescription = self.item(prescription_id)
-        try:
-            prescription = ClinicalWorkflowService.void_prescription(
-                prescription_id=prescription.pk, actor_user=request.user,
-                reason=payload.validated_data["reason"], request=request,
-            )
-        except DjangoValidationError as error:
-            raise conflict(error)
-        return Response({"data": self.serializer_class(prescription).data})
-
-
-class PrescriptionItemListCreateAPIView(PrescriptionDetailAPIView):
-    serializer_class = PrescriptionItemSerializer
-
-    def get(self, request, prescription_id):
-        prescription = self.item(prescription_id)
-        self.audit_read(request, prescription, "PRESCRIPTION_ITEMS_VIEWED", "Prescription")
-        return Response({"data": self.serializer_class(prescription.items.all(), many=True).data})
-
-    @transaction.atomic
-    def post(self, request, prescription_id):
-        prescription = Prescription.objects.select_for_update().select_related("encounter__appointment__branch__organization").get(pk=self.item(prescription_id).pk)
-        if prescription.status != Prescription.Status.DRAFT:
-            raise DentistConflict("Chỉ được sửa thuốc khi đơn còn nháp.")
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        item = serializer.save(prescription=prescription)
-        PrescriptionAPIView._audit(request, prescription, "PRESCRIPTION_ITEM_CREATED")
-        return Response({"data": self.serializer_class(item).data}, status=status.HTTP_201_CREATED)
-
-
-class PrescriptionItemDetailAPIView(ClinicalAPIView):
-    serializer_class = PrescriptionItemSerializer
-
-    def item(self, item_id):
-        return get_object_or_404(
-            PrescriptionItem.objects.select_related("prescription__encounter__appointment__branch__organization").filter(
-                prescription__encounter__in=self.scoped_encounters()
-            ), pk=item_id,
-        )
-
-    @transaction.atomic
-    def patch(self, request, item_id):
-        item = self.item(item_id)
-        prescription = Prescription.objects.select_for_update().get(pk=item.prescription_id)
-        if prescription.status != Prescription.Status.DRAFT:
-            raise DentistConflict("Chỉ được sửa thuốc khi đơn còn nháp.")
-        serializer = self.serializer_class(item, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        PrescriptionAPIView._audit(request, self.item(item_id).prescription, "PRESCRIPTION_ITEM_UPDATED")
-        return Response({"data": serializer.data})
-
-    @transaction.atomic
-    def delete(self, request, item_id):
-        item = self.item(item_id)
-        prescription = Prescription.objects.select_for_update().select_related("encounter__appointment__branch__organization").get(pk=item.prescription_id)
-        if prescription.status != Prescription.Status.DRAFT:
-            raise DentistConflict("Chỉ được sửa thuốc khi đơn còn nháp.")
-        item.delete()
-        PrescriptionAPIView._audit(request, prescription, "PRESCRIPTION_ITEM_DELETED")
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TreatmentPlanListCreateAPIView(ClinicalAPIView):

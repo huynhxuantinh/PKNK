@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.db import DatabaseError, transaction
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from PIL import Image
 from rest_framework import status
@@ -22,8 +22,6 @@ from .models import (
     ClinicalAttachment,
     ClinicalEncounter,
     ClinicalPerformedService,
-    OdontogramEntry,
-    PrescriptionItem,
 )
 
 
@@ -310,16 +308,11 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(history.status_code, status.HTTP_200_OK)
         self.assertEqual(history.data["data"], [])
 
-    def test_finalized_encounter_and_odontogram_are_immutable_in_database(self):
+    def test_finalized_encounter_is_immutable_in_database(self):
         encounter = self.create_encounter(self.appointment())
-        entry = OdontogramEntry.objects.create(
-            encounter=encounter, tooth_number=11, surface="WHOLE", condition_code="CARIES"
-        )
         self.finalize(encounter)
         with self.assertRaises(DatabaseError), transaction.atomic():
             ClinicalEncounter.objects.filter(pk=encounter.pk).update(notes="tampered")
-        with self.assertRaises(DatabaseError), transaction.atomic():
-            OdontogramEntry.objects.filter(pk=entry.pk).update(note="tampered")
 
     def test_dentist_uploads_and_downloads_private_clinical_attachment(self):
         encounter = self.create_encounter(self.appointment())
@@ -475,6 +468,14 @@ class ClinicalAPITests(APITestCase):
             )
 
     def test_amendment_is_append_only(self):
+        draft = self.create_encounter(self.appointment(code="APT-AMENDMENT-DRAFT"))
+        rejected = self.client.post(
+            reverse("dentist_api:clinical-amendments", kwargs={"encounter_id": draft.pk}),
+            {"content": "Correction", "reason": "Typo"},
+            format="json",
+        )
+        self.assertEqual(rejected.status_code, status.HTTP_409_CONFLICT)
+
         encounter = self.finalize(self.create_encounter(self.appointment()))
         response = self.client.post(
             reverse("dentist_api:clinical-amendments", kwargs={"encounter_id": encounter.pk}),
@@ -482,50 +483,68 @@ class ClinicalAPITests(APITestCase):
         )
         amendment = ClinicalAmendment.objects.get()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        collection_url = reverse(
+            "dentist_api:clinical-amendments",
+            kwargs={"encounter_id": encounter.pk},
+        )
+        amendment_list = self.client.get(collection_url)
+        self.assertEqual(amendment_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(amendment_list.data["data"][0]["author_name"], self.dentist_user.full_name)
+        self.assertEqual(self.client.patch(collection_url, {"content": "Changed"}).status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(self.client.delete(collection_url).status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         with self.assertRaises(DatabaseError), transaction.atomic():
             ClinicalAmendment.objects.filter(pk=amendment.pk).update(content="tampered")
 
-    def test_prescription_issue_immutable_and_void(self):
-        encounter = self.create_encounter(self.appointment())
-        prescription_response = self.client.post(
-            reverse("dentist_api:prescription", kwargs={"encounter_id": encounter.pk}),
-            {"instructions": "After meals"}, format="json",
-        )
-        prescription_id = prescription_response.data["data"]["id_prescription"]
-        item_response = self.client.post(
-            reverse("dentist_api:prescription-items", kwargs={"prescription_id": prescription_id}),
-            {"medicine_name": "Amoxicillin", "strength": "500mg", "dosage": "1 tablet", "frequency": "3/day", "duration": "5 days", "quantity": 15},
+    def test_treatment_plan_derives_scope_and_recalculates_total(self):
+        draft_encounter = self.create_encounter(self.appointment(code="APT-PLAN-DRAFT"))
+        draft_plan = self.client.post(
+            reverse("dentist_api:treatment-plans", kwargs={"encounter_id": draft_encounter.pk}),
+            {"title": "Not allowed yet", "description": ""},
             format="json",
         )
-        self.finalize(encounter)
-        issued = self.client.post(reverse("dentist_api:prescription-issue", kwargs={"prescription_id": prescription_id}))
-        item = PrescriptionItem.objects.get()
-        with self.assertRaises(DatabaseError), transaction.atomic():
-            PrescriptionItem.objects.filter(pk=item.pk).update(quantity=99)
-        voided = self.client.post(
-            reverse("dentist_api:prescription-void", kwargs={"prescription_id": prescription_id}),
-            {"reason": "Wrong medicine"}, format="json",
-        )
-        self.assertEqual(item_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(issued.data["data"]["status"], "ISSUED")
-        self.assertEqual(voided.data["data"]["status"], "VOID")
+        self.assertEqual(draft_plan.status_code, status.HTTP_409_CONFLICT)
 
-    def test_treatment_plan_derives_scope_and_recalculates_total(self):
-        encounter = self.finalize(self.create_encounter(self.appointment()))
+        encounter = self.finalize(self.create_encounter(self.appointment(code="APT-PLAN")))
         plan_response = self.client.post(
             reverse("dentist_api:treatment-plans", kwargs={"encounter_id": encounter.pk}),
             {"title": "Root canal plan", "description": "Two visits"}, format="json",
         )
+        self.assertEqual(plan_response.status_code, status.HTTP_201_CREATED)
         plan_id = plan_response.data["data"]["id_treatment_plan"]
         item_response = self.client.post(
             reverse("dentist_api:treatment-plan-items", kwargs={"plan_id": plan_id}),
             {"service_id": self.service.pk, "tooth_number": 11, "sequence": 1, "planned_price": "1200000.00", "status": "PLANNED", "note": ""},
             format="json",
         )
+        item_id = item_response.data["data"]["id_treatment_plan_item"]
+        updated_item = self.client.patch(
+            reverse("dentist_api:treatment-plan-item-detail", kwargs={"item_id": item_id}),
+            {"sequence": 2, "planned_price": "900000.00"},
+            format="json",
+        )
+        updated_plan = self.client.patch(
+            reverse("dentist_api:treatment-plan-detail", kwargs={"plan_id": plan_id}),
+            {"title": "Updated plan", "description": "Three visits", "status": "ACTIVE"},
+            format="json",
+        )
+        invalid_transition = self.client.patch(
+            reverse("dentist_api:treatment-plan-detail", kwargs={"plan_id": plan_id}),
+            {"status": "DRAFT"},
+            format="json",
+        )
         detail = self.client.get(reverse("dentist_api:treatment-plan-detail", kwargs={"plan_id": plan_id}))
         self.assertEqual(item_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(detail.data["data"]["total_estimate"], "1200000.00")
+        self.assertEqual(updated_item.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated_plan.status_code, status.HTTP_200_OK)
+        self.assertEqual(invalid_transition.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(detail.data["data"]["title"], "Updated plan")
+        self.assertEqual(detail.data["data"]["total_estimate"], "900000.00")
         self.assertEqual(detail.data["data"]["patient_profile_id"], self.patient.pk)
+        self.client.force_authenticate(self.other_user)
+        hidden_from_other_dentist = self.client.get(
+            reverse("dentist_api:treatment-plan-detail", kwargs={"plan_id": plan_id})
+        )
+        self.assertEqual(hidden_from_other_dentist.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_patient_only_reads_own_completed_record_and_access_is_audited(self):
         appointment = self.appointment()
@@ -553,6 +572,11 @@ class ClinicalAPITests(APITestCase):
             format="json",
         )
         encounter = self.finalize(encounter)
+        amendment_response = self.client.post(
+            reverse("dentist_api:clinical-amendments", kwargs={"encounter_id": encounter.pk}),
+            {"content": "Follow-up correction", "reason": "Clarified diagnosis"},
+            format="json",
+        )
         plan_response = self.client.post(
             reverse("dentist_api:treatment-plans", kwargs={"encounter_id": encounter.pk}),
             {"title": "Root canal plan", "description": "Two visits"}, format="json",
@@ -626,6 +650,18 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(response.data["data"]["branch_name"], self.branch.name)
         self.assertEqual(len(response.data["data"]["treatment_plans"]), 1)
         self.assertEqual(
+            [plan["status"] for plan in response.data["data"]["treatment_plans"]],
+            ["ACTIVE"],
+        )
+        self.assertEqual(
+            response.data["data"]["amendments"][0]["content"],
+            amendment_response.data["data"]["content"],
+        )
+        self.assertEqual(
+            response.data["data"]["amendments"][0]["author_name"],
+            self.dentist_user.full_name,
+        )
+        self.assertEqual(
             response.data["data"]["treatment_plans"][0]["items"][0]["service_name"],
             self.service.name,
         )
@@ -644,25 +680,16 @@ class ClinicalAPITests(APITestCase):
             ).exists()
         )
 
-    def test_complete_requires_finalized_encounter_and_non_draft_prescription(self):
+    def test_complete_requires_finalized_encounter_but_not_prescription(self):
         appointment = self.appointment()
         complete_url = reverse("dentist_api:appointment-complete", kwargs={"public_code": appointment.public_code})
         missing = self.client.post(complete_url)
         encounter = self.create_encounter(appointment)
-        prescription = self.client.post(
-            reverse("dentist_api:prescription", kwargs={"encounter_id": encounter.pk}),
-            {"instructions": "Draft"}, format="json",
-        )
+        unfinalized = self.client.post(complete_url)
         self.finalize(encounter)
-        draft = self.client.post(complete_url)
-        PrescriptionItem.objects.create(
-            prescription_id=prescription.data["data"]["id_prescription"], medicine_name="Drug",
-            dosage="1", frequency="1/day", duration="1 day", quantity=1,
-        )
-        self.client.post(reverse("dentist_api:prescription-issue", kwargs={"prescription_id": prescription.data["data"]["id_prescription"]}))
         completed = self.client.post(complete_url)
         self.assertEqual(missing.status_code, status.HTTP_409_CONFLICT)
-        self.assertEqual(draft.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(unfinalized.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(completed.status_code, status.HTTP_200_OK)
         appointment.refresh_from_db()
         self.assertEqual(appointment.status, Appointment.Status.COMPLETED)
@@ -670,13 +697,6 @@ class ClinicalAPITests(APITestCase):
     def test_finalize_and_complete_is_atomic_when_completion_fails(self):
         appointment = self.appointment(code="APT-ATOMIC-FAIL")
         encounter = self.create_encounter(appointment, diagnosis="Initial diagnosis")
-        ClinicalEncounter.objects.filter(pk=encounter.pk).update(performed_services_confirmed=True)
-        self.client.post(
-            reverse("dentist_api:prescription", kwargs={"encounter_id": encounter.pk}),
-            {"instructions": "Draft prescription"},
-            format="json",
-        )
-
         response = self.client.post(
             reverse(
                 "dentist_api:appointment-finalize-and-complete",
@@ -693,6 +713,20 @@ class ClinicalAPITests(APITestCase):
         self.assertEqual(encounter.diagnosis_summary, "Initial diagnosis")
         self.assertEqual(encounter.notes, "")
         self.assertEqual(appointment.status, Appointment.Status.IN_PROGRESS)
+
+    def test_removed_odontogram_and_prescription_routes_are_unavailable(self):
+        for route_name, kwargs in (
+            ("dentist_api:odontogram-list", {"encounter_id": 1}),
+            ("dentist_api:odontogram-detail", {"item_id": 1}),
+            ("dentist_api:prescription", {"encounter_id": 1}),
+            ("dentist_api:prescription-detail", {"prescription_id": 1}),
+            ("dentist_api:prescription-issue", {"prescription_id": 1}),
+            ("dentist_api:prescription-void", {"prescription_id": 1}),
+            ("dentist_api:prescription-items", {"prescription_id": 1}),
+            ("dentist_api:prescription-item-detail", {"item_id": 1}),
+        ):
+            with self.subTest(route_name=route_name), self.assertRaises(NoReverseMatch):
+                reverse(route_name, kwargs=kwargs)
 
     def test_finalize_and_complete_updates_and_completes_draft(self):
         appointment = self.appointment(code="APT-ATOMIC-SUCCESS")

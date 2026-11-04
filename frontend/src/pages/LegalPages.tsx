@@ -13,7 +13,7 @@ const privacySections: LegalSection[] = [
   {
     title: '1. Thông tin DentaVie thu thập',
     paragraphs: ['DentaVie thu thập thông tin tài khoản, thông tin liên hệ, lịch hẹn và dữ liệu khám chữa bệnh được tạo trong quá trình bạn sử dụng dịch vụ.'],
-    items: ['Họ tên, email, số điện thoại và địa chỉ.', 'Thông tin lịch hẹn, chi nhánh, dịch vụ và bác sĩ.', 'Bệnh án, đơn thuốc, hình ảnh lâm sàng và thông tin thanh toán khi có phát sinh.', 'Dữ liệu kỹ thuật cần thiết để bảo mật tài khoản và ghi nhận sự đồng ý.'],
+    items: ['Họ tên, email, số điện thoại và địa chỉ.', 'Thông tin lịch hẹn, chi nhánh, dịch vụ và bác sĩ.', 'Bệnh án, hình ảnh lâm sàng và thông tin thanh toán khi có phát sinh.', 'Dữ liệu kỹ thuật cần thiết để bảo mật tài khoản và ghi nhận sự đồng ý.'],
   },
   {
     title: '2. Mục đích xử lý',

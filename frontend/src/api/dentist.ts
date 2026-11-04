@@ -1,6 +1,7 @@
 import { apiRequest } from './client'
 import type {
   ClinicalAttachment,
+  ClinicalAmendment,
   ClinicalEncounter,
   ClinicalPerformedService,
   ClinicalPerformedServiceInput,
@@ -8,6 +9,10 @@ import type {
   DentistAppointment,
   DentistPatientSummary,
   DentistScheduleResponse,
+  TreatmentPlan,
+  TreatmentPlanItem,
+  TreatmentPlanItemStatus,
+  TreatmentPlanStatus,
 } from '../types/api'
 
 export function listDentistSchedule(dateFrom: Date, dateTo: Date) {
@@ -127,6 +132,83 @@ export function uploadClinicalAttachment(
 export function deleteClinicalAttachment(attachmentId: number) {
   return apiRequest<void>(
     `/dentist/me/clinical-attachments/${attachmentId}/`,
+    { method: 'DELETE' },
+    { auth: true },
+  )
+}
+
+export function createClinicalAmendment(
+  encounterId: number,
+  input: { content: string; reason: string },
+) {
+  return apiRequest<{ data: ClinicalAmendment }>(
+    `/dentist/me/clinical-encounters/${encounterId}/amendments/`,
+    { method: 'POST', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}
+
+export function createTreatmentPlan(
+  encounterId: number,
+  input: { title: string; description: string },
+) {
+  return apiRequest<{ data: TreatmentPlan }>(
+    `/dentist/me/clinical-encounters/${encounterId}/treatment-plans/`,
+    { method: 'POST', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}
+
+export function updateTreatmentPlan(
+  planId: number,
+  input: { title?: string; description?: string; status?: TreatmentPlanStatus },
+) {
+  return apiRequest<{ data: TreatmentPlan }>(
+    `/dentist/me/treatment-plans/${planId}/`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}
+
+export function createTreatmentPlanItem(
+  planId: number,
+  input: {
+    service_id: number
+    sequence: number
+    planned_price: string
+    status: TreatmentPlanItemStatus
+    note?: string
+    tooth_number?: number | null
+  },
+) {
+  return apiRequest<{ data: TreatmentPlanItem }>(
+    `/dentist/me/treatment-plans/${planId}/items/`,
+    { method: 'POST', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}
+
+export function updateTreatmentPlanItem(
+  itemId: number,
+  input: Partial<{
+    service_id: number
+    sequence: number
+    planned_price: string
+    status: TreatmentPlanItemStatus
+    note: string
+    tooth_number: number | null
+  }>,
+) {
+  return apiRequest<{ data: TreatmentPlanItem }>(
+    `/dentist/me/treatment-plan-items/${itemId}/`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+    { auth: true },
+  )
+}
+
+export function deleteTreatmentPlanItem(itemId: number) {
+  return apiRequest<void>(
+    `/dentist/me/treatment-plan-items/${itemId}/`,
     { method: 'DELETE' },
     { auth: true },
   )

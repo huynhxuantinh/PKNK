@@ -333,7 +333,7 @@ docker compose exec web python manage.py spectacular --validate
 - `CHECKED_IN → IN_PROGRESS` khi start.
 - Không có placeholder/feature flag cho phép complete thiếu bệnh án; endpoint complete chỉ được thêm ở Bước 5b sau Bước 6.
 - Patient summary bắt buộc có appointment context trong URL/query; nha sĩ phải là người được phân công, membership phải còn hiệu lực và appointment phải thuộc đúng organization/branch. Trong khi appointment `CONFIRMED|CHECKED_IN|IN_PROGRESS`, nha sĩ được đọc lịch sử finalized của **cùng organization**; sau đó chỉ được đọc encounter do chính mình phụ trách. Không cấp quyền từ việc đoán `id_patient_profile` hoặc chỉ vì từng khám bệnh nhân.
-- Với cùng một PatientProfile khám ở hai organization, nha sĩ tenant A không được thấy encounter/plan/prescription tenant B. Mỗi lần xem tạo audit READ; quyền bị thu hồi phải có hiệu lực ngay.
+- Với cùng một PatientProfile khám ở hai organization, nha sĩ tenant A không được thấy encounter/treatment plan tenant B. Mỗi lần xem tạo audit READ; quyền bị thu hồi phải có hiệu lực ngay.
 - Không trả dữ liệu tài chính không cần thiết trong patient summary.
 
 **Test:** nha sĩ A không xem lịch nha sĩ B, membership hết hiệu lực, sai status, đọc hồ sơ có audit, cùng patient ở hai organization, đoán ID child resource.
@@ -352,12 +352,9 @@ docker compose exec web python manage.py spectacular --validate
 
 - `ClinicalEncounter`: 1–1 với Appointment, `DRAFT|FINALIZED`, chief complaint, history, diagnosis summary, notes, finalized_at/by.
 - `ClinicalAmendment`: encounter gốc, nội dung bổ sung, reason, author, created_at; append-only và không ghi đè bản finalized.
-- `OdontogramEntry`: encounter, tooth_number, surface, condition_code, treatment_code, note.
 - `ClinicalAttachment`: encounter, storage_key, original_name, mime_type, size, checksum, uploaded_by.
 - `TreatmentPlan`: organization + originating encounter bắt buộc; patient/dentist/branch được suy ra, `DRAFT|ACTIVE|COMPLETED|CANCELLED`, total estimate.
 - `TreatmentPlanItem`: plan, service, tooth data, sequence, planned price, status.
-- `Prescription`: encounter, status `DRAFT|ISSUED|VOID`, issued_at/by, instructions.
-- `PrescriptionItem`: prescription, medicine_name, strength, dosage, frequency, duration, quantity, note.
 - `ClinicalUploadSession`: object key/version duy nhất, expected checksum/size/MIME, expires_at, confirmed_at; chỉ tạo attachment sau khi server xác minh metadata object thực tế.
 
 **Endpoint:**
@@ -367,20 +364,18 @@ docker compose exec web python manage.py spectacular --validate
 - `POST /api/v1/dentist/me/clinical-encounters/{id}/finalize/`
 - CRUD odontogram/attachments khi encounter còn `DRAFT`.
 - CRUD treatment plan/item cho patient đã từng được nha sĩ khám hợp lệ.
-- CRUD prescription/item khi `DRAFT`; action `issue` và `void` riêng.
 - Patient chỉ có endpoint read-only cho hồ sơ đã finalized/issued của chính mình.
 
 **Quy tắc:**
 
 - Chỉ dentist của appointment sửa encounter.
-- Encounter/plan/prescription luôn suy ra organization/branch/patient từ appointment; mọi parent/child lookup được scope tenant trước khi lookup ID. Org Admin không mặc nhiên đọc nội dung lâm sàng; Branch Admin chỉ nhận các trường vận hành tối thiểu đã allowlist.
+- Encounter/treatment plan luôn suy ra organization/branch/patient từ appointment; mọi parent/child lookup được scope tenant trước khi lookup ID. Org Admin không mặc nhiên đọc nội dung lâm sàng; Branch Admin chỉ nhận các trường vận hành tối thiểu đã allowlist.
 - State matrix Encounter chỉ có `DRAFT → FINALIZED`; encounter finalized không VOID và không có encounter thay thế vì quan hệ 1–1 với Appointment.
 - `FINALIZED` bất biến; sửa sai trước hoặc sau Appointment COMPLETED đều bằng `ClinicalAmendment` append-only có reason/author/timestamp. Completion tiếp tục kiểm tra encounter gốc đã `FINALIZED`; amendment không làm mất hiệu lực encounter.
-- State matrix Prescription: `DRAFT → ISSUED`; `ISSUED → VOID`; bản VOID không sửa/xóa và đơn thay thế liên kết bản gốc.
-- Khi sửa child hoặc finalize, khóa parent bằng `select_for_update()`. PostgreSQL trigger chặn `INSERT/UPDATE/DELETE` Odontogram/PrescriptionItem và ghi đè attachment khi parent đã finalized/issued; header chỉ cho phép whitelist status/void metadata.
+- Khi sửa child hoặc finalize, khóa parent bằng `select_for_update()`. PostgreSQL trigger chặn thay đổi attachment khi encounter đã finalized.
 - Attachment lưu S3/MinIO bằng presigned upload session; DB lưu immutable object key/version + metadata/checksum, không lưu binary và không cấp URL PUT có thể ghi đè object cũ.
 - Validate MIME, kích thước và tên file; tải file cần URL ngắn hạn và audit READ.
-- Completion của appointment yêu cầu encounter đã finalized; nếu có prescription thì prescription phải issued/void.
+- Completion của appointment yêu cầu encounter đã finalized.
 
 **Test:** ownership, tenant isolation cho cùng patient ở hai organization, append-only/finalized tại ORM và SQL, correction bằng amendment trước/sau complete, concurrent finalize/child write, attachment checksum/version/authorization, audit mọi lần xem, patient chỉ xem hồ sơ của mình.
 
@@ -398,9 +393,9 @@ docker compose exec web python manage.py spectacular --validate
 
 **Endpoint:** `POST /api/v1/dentist/me/appointments/{public_code}/complete/`.
 
-**Quy tắc:** chỉ Dentist được phân công; appointment đang `IN_PROGRESS`; encounter cùng appointment đã `FINALIZED`; prescription nếu tồn tại phải `ISSUED|VOID`; mutation khóa appointment + encounter và gọi duy nhất `AppointmentService.transition_status()`.
+**Quy tắc:** chỉ Dentist được phân công; appointment đang `IN_PROGRESS`; encounter cùng appointment đã `FINALIZED`; mutation khóa appointment + encounter và gọi duy nhất `AppointmentService.transition_status()`.
 
-**Test:** thiếu encounter, encounter draft, prescription draft, dentist khác, membership bị thu hồi, double-submit/idempotency và concurrent complete.
+**Test:** thiếu encounter, encounter draft, dentist khác, membership bị thu hồi, double-submit/idempotency và concurrent complete.
 
 **Exit criteria:** `IN_PROGRESS → COMPLETED` không có đường bypass bằng API hoặc gọi service trực tiếp; history/audit được ghi cùng transaction.
 

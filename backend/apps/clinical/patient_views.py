@@ -33,10 +33,8 @@ class PatientClinicalEncounterBaseAPIView(APIView):
             "appointment__branch_service__service",
             "appointment__dentist__user",
         ).prefetch_related(
-            "odontogram_entries",
             "attachments",
             "amendments",
-            "prescription__items",
             "performed_services",
             Prefetch(
                 "treatment_plans",

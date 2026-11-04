@@ -42,8 +42,8 @@ export function AuthShell({
               mọi thông tin cần thiết.
             </h1>
             <p>
-              Theo dõi hồ sơ khám, ghi chú của bác sĩ, đơn thuốc và kế hoạch
-              điều trị trên hệ thống DentaVie.
+              Theo dõi hồ sơ khám, dịch vụ đã thực hiện và kế hoạch điều trị
+              trên hệ thống DentaVie.
             </p>
           </div>
           <small>

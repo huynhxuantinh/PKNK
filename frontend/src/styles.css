@@ -1861,6 +1861,81 @@ body {
   line-height: 1.7;
   white-space: pre-wrap;
 }
+.patient-treatment-plans,
+.patient-clinical-amendments {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.patient-treatment-plans > h3,
+.patient-clinical-amendments > h3 {
+  margin: 0;
+  color: var(--ink-deep);
+  font-size: 15px;
+}
+.patient-treatment-plans > article,
+.patient-clinical-amendments li {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+.patient-treatment-plans article > header,
+.patient-treatment-plans article > header > div,
+.patient-clinical-amendments li > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.patient-treatment-plans article > header > div {
+  display: grid;
+  gap: 3px;
+}
+.patient-treatment-plans article > header span,
+.patient-clinical-amendments time,
+.patient-clinical-amendments small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.patient-treatment-plans article > header > strong:last-child {
+  white-space: nowrap;
+  color: var(--primary-dark);
+}
+.patient-treatment-plans article > p,
+.patient-clinical-amendments li > p {
+  margin: 0;
+  color: var(--body);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.patient-treatment-plans ol,
+.patient-clinical-amendments ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+.patient-treatment-plans li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--body);
+  font-size: 12px;
+}
+.patient-treatment-plans li span:last-child {
+  color: var(--muted);
+  text-align: right;
+}
+.patient-clinical-amendments li > header strong {
+  color: var(--ink-deep);
+  font-size: 13px;
+}
 .record-thumbnail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
