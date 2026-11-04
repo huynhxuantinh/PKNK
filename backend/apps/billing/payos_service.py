@@ -293,13 +293,18 @@ def resolve_review_transaction(*, order_code, action, reason, actor_user, receiv
     """Resolve a flagged payment only after an explicit staff verification."""
     from .services import BillingService
 
+    transaction_probe = PayosTransaction.objects.only("invoice_id").get(
+        pk=order_code
+    )
+    # Keep the same lock order as webhook processing: invoice, then checkout.
+    Invoice.objects.select_for_update().get(pk=transaction_probe.invoice_id)
     payos_transaction = PayosTransaction.objects.select_for_update().select_related(
         "invoice__branch__organization"
     ).get(pk=order_code)
     if payos_transaction.status != PayosTransaction.Status.NEEDS_REVIEW:
         raise ValidationError("Giao dịch không còn ở trạng thái cần đối soát.")
 
-    invoice = Invoice.objects.select_for_update().get(pk=payos_transaction.invoice_id)
+    invoice = payos_transaction.invoice
     if action == "CONFIRM_RECEIVED":
         if received_amount != payos_transaction.amount:
             raise ValidationError("Số tiền thực nhận không khớp với giao dịch payOS.")
@@ -318,6 +323,26 @@ def resolve_review_transaction(*, order_code, action, reason, actor_user, receiv
         payos_transaction.payos_reference = payos_reference[:100]
         audit_action = "PAYOS_REVIEW_CONFIRMED"
     else:
+        try:
+            client = get_payos_client()
+            payment_link = client.payment_requests.get(payos_transaction.order_code)
+            if payment_link.status not in {"CANCELLED", "EXPIRED", "FAILED"}:
+                payment_link = client.payment_requests.cancel(
+                    payos_transaction.order_code,
+                    cancellation_reason="Review resolved: payment not received",
+                )
+            if payment_link.status == "PAID":
+                raise ValidationError(
+                    "Link payOS đã nhận thanh toán; cần xác nhận tiền thực nhận."
+                )
+            if payment_link.status not in {"CANCELLED", "EXPIRED", "FAILED"}:
+                raise ValidationError(
+                    "payOS chưa xác nhận link đã hết hiệu lực hoặc được hủy."
+                )
+        except (PayOSError, httpx.RequestError, ImproperlyConfigured) as error:
+            raise ValidationError(
+                "Không thể kiểm tra hoặc hủy link payOS trước khi xử lý."
+            ) from error
         payos_transaction.status = PayosTransaction.Status.CANCELLED
         audit_action = "PAYOS_REVIEW_REJECTED"
 

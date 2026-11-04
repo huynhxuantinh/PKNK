@@ -24,7 +24,11 @@ from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment, PayosTransaction
-from .payos_service import PayosCheckoutUnavailable, create_checkout
+from .payos_service import (
+    PayosCheckoutUnavailable,
+    create_checkout,
+    resolve_review_transaction,
+)
 from .services import BillingService
 from .tasks import reconcile_pending_payos_transactions
 
@@ -563,6 +567,35 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(
             set(PayosTransaction.Status.values),
             {"PENDING", "SUCCEEDED", "CANCELLED", "NEEDS_REVIEW"},
+        )
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_review_rejection_cancels_payos_link_before_closing_transaction(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-REVIEW-REJECT")
+        payos_transaction = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            status=PayosTransaction.Status.NEEDS_REVIEW,
+        )
+        payos_class.return_value.payment_requests.get.return_value = SimpleNamespace(
+            status="PENDING"
+        )
+        payos_class.return_value.payment_requests.cancel.return_value = SimpleNamespace(
+            status="CANCELLED"
+        )
+
+        resolved = resolve_review_transaction(
+            order_code=payos_transaction.order_code,
+            action="MARK_NOT_RECEIVED",
+            reason="Không nhận được tiền tại quầy.",
+            actor_user=self.admin,
+        )
+
+        self.assertEqual(resolved.status, PayosTransaction.Status.CANCELLED)
+        payos_class.return_value.payment_requests.cancel.assert_called_once_with(
+            payos_transaction.order_code,
+            cancellation_reason="Review resolved: payment not received",
         )
 
     @patch("apps.billing.payos_service.PayOS")
