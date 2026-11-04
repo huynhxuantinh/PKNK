@@ -2,6 +2,17 @@
 
 DentaVie là ứng dụng quản lý phòng khám và đặt lịch khám trực tuyến. Backend dùng Django REST Framework, PostgreSQL/PostGIS, Redis và Celery; frontend dùng React, TypeScript và Vite.
 
+## Mục lục
+
+- [Cấu trúc repository](#cấu-trúc-repository)
+- [Chạy local bằng Docker](#chạy-local-bằng-docker)
+- [Tài khoản và dữ liệu demo](#tài-khoản-và-dữ-liệu-demo)
+- [Frontend](#chạy-riêng-frontend)
+- [API và kiểm tra](#kiểm-tra-và-tài-liệu-api)
+- [Production](#production)
+- [Backup](#backup-và-khôi-phục-kiểm-thử)
+- [Email và PayOS](#tích-hợp-thanh-toán-và-email)
+
 ## Cấu trúc repository
 
 | Thư mục / file | Nội dung |
@@ -32,10 +43,15 @@ Compose local khởi chạy frontend, Django, PostgreSQL/PostGIS, Redis, MinIO v
 docker compose logs -f web
 docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py seed_demo
-docker compose down
 ```
 
 `docker compose down` giữ dữ liệu trong volume. Chỉ dùng `docker compose down -v` khi chủ động muốn xóa database, Redis, MinIO và các volume local. Không commit `.env` hoặc `.env.production`.
+
+Muốn dừng ứng dụng:
+
+```powershell
+docker compose down
+```
 
 ### Chạy riêng frontend
 
@@ -47,20 +63,22 @@ npm run dev
 
 Các lệnh frontend: `npm run build`, `npm run lint`, `npm test` và `npm run preview`.
 
-## Tài khoản demo
+## Tài khoản và dữ liệu demo
 
 Chạy `seed_demo` để tạo tài khoản cơ bản; chạy thêm `seed_full_demo` để tạo đủ nha sĩ theo dịch vụ và chi nhánh trước khi đăng nhập. Mật khẩu chung: **`Demo123!`** (chỉ dùng local/demo).
 
-| Vai trò | Email |
-| --- | --- |
-| Bệnh nhân | `patient@demo.pknk.vn`, `patient2@demo.pknk.vn` |
-| Quản trị toàn hệ thống | `admin@demo.pknk.vn` |
-| Quản lý chi nhánh | `branch.admin.q1@demo.pknk.vn`, `branch.admin.td@demo.pknk.vn`, `branch.admin.pn@demo.pknk.vn`, `branch.admin.q3@demo.pknk.vn`, `branch.admin.q5@demo.pknk.vn`, `branch.admin.q7@demo.pknk.vn`, `branch.admin.bt@demo.pknk.vn`, `branch.admin.gv@demo.pknk.vn`, `branch.admin.tb@demo.pknk.vn` |
-| Nha sĩ | `minh.dentist@demo.pknk.vn`, `lan.dentist@demo.pknk.vn`, `huy.dentist@demo.pknk.vn`, `an.dentist@demo.pknk.vn`, `thao.dentist@demo.pknk.vn`, `khoa.dentist@demo.pknk.vn`, `nhu.dentist@demo.pknk.vn`, `phong.dentist@demo.pknk.vn`, `mai.dentist@demo.pknk.vn`, `son.dentist@demo.pknk.vn` |
+- **Bệnh nhân:** `patient@demo.pknk.vn`, `patient2@demo.pknk.vn`
+- **Quản trị toàn hệ thống:** `admin@demo.pknk.vn`
+- **Quản lý chi nhánh:**
+  - Q1, Thủ Đức, Phú Nhuận: `branch.admin.q1@demo.pknk.vn`, `branch.admin.td@demo.pknk.vn`, `branch.admin.pn@demo.pknk.vn`
+  - Q3, Q5, Q7: `branch.admin.q3@demo.pknk.vn`, `branch.admin.q5@demo.pknk.vn`, `branch.admin.q7@demo.pknk.vn`
+  - Bình Thạnh, Gò Vấp, Tân Bình: `branch.admin.bt@demo.pknk.vn`, `branch.admin.gv@demo.pknk.vn`, `branch.admin.tb@demo.pknk.vn`
+- **10 nha sĩ nền:** `minh.dentist@demo.pknk.vn`, `lan.dentist@demo.pknk.vn`, `huy.dentist@demo.pknk.vn`, `an.dentist@demo.pknk.vn`, `thao.dentist@demo.pknk.vn`, `khoa.dentist@demo.pknk.vn`, `nhu.dentist@demo.pknk.vn`, `phong.dentist@demo.pknk.vn`, `mai.dentist@demo.pknk.vn`, `son.dentist@demo.pknk.vn`
 
 `seed_full_demo` bổ sung nha sĩ theo chi nhánh và chuyên môn khi thiếu người phụ trách dịch vụ. Email có dạng `staff.<mã-chi-nhánh>.<mã-chuyên-môn>@demo.pknk.vn` (ví dụ: `staff.q5.pediatric@demo.pknk.vn`); các tài khoản demo dùng chung mật khẩu `Demo123!`.
 
-Danh sách 21 nha sĩ được bổ sung trong database local:
+<details>
+<summary>Danh sách 21 nha sĩ được bổ sung trong database local</summary>
 
 | Họ tên | Email |
 | --- | --- |
@@ -86,6 +104,8 @@ Danh sách 21 nha sĩ được bổ sung trong database local:
 | BS. Đặng Quốc Hưng | `staff.tb.pediatric@demo.pknk.vn` |
 | BS. Bùi Thanh Hằng | `staff.tb.root_canal@demo.pknk.vn` |
 
+</details>
+
 ### Tạo bộ dữ liệu demo đầy đủ
 
 `seed_full_demo` bổ sung dữ liệu bệnh nhân, lịch hẹn, bệnh án, kế hoạch điều trị, hóa đơn và ảnh chi nhánh minh họa. Tên chi nhánh theo mẫu `DentaVie + tên phường`, ví dụ `DentaVie Cầu Kiệu`. Lệnh chạy được nhiều lần mà không tạo bản ghi trùng. Mặc định tạo 40 bệnh nhân và 100 lịch hẹn; có thể điều chỉnh trong khoảng 30–50 bệnh nhân và 80–150 lịch hẹn.
@@ -99,11 +119,21 @@ $env:PYTHONIOENCODING = 'utf-8'
 
 Chạy từ repository root trên database local đã cấu hình; kiểm tra `--dry-run` trước. `--dry-run` không ghi database hoặc file. Ảnh nguồn giữ nguyên; ảnh cơ sở/tư vấn phù hợp được tối ưu vào `frontend/public/images/demo/branches/`, kèm ghi công nguồn. Ảnh stock không được gắn vào bệnh án. Lệnh không tạo giao dịch PayOS và không gửi email. `--reset-demo` hiện bị từ chối vì lịch sử lịch hẹn, bệnh án và hóa đơn có ràng buộc append-only/immutable; hãy dựng database local/test mới nếu cần bộ dữ liệu sạch.
 
-Database Docker local `pknk` hiện đã được làm mới và seed: 9 chi nhánh, 11 dịch vụ, 31 nha sĩ (gồm 21 tài khoản bổ sung theo chi nhánh), 40 bệnh nhân, 100 lịch hẹn đủ trạng thái, 61 bệnh án, 12 kế hoạch điều trị, 32 hóa đơn và 20 payment tiền mặt. Không có giao dịch PayOS hoặc file đính kèm bệnh án demo vì thư mục nguồn không có ảnh X-quang phù hợp. Có 9 ảnh chi nhánh được tạo trong `frontend/public/images/demo/branches/` cùng `ATTRIBUTION.md`. Cả 99 cặp dịch vụ-chi nhánh hoạt động đều có nha sĩ đủ chuyên môn, được phân công và có ca trực.
+### Snapshot dữ liệu local
 
-Muốn xóa toàn bộ database local trước khi seed lại, trước tiên xác minh đúng container/database Docker local và tạo rồi kiểm tra backup PostgreSQL. `flush` xóa mọi bản ghi trong database, gồm tài khoản, hóa đơn và lịch sử; không dùng trên Neon/production. `flush` không xóa object MinIO: nếu cần dọn file cũ, hãy sao lưu riêng và chỉ thao tác trên MinIO local đã xác minh. Không xóa file nguồn trong `media/img`.
+Database Docker local `pknk` hiện đã được làm mới và seed:
 
-Không chạy lệnh seed lên Neon production. Để chuẩn bị dữ liệu cho Neon demo, dùng database riêng mới có tên chứa `demo` hoặc `seed`, xác minh database không có tài khoản/lịch/hóa đơn ngoài demo, rồi mới cấp quyền remote bằng `--allow-remote-demo-seed`. Ảnh công khai cần được đưa vào build Cloudflare Pages; tệp đính kèm bệnh án riêng tư thuộc storage backend R2 và không được thay bằng ảnh stock.
+- 9 chi nhánh và 11 dịch vụ.
+- 31 nha sĩ, gồm 21 tài khoản bổ sung để phủ dịch vụ theo chi nhánh.
+- 40 bệnh nhân, 100 lịch hẹn, 61 bệnh án và 12 kế hoạch điều trị.
+- 32 hóa đơn và 20 khoản thanh toán tiền mặt.
+- Cả 99 cặp dịch vụ–chi nhánh đang hoạt động đều có nha sĩ đủ chuyên môn, phân công và ca trực.
+
+Có 9 ảnh chi nhánh minh họa trong `frontend/public/images/demo/branches/` cùng nguồn ảnh tại `ATTRIBUTION.md`. Không có giao dịch PayOS hoặc file đính kèm bệnh án demo vì thư mục nguồn không có ảnh X-quang phù hợp.
+
+> **Lưu ý dữ liệu:** Không chạy seed lên Neon production. Nếu cần xóa database local, xác minh đúng container và kiểm tra backup PostgreSQL trước. `flush` không xóa object MinIO; chỉ dọn MinIO local sau khi sao lưu. Không xóa ảnh nguồn trong `media/img`.
+
+Muốn dùng Neon cho demo, tạo database riêng có tên chứa `demo` hoặc `seed`, xác minh không có dữ liệu ngoài demo rồi mới dùng `--allow-remote-demo-seed`. Ảnh công khai cần được đưa vào build Cloudflare Pages; file bệnh án riêng tư lưu ở R2, không thay bằng ảnh stock.
 
 ## Kiểm tra và tài liệu API
 
