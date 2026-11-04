@@ -812,6 +812,31 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("quản lý chi nhánh", response.data["message"])
 
+    def test_cannot_assign_dentist_to_inactive_branch(self):
+        inactive_branch = self.make_branch(self.org_a, "INACTIVE-DENTIST")
+        Branch.objects.filter(pk=inactive_branch.pk).update(is_active=False)
+        dentist = Dentist.objects.create(user=self.staff_user, organization=self.org_a)
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.put(
+            reverse(
+                "management:dentist-branches",
+                kwargs={"dentist_id": dentist.pk},
+            ),
+            {"ids": [inactive_branch.pk]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ngừng hoạt động", str(response.data))
+        self.assertFalse(
+            Membership.objects.filter(
+                user=self.staff_user,
+                branch=inactive_branch,
+                role=Membership.Role.DENTIST,
+            ).exists()
+        )
+
     def test_organization_admin_and_dentist_roles_cannot_be_combined(self):
         Dentist.objects.create(user=self.staff_user, organization=self.org_a)
         Membership.objects.create(

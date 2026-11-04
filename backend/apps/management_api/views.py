@@ -1018,11 +1018,16 @@ class DentistBranchesAPIView(ManagementAPIView):
         ).get(pk=dentist.pk)
         payload = IdListSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
+        requested_ids = payload.validated_data["ids"]
         branches = list(Branch.objects.filter(
-            organization=dentist.organization, pk__in=payload.validated_data["ids"]
+            organization=dentist.organization, pk__in=requested_ids
         ).select_related("province", "ward"))
-        if len(branches) != len(payload.validated_data["ids"]):
+        if len(branches) != len(requested_ids):
             raise ValidationError({"ids": "Có chi nhánh không thuộc organization."})
+        if any(not branch.is_active for branch in branches):
+            raise ValidationError(
+                {"ids": "Không thể gán nha sĩ vào chi nhánh đã ngừng hoạt động."}
+            )
         target_ids = {branch.pk for branch in branches}
         if target_ids:
             validate_membership_assignment(
