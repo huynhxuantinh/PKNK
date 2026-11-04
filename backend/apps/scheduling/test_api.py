@@ -153,6 +153,40 @@ class SchedulingApiTests(APITestCase):
             self.start_at().isoformat(),
         )
 
+    def test_slot_search_excludes_dentist_with_inactive_account(self):
+        self.dentist_user.is_active = False
+        self.dentist_user.save(update_fields=["is_active"])
+
+        response = self.client.get(
+            reverse("scheduling:slot-list"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "date": self.target_date.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"], [])
+
+    def test_create_hold_rejects_dentist_with_inactive_account(self):
+        self.dentist_user.is_active = False
+        self.dentist_user.save(update_fields=["is_active"])
+        self.client.force_authenticate(self.patient_user)
+
+        response = self.client.post(
+            reverse("scheduling:appointment-hold"),
+            {
+                "branch_service_id": self.branch_service.id_branch_service,
+                "starts_at": self.start_at().isoformat(),
+                "dentist_id": self.dentist.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["error"]["code"], "slot_unavailable")
+        self.assertFalse(Appointment.objects.exists())
+
     def test_inactive_organization_has_no_slots_and_rejects_new_hold(self):
         self.organization.is_active = False
         self.organization.save(update_fields=["is_active"])

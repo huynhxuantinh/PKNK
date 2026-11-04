@@ -94,7 +94,9 @@ class AvailabilityService:
         dentists = Dentist.objects.filter(
             organization=organization,
             is_active=True,
+            user__is_active=True,
             dentist_services__service=service,
+            user__memberships__organization=organization,
             user__memberships__branch=branch,
             user__memberships__role=Membership.Role.DENTIST,
             user__memberships__is_active=True,
