@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.accounts.models import Dentist, PatientProfile
 from apps.audit.services import AuditService
+from apps.catalog.models import BranchService, Service
 from apps.locations.models import Chair
 from apps.organizations.models import Membership, Organization
 
@@ -95,6 +96,30 @@ class BookingService:
         organization = Organization.objects.select_for_update().get(
             pk=branch_service.branch.organization_id
         )
+        # Lock resources in the same order as service deactivation:
+        # Organization -> Service -> BranchService. The caller's branch-service
+        # instance was read before this transaction, so re-read and validate it
+        # only after all of these locks are held.
+        branch_service_id = branch_service.pk
+        branch_service_service_id = BranchService.objects.only("service_id").get(
+            pk=branch_service_id
+        ).service_id
+        service = Service.objects.select_for_update().get(
+            pk=branch_service_service_id
+        )
+        branch_service = BranchService.objects.select_for_update().select_related(
+            "branch"
+        ).get(pk=branch_service_id)
+        branch_service.service = service
+        if (
+            not branch_service.is_active
+            or not service.is_active
+            or not branch_service.branch.is_active
+        ):
+            raise SlotUnavailableError(
+                "Dịch vụ hiện không khả dụng.",
+                code="service_inactive",
+            )
         if not organization.is_active:
             raise SlotUnavailableError(
                 "Chuỗi phòng khám hiện đang tạm ngừng hoạt động.",
@@ -196,7 +221,7 @@ class BookingService:
                             branch_service=branch_service,
                             dentist=dentist,
                             chair=chair,
-                            service_name_snapshot=branch_service.service.name,
+                            service_name_snapshot=service.name,
                             service_price_snapshot=branch_service.price,
                             contact_name_snapshot=(contact_name or patient_user.full_name).strip(),
                             contact_phone_snapshot=(contact_phone or patient_user.phone or "").strip() or None,

@@ -214,6 +214,70 @@ class BookingScheduleConcurrencyTests(TransactionTestCase):
         self.assertEqual(worker_errors, [])
         self.assertTrue(TimeOff.objects.exists())
 
+    def test_hold_rechecks_branch_service_after_concurrent_deactivation(self):
+        deactivation_ready = Event()
+        allow_deactivation_commit = Event()
+        deactivation_errors = []
+        booking_result = []
+
+        def deactivate_branch_service():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    Organization.objects.select_for_update().get(
+                        pk=self.organization.pk
+                    )
+                    Service.objects.select_for_update().get(
+                        pk=self.branch_service.service_id
+                    )
+                    branch_service = BranchService.objects.select_for_update().get(
+                        pk=self.branch_service.pk
+                    )
+                    branch_service.is_active = False
+                    branch_service.save(update_fields=["is_active"])
+                    deactivation_ready.set()
+                    self.assertTrue(allow_deactivation_commit.wait(timeout=5))
+            except Exception as error:  # pragma: no cover - surfaced below
+                deactivation_errors.append(error)
+                deactivation_ready.set()
+            finally:
+                close_old_connections()
+
+        def create_hold():
+            close_old_connections()
+            try:
+                self.assertTrue(deactivation_ready.wait(timeout=5))
+                BookingService.create_hold(
+                    patient_user=User.objects.get(pk=self.patient_user.pk),
+                    branch_service=BranchService.objects.select_related(
+                        "branch__organization", "service"
+                    ).get(pk=self.branch_service.pk),
+                    starts_at=self.starts_at,
+                )
+                booking_result.append("held")
+            except Exception as error:  # pragma: no cover - asserted below
+                booking_result.append(error)
+            finally:
+                close_old_connections()
+
+        deactivation_worker = Thread(target=deactivate_branch_service)
+        deactivation_worker.start()
+        self.assertTrue(deactivation_ready.wait(timeout=5))
+
+        booking_worker = Thread(target=create_hold)
+        booking_worker.start()
+        self.assertFalse(booking_result)
+        allow_deactivation_commit.set()
+
+        deactivation_worker.join(timeout=5)
+        booking_worker.join(timeout=5)
+        self.assertFalse(deactivation_worker.is_alive())
+        self.assertFalse(booking_worker.is_alive())
+        self.assertEqual(deactivation_errors, [])
+        self.assertEqual(len(booking_result), 1)
+        self.assertIsInstance(booking_result[0], SlotUnavailableError)
+        self.assertFalse(Appointment.objects.exists())
+
     def test_reschedule_rechecks_availability_after_concurrent_time_off(self):
         dentist_two_user = User.objects.create_user(
             email="concurrency-reschedule-dentist@example.com",

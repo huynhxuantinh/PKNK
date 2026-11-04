@@ -441,7 +441,15 @@ class ServiceDetailAPIView(ManagementAPIView):
     @transaction.atomic
     def patch(self, request, service_id):
         service = self.get_object(service_id, ORG_ADMIN)
+        # Booking locks the organization before reading the service, so use the
+        # same resource order to serialize this deactivation with new holds.
+        Organization.objects.select_for_update().get(pk=service.organization_id)
         service = Service.objects.select_for_update().get(pk=service.pk)
+        list(
+            BranchService.objects.select_for_update()
+            .filter(service=service)
+            .order_by("pk")
+        )
         serializer = ServiceManagementSerializer(service, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data.get("code")
@@ -487,10 +495,14 @@ class BranchServiceDetailAPIView(ManagementAPIView):
                 branch_id__in=branch_ids_for(request.user, BRANCH_MANAGERS)
             ), pk=branch_service_id,
         )
+        # Keep the BookingService.create_hold order: Organization -> Service
+        # -> BranchService, then validate the newly locked state.
+        Organization.objects.select_for_update().get(pk=row.branch.organization_id)
+        service = Service.objects.select_for_update().get(pk=row.service_id)
         row = BranchService.objects.select_for_update().get(pk=row.pk)
         serializer = BranchServiceManagementSerializer(row, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        service = serializer.validated_data.get("service", row.service)
+        service = serializer.validated_data.get("service", service)
         if service.pk != row.service_id:
             raise ValidationError({"service_id": "Không được đổi dịch vụ của cấu hình giá hiện có."})
         if service.organization_id != row.branch.organization_id:
