@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import PermissionDenied
@@ -174,7 +175,7 @@ class DentistPatientSummaryAPIView(DentistAPIView):
             ],
         )
         patient = appointment.patient_profile
-        from apps.clinical.models import ClinicalEncounter
+        from apps.clinical.models import ClinicalEncounter, TreatmentPlan
         from apps.clinical.serializers import PatientClinicalEncounterSerializer
 
         clinical_history = ClinicalEncounter.objects.filter(
@@ -188,6 +189,13 @@ class DentistPatientSummaryAPIView(DentistAPIView):
         ).prefetch_related(
             "amendments",
             "performed_services",
+            Prefetch(
+                "treatment_plans",
+                queryset=TreatmentPlan.objects.exclude(
+                    status=TreatmentPlan.Status.DRAFT
+                ).prefetch_related("items__service"),
+                to_attr="patient_visible_treatment_plans",
+            ),
         )
         AuditService.record_read(
             actor_user=request.user,
@@ -213,7 +221,8 @@ class DentistPatientSummaryAPIView(DentistAPIView):
                         "status": appointment.status,
                     },
                     "clinical_history": PatientClinicalEncounterSerializer(
-                        clinical_history.order_by("-finalized_at"), many=True
+                        clinical_history.order_by("-finalized_at"), many=True,
+                        context={"request": request},
                     ).data,
                 }
             }

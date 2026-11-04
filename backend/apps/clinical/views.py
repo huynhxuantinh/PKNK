@@ -100,14 +100,14 @@ class AppointmentClinicalEncounterAPIView(ClinicalAPIView):
         appointment = self.get_appointment(public_code)
         encounter = get_object_or_404(self.scoped_encounters(), appointment=appointment)
         self.audit_read(request, encounter, "CLINICAL_ENCOUNTER_VIEWED", "ClinicalEncounter")
-        return Response({"data": self.serializer_class(encounter).data})
+        return Response({"data": self.serializer_class(encounter, context={"request": request}).data})
 
     @transaction.atomic
     def post(self, request, public_code):
         appointment = self.get_appointment(public_code)
         if appointment.status != Appointment.Status.IN_PROGRESS:
             raise DentistConflict("Chỉ tạo bệnh án khi lượt khám đang diễn ra.")
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         if ClinicalEncounter.objects.filter(appointment=appointment).exists():
             raise DentistConflict("Lượt khám đã có bệnh án.")
@@ -118,7 +118,7 @@ class AppointmentClinicalEncounterAPIView(ClinicalAPIView):
             resource_type="ClinicalEncounter", resource_id=encounter.pk,
             after_data={"status": encounter.status}, request=request,
         )
-        return Response({"data": self.serializer_class(encounter).data}, status=status.HTTP_201_CREATED)
+        return Response({"data": self.serializer_class(encounter, context={"request": request}).data}, status=status.HTTP_201_CREATED)
 
 
 class ClinicalEncounterDetailAPIView(ClinicalAPIView):
@@ -127,7 +127,7 @@ class ClinicalEncounterDetailAPIView(ClinicalAPIView):
     def get(self, request, encounter_id):
         encounter = self.encounter(encounter_id)
         self.audit_read(request, encounter, "CLINICAL_ENCOUNTER_VIEWED", "ClinicalEncounter")
-        return Response({"data": self.serializer_class(encounter).data})
+        return Response({"data": self.serializer_class(encounter, context={"request": request}).data})
 
     @transaction.atomic
     def patch(self, request, encounter_id):
@@ -138,7 +138,9 @@ class ClinicalEncounterDetailAPIView(ClinicalAPIView):
             ClinicalWorkflowService.ensure_draft(encounter)
         except DjangoValidationError as error:
             raise conflict(error)
-        serializer = self.serializer_class(encounter, data=request.data, partial=True)
+        serializer = self.serializer_class(
+            encounter, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         AuditService.record_write(
@@ -162,7 +164,7 @@ class ClinicalEncounterFinalizeAPIView(ClinicalAPIView):
             )
         except DjangoValidationError as error:
             raise conflict(error)
-        return Response({"data": ClinicalEncounterSerializer(encounter).data})
+        return Response({"data": ClinicalEncounterSerializer(encounter, context={"request": request}).data})
 
 
 class ClinicalPerformedServiceListReplaceAPIView(ClinicalAPIView):
@@ -542,11 +544,12 @@ class DentistAppointmentFinalizeAndCompleteAPIView(ClinicalAPIView):
         )
 
         if appointment.status == Appointment.Status.COMPLETED:
-            return self._response(appointment, encounter)
+            return self._response(request, appointment, encounter)
 
         if encounter.status == ClinicalEncounter.Status.DRAFT:
             serializer = ClinicalEncounterSerializer(
-                encounter, data=request.data, partial=True
+                encounter, data=request.data, partial=True,
+                context={"request": request},
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -583,15 +586,17 @@ class DentistAppointmentFinalizeAndCompleteAPIView(ClinicalAPIView):
             raise conflict(error)
 
         encounter.refresh_from_db()
-        return self._response(appointment, encounter)
+        return self._response(request, appointment, encounter)
 
     @staticmethod
-    def _response(appointment, encounter):
+    def _response(request, appointment, encounter):
         return Response(
             {
                 "data": {
                     "appointment": DentistAppointmentSerializer(appointment).data,
-                    "encounter": ClinicalEncounterSerializer(encounter).data,
+                    "encounter": ClinicalEncounterSerializer(
+                        encounter, context={"request": request}
+                    ).data,
                 }
             }
         )

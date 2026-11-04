@@ -136,7 +136,7 @@ class ClinicalAttachmentSerializer(serializers.ModelSerializer):
         namespace = (
             request.resolver_match.namespace
             if request and request.resolver_match
-            else "patients"
+            else "dentist_api"
         )
         route = (
             "dentist_api:clinical-attachment-download"

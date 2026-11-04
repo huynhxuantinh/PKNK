@@ -337,6 +337,20 @@ class ClinicalAPITests(APITestCase):
         self.assertNotIn("file", upload.data["data"])
         self.assertNotIn("minio", upload.data["data"]["download_url"])
 
+        encounter_detail = self.client.get(
+            reverse(
+                "dentist_api:clinical-encounter-detail",
+                kwargs={"encounter_id": encounter.pk},
+            )
+        )
+        self.assertIn(
+            reverse(
+                "dentist_api:clinical-attachment-download",
+                kwargs={"attachment_id": attachment.pk},
+            ),
+            encounter_detail.data["data"]["attachments"][0]["download_url"],
+        )
+
         download = self.client.get(
             reverse(
                 "dentist_api:clinical-attachment-download",

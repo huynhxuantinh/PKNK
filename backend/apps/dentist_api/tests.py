@@ -11,7 +11,7 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, Service
-from apps.clinical.models import ClinicalEncounter
+from apps.clinical.models import ClinicalEncounter, TreatmentPlan
 from apps.locations.models import Branch, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment, AppointmentStatusHistory
@@ -331,13 +331,31 @@ class DentistAppointmentAPITests(APITestCase):
             appointment_status=Appointment.Status.COMPLETED,
             starts_at=self.at(7),
         )
-        ClinicalEncounter.objects.create(
+        encounter = ClinicalEncounter.objects.create(
             appointment=same_branch_visit,
             status=ClinicalEncounter.Status.FINALIZED,
             diagnosis_summary="Visible history",
             created_by=self.dentist_user,
             finalized_by=self.dentist_user,
             finalized_at=timezone.now(),
+        )
+        TreatmentPlan.objects.create(
+            organization=self.organization,
+            originating_encounter=encounter,
+            patient_profile=self.patient,
+            dentist=self.dentist,
+            branch=self.branch,
+            title="Visible treatment plan",
+            status=TreatmentPlan.Status.ACTIVE,
+        )
+        TreatmentPlan.objects.create(
+            organization=self.organization,
+            originating_encounter=encounter,
+            patient_profile=self.patient,
+            dentist=self.dentist,
+            branch=self.branch,
+            title="Hidden draft plan",
+            status=TreatmentPlan.Status.DRAFT,
         )
 
         other_branch = Branch.objects.create(
@@ -395,6 +413,13 @@ class DentistAppointmentAPITests(APITestCase):
         diagnoses = [item["diagnosis_summary"] for item in response.data["data"]["clinical_history"]]
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(diagnoses, ["Visible history"])
+        self.assertEqual(
+            [
+                plan["title"]
+                for plan in response.data["data"]["clinical_history"][0]["treatment_plans"]
+            ],
+            ["Visible treatment plan"],
+        )
 
     def test_inactive_dentist_profile_is_forbidden(self):
         self.dentist.is_active = False
