@@ -1,6 +1,7 @@
 import threading
 from datetime import timedelta
 
+from django.core import mail
 from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
@@ -14,7 +15,7 @@ from .services import (
     StaffInvitationService,
     StaffRoleConflict,
 )
-from .tasks import archive_expired_staff_invitations
+from .tasks import archive_expired_staff_invitations, send_staff_invitation_email
 
 
 class OrganizationModelTests(TestCase):
@@ -178,6 +179,100 @@ class StaffInvitationCleanupTaskTests(TestCase):
         self.assertIsNotNone(stale.revoked_at)
         self.assertIsNone(recent.revoked_at)
         self.assertIsNone(accepted.revoked_at)
+
+
+class StaffInvitationEmailTaskTests(TestCase):
+    def setUp(self):
+        province = Province.objects.create(code="79", name="HCM", full_name="HCM")
+        ward = Ward.objects.create(
+            code="00001", province=province, name="Ward", full_name="Ward"
+        )
+        self.organization = Organization.objects.create(
+            name="Invitation Email Org", slug="invitation-email-org"
+        )
+        self.branch = Branch.objects.create(
+            organization=self.organization,
+            code="IE1",
+            name="IE1",
+            province=province,
+            ward=ward,
+            address_line="IE1",
+            location="POINT(106.7 10.7)",
+        )
+        self.inviter = User.objects.create_user(
+            email="invitation-email-admin@example.com",
+            password="StrongPassword!2026",
+            full_name="Inviter",
+        )
+        self.invitation, self.raw_token = StaffInvitationService.create(
+            organization=self.organization,
+            branch=self.branch,
+            email="invitation-email-recipient@example.com",
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.inviter,
+        )
+
+    def send_email(self, raw_token=None):
+        send_staff_invitation_email.apply(
+            args=(self.invitation.pk, raw_token or self.raw_token)
+        )
+        self.invitation.refresh_from_db()
+
+    def assert_skipped(self):
+        self.assertEqual(mail.outbox, [])
+        self.assertEqual(
+            self.invitation.email_delivery_status,
+            StaffInvitation.EmailDeliveryStatus.PENDING,
+        )
+
+    def test_sends_still_valid_invitation(self):
+        self.send_email()
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            self.invitation.email_delivery_status,
+            StaffInvitation.EmailDeliveryStatus.SENT,
+        )
+        self.assertIsNotNone(self.invitation.email_sent_at)
+
+    def test_skips_revoked_invitation(self):
+        StaffInvitation.objects.filter(pk=self.invitation.pk).update(
+            revoked_at=timezone.now()
+        )
+
+        self.send_email()
+
+        self.assert_skipped()
+
+    def test_skips_accepted_invitation(self):
+        StaffInvitation.objects.filter(pk=self.invitation.pk).update(
+            accepted_at=timezone.now()
+        )
+
+        self.send_email()
+
+        self.assert_skipped()
+
+    def test_skips_expired_invitation(self):
+        StaffInvitation.objects.filter(pk=self.invitation.pk).update(
+            expires_at=timezone.now() - timedelta(minutes=1)
+        )
+
+        self.send_email()
+
+        self.assert_skipped()
+
+    def test_skips_invitation_for_inactive_branch(self):
+        Branch.objects.filter(pk=self.branch.pk).update(is_active=False)
+
+        self.send_email()
+
+        self.assert_skipped()
+
+    def test_skips_invitation_when_token_no_longer_matches(self):
+        self.send_email(raw_token="outdated-token")
+
+        self.assert_skipped()
 
 
 class StaffInvitationConcurrencyTests(TransactionTestCase):

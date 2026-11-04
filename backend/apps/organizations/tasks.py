@@ -1,3 +1,4 @@
+import hmac
 import logging
 from datetime import timedelta
 from zoneinfo import ZoneInfo
@@ -9,6 +10,7 @@ from django.utils import timezone
 from apps.notifications.emailing import send_branded_email
 
 from .models import StaffInvitation
+from .services import StaffInvitationService
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,21 @@ class StaffInvitationEmailTask(Task):
         super().on_failure(exc, task_id, args, kwargs, einfo)
 
 
+def _invitation_is_deliverable(invitation, raw_token, now):
+    """Re-check state right before sending: the row may have been superseded."""
+    if (
+        invitation.accepted_at is not None
+        or invitation.revoked_at is not None
+        or invitation.expires_at <= now
+        or not invitation.organization.is_active
+        or (invitation.branch_id is not None and not invitation.branch.is_active)
+    ):
+        return False
+    return hmac.compare_digest(
+        invitation.token_digest, StaffInvitationService.digest(raw_token)
+    )
+
+
 @shared_task(
     base=StaffInvitationEmailTask,
     autoretry_for=(Exception,),
@@ -53,6 +70,11 @@ def send_staff_invitation_email(invitation_id, raw_token):
     invitation = StaffInvitation.objects.select_related(
         "organization", "branch", "invited_by"
     ).get(pk=invitation_id)
+    if not _invitation_is_deliverable(invitation, raw_token, timezone.now()):
+        logger.info(
+            "Bỏ qua email mời không còn hợp lệ invitation_id=%s", invitation_id
+        )
+        return None
     url = f"{settings.FRONTEND_URL.rstrip('/')}/accept-invitation?token={raw_token}"
     inviter_name = invitation.invited_by.full_name or invitation.invited_by.email
     scope_name = invitation.branch.name if invitation.branch else "toàn hệ thống"
