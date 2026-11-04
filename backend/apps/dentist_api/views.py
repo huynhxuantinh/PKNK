@@ -185,7 +185,12 @@ class DentistPatientSummaryAPIView(DentistAPIView):
         clinical_history = clinical_history.select_related(
             "appointment__branch__organization",
             "appointment__branch_service__service",
-        ).prefetch_related("odontogram_entries", "amendments", "prescription__items")
+        ).prefetch_related(
+            "odontogram_entries",
+            "amendments",
+            "prescription__items",
+            "performed_services",
+        )
         AuditService.record_read(
             actor_user=request.user,
             organization=appointment.branch.organization,

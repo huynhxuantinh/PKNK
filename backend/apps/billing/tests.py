@@ -24,7 +24,7 @@ from apps.organizations.models import Membership, Organization
 from apps.scheduling.models import Appointment
 
 from .models import Invoice, InvoiceLine, Payment, PayosTransaction
-from .payos_service import create_checkout
+from .payos_service import PayosCheckoutUnavailable, create_checkout
 from .services import BillingService
 from .tasks import reconcile_pending_payos_transactions
 
@@ -157,9 +157,18 @@ class CounterBillingTests(APITestCase):
             format="json",
         )
         payment_id = paid.data["data"]["id_payment"]
+        unacknowledged_void = self.client.post(
+            reverse("management:payment-void", kwargs={"payment_id": payment_id}),
+            {"reason": "Ghi nhận nhầm phương thức"},
+            format="json",
+        )
         voided = self.client.post(
             reverse("management:payment-void", kwargs={"payment_id": payment_id}),
-            {"reason": "Ghi nhận nhầm phương thức"}, format="json",
+            {
+                "reason": "Ghi nhận nhầm phương thức",
+                "cash_refund_confirmed": True,
+            },
+            format="json",
         )
         invoice = Invoice.objects.get(pk=invoice_id)
 
@@ -167,6 +176,7 @@ class CounterBillingTests(APITestCase):
         self.assertEqual(issued.status_code, status.HTTP_200_OK)
         self.assertEqual(paid.status_code, status.HTTP_201_CREATED)
         self.assertEqual(repeated.status_code, status.HTTP_200_OK)
+        self.assertEqual(unacknowledged_void.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(voided.status_code, status.HTTP_200_OK)
         self.assertEqual(Payment.objects.count(), 1)
         self.assertEqual(invoice.status, Invoice.Status.ISSUED)
@@ -575,6 +585,69 @@ class CounterBillingTests(APITestCase):
         payos_class.return_value.payment_requests.create.assert_called_once()
 
     @patch("apps.billing.payos_service.PayOS")
+    def test_expired_checkout_is_verified_and_cancelled_before_replacement(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-REPLACE")
+        previous = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/old-link",
+        )
+        PayosTransaction.objects.filter(pk=previous.pk).update(
+            created_at=timezone.now() - timedelta(minutes=16)
+        )
+        payos_class.return_value.payment_requests.get.return_value = SimpleNamespace(
+            status="PENDING"
+        )
+        payos_class.return_value.payment_requests.cancel.return_value = SimpleNamespace(
+            status="CANCELLED"
+        )
+        payos_class.return_value.payment_requests.create.return_value = SimpleNamespace(
+            checkout_url="https://pay.payos.vn/web/new-link",
+            payment_link_id="new-link",
+        )
+
+        replacement, created = create_checkout(invoice=invoice, user=self.patient_user)
+
+        previous.refresh_from_db()
+        self.assertTrue(created)
+        self.assertNotEqual(replacement.pk, previous.pk)
+        self.assertEqual(previous.status, PayosTransaction.Status.CANCELLED)
+        payos_class.return_value.payment_requests.get.assert_called_once_with(
+            previous.order_code
+        )
+        payos_class.return_value.payment_requests.cancel.assert_called_once_with(
+            previous.order_code,
+            cancellation_reason="Replacing expired payment link",
+        )
+
+    @patch("apps.billing.payos_service.PayOS")
+    def test_replacement_is_blocked_when_previous_link_cannot_be_retired(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-UNSAFE-REPLACE")
+        previous = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/old-link",
+        )
+        PayosTransaction.objects.filter(pk=previous.pk).update(
+            created_at=timezone.now() - timedelta(minutes=16)
+        )
+        payos_class.return_value.payment_requests.get.return_value = SimpleNamespace(
+            status="PENDING"
+        )
+        payos_class.return_value.payment_requests.cancel.return_value = SimpleNamespace(
+            status="PENDING"
+        )
+
+        with self.assertRaises(PayosCheckoutUnavailable):
+            create_checkout(invoice=invoice, user=self.patient_user)
+
+        previous.refresh_from_db()
+        self.assertEqual(previous.status, PayosTransaction.Status.PENDING)
+        payos_class.return_value.payment_requests.create.assert_not_called()
+
+    @patch("apps.billing.payos_service.PayOS")
     def test_create_checkout_rechecks_invoice_status_after_lock(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-STALE-STATUS")
         BillingService.void_invoice(
@@ -613,7 +686,7 @@ class CounterBillingTests(APITestCase):
         self.assertIn("không còn", response.data["message"])
 
     @patch("apps.billing.payos_service.PayOS")
-    def test_payos_provider_failures_cancel_attempt_and_return_bad_gateway(self, payos_class):
+    def test_payos_provider_failures_are_marked_for_review_and_return_bad_gateway(self, payos_class):
         self.client.force_authenticate(self.patient_user)
         provider_errors = (
             PayOSError("provider unavailable"),
@@ -634,7 +707,7 @@ class CounterBillingTests(APITestCase):
                 self.assertIn("payOS", response.data["message"])
                 payos_transaction = PayosTransaction.objects.get(invoice=invoice)
                 self.assertEqual(
-                    payos_transaction.status, PayosTransaction.Status.CANCELLED
+                    payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW
                 )
                 self.assertEqual(payos_transaction.checkout_url, "")
 
@@ -805,7 +878,7 @@ class CounterBillingTests(APITestCase):
         self.assertTrue(AuditEvent.objects.filter(action="PAYOS_PAYMENT_NEEDS_REVIEW").exists())
 
     @patch("apps.billing.payos_service.PayOS")
-    def test_late_webhook_after_counter_cash_is_ignored(self, payos_class):
+    def test_late_webhook_after_counter_cash_requires_review(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-PAID")
         payos_transaction = PayosTransaction.objects.create(
             invoice=invoice, initiated_by=self.patient_user, amount=500000
@@ -829,8 +902,12 @@ class CounterBillingTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payos_transaction.refresh_from_db()
-        self.assertEqual(payos_transaction.status, PayosTransaction.Status.CANCELLED)
+        self.assertEqual(payos_transaction.status, PayosTransaction.Status.NEEDS_REVIEW)
         self.assertEqual(Payment.objects.filter(invoice=invoice).count(), 1)
+        self.assertTrue(AuditEvent.objects.filter(
+            action="PAYOS_PAYMENT_NEEDS_REVIEW",
+            resource_id=str(payos_transaction.pk),
+        ).exists())
 
     def test_payos_payment_cannot_be_voided_as_if_it_were_a_refund(self):
         invoice = self.issued_invoice("APT-PAYOS-NO-VOID")

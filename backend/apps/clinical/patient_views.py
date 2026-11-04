@@ -37,6 +37,7 @@ class PatientClinicalEncounterBaseAPIView(APIView):
             "attachments",
             "amendments",
             "prescription__items",
+            "performed_services",
             Prefetch(
                 "treatment_plans",
                 queryset=TreatmentPlan.objects.exclude(

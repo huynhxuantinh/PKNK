@@ -7,7 +7,7 @@ import {
 } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 
-import { createPayosPayment } from "../api/billing";
+import { createPayosPayment, getPatientInvoice } from "../api/billing";
 import { apiRequest, downloadAuthenticatedFile } from "../api/client";
 import { listPatientRescheduleSlots } from "../api/booking";
 import { AuthBar } from "../auth/AuthBar";
@@ -712,6 +712,19 @@ export function PatientHistoryPage() {
                   <dt>Chẩn đoán</dt>
                   <dd>{encounter.diagnosis_summary || "Chưa cập nhật"}</dd>
                 </div>
+                <div>
+                  <dt>Dịch vụ thực hiện</dt>
+                  <dd>
+                    {encounter.performed_services.length > 0
+                      ? encounter.performed_services
+                          .map(
+                            (service) =>
+                              `${service.service_name_snapshot} × ${service.quantity}`,
+                          )
+                          .join(", ")
+                      : "Chưa ghi nhận dịch vụ thực hiện."}
+                  </dd>
+                </div>
               </dl>
               {encounter.aftercare_instructions && (
                 <section
@@ -797,6 +810,8 @@ export function PatientInvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyInvoiceId, setBusyInvoiceId] = useState<number | null>(null);
+  const [invoiceDetail, setInvoiceDetail] = useState<PatientInvoice | null>(null);
+  const [invoiceDetailLoading, setInvoiceDetailLoading] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -836,6 +851,24 @@ export function PatientInvoicesPage() {
           : "Không thể tạo liên kết thanh toán.",
       );
       setBusyInvoiceId(null);
+    }
+  }
+
+  async function viewInvoice(invoiceId: number) {
+    setInvoiceDetail(null);
+    setInvoiceDetailLoading(true);
+    setError("");
+    try {
+      const response = await getPatientInvoice(invoiceId);
+      setInvoiceDetail(response.data);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể tải chi tiết hóa đơn.",
+      );
+    } finally {
+      setInvoiceDetailLoading(false);
     }
   }
   if (!isAuthenticated)
@@ -892,6 +925,13 @@ export function PatientInvoicesPage() {
                   busy={busyInvoiceId === invoice.id_invoice}
                   onPay={() => void payInvoice(invoice.id_invoice)}
                 />
+                <button
+                  type="button"
+                  className="invoice-detail-button"
+                  onClick={() => void viewInvoice(invoice.id_invoice)}
+                >
+                  Xem chi tiết hóa đơn
+                </button>
               </article>
             ))}
           </div>
@@ -920,6 +960,48 @@ export function PatientInvoicesPage() {
             Sau
           </button>
         </nav>
+      )}
+      {(invoiceDetail || invoiceDetailLoading) && (
+        <div className="appointment-modal-backdrop" role="presentation">
+          <section
+            className="appointment-modal invoice-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chi tiết hóa đơn"
+          >
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setInvoiceDetail(null)}
+              aria-label="Đóng chi tiết hóa đơn"
+            >
+              ×
+            </button>
+            {invoiceDetailLoading ? (
+              <RecordState>Đang tải chi tiết hóa đơn...</RecordState>
+            ) : invoiceDetail && (
+              <>
+                <h2>{invoiceDetail.invoice_number}</h2>
+                <p>{invoiceDetail.branch_name} · {formatDateTime(invoiceDetail.issued_at)}</p>
+                <h3>Dịch vụ thanh toán</h3>
+                <div className="invoice-detail-lines">
+                  {invoiceDetail.lines.map((line) => (
+                    <div key={`${line.description}-${line.unit_price}`}>
+                      <span>{line.description} × {line.quantity}</span>
+                      <strong>{new Intl.NumberFormat("vi-VN").format(Number(line.line_total))} {invoiceDetail.currency}</strong>
+                    </div>
+                  ))}
+                </div>
+                <dl className="invoice-detail-totals">
+                  <div><dt>Tạm tính</dt><dd>{new Intl.NumberFormat("vi-VN").format(Number(invoiceDetail.subtotal))} {invoiceDetail.currency}</dd></div>
+                  <div><dt>Giảm giá</dt><dd>{new Intl.NumberFormat("vi-VN").format(Number(invoiceDetail.discount))} {invoiceDetail.currency}</dd></div>
+                  <div><dt>Tổng thanh toán</dt><dd>{new Intl.NumberFormat("vi-VN").format(Number(invoiceDetail.total))} {invoiceDetail.currency}</dd></div>
+                </dl>
+                {invoiceDetail.payments.length > 0 && <><h3>Thanh toán</h3><div className="invoice-detail-lines">{invoiceDetail.payments.filter((payment) => payment.status === "POSTED").map((payment) => <div key={`${payment.method}-${payment.posted_at}`}><span>{payment.method === "CASH" ? "Tiền mặt" : payment.method === "CARD" ? "Thẻ" : "Chuyển khoản"} · {formatDateTime(payment.posted_at)}</span><strong>{new Intl.NumberFormat("vi-VN").format(Number(payment.amount))} {invoiceDetail.currency}</strong></div>)}</div></>}
+              </>
+            )}
+          </section>
+        </div>
       )}
     </RecordsLayout>
   );

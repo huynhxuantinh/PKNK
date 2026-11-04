@@ -277,6 +277,7 @@ class PatientClinicalEncounterSerializer(serializers.ModelSerializer):
     attachments = ClinicalAttachmentSerializer(many=True, read_only=True)
     amendments = ClinicalAmendmentSerializer(many=True, read_only=True)
     prescription = serializers.SerializerMethodField()
+    performed_services = ClinicalPerformedServiceSerializer(many=True, read_only=True)
     service_name = serializers.CharField(
         source="appointment.service_name_snapshot", read_only=True
     )
@@ -302,7 +303,7 @@ class PatientClinicalEncounterSerializer(serializers.ModelSerializer):
             "chief_complaint", "medical_history", "diagnosis_summary",
             "aftercare_instructions",
             "finalized_at", "odontogram_entries", "amendments", "prescription",
-            "treatment_plans", "attachments",
+            "performed_services", "treatment_plans", "attachments",
         )
 
     @extend_schema_field(PrescriptionSerializer(allow_null=True))

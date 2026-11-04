@@ -280,12 +280,16 @@ class BillingService:
 
     @classmethod
     @transaction.atomic
-    def void_payment(cls, *, payment_id, reason, actor_user, request=None):
+    def void_payment(cls, *, payment_id, reason, cash_refund_confirmed, actor_user, request=None):
         payment = Payment.objects.select_for_update().select_related("invoice__branch__organization").get(pk=payment_id)
         invoice = Invoice.objects.select_for_update().get(pk=payment.invoice_id)
         if payment.idempotency_key.startswith("payos:"):
             raise ValidationError(
                 "Thanh toán payOS phải hoàn tiền thực tế qua quy trình riêng trước khi điều chỉnh hóa đơn."
+            )
+        if payment.method == Payment.Method.CASH and not cash_refund_confirmed:
+            raise ValidationError(
+                "Cần xác nhận đã hoàn trả hoặc điều chỉnh tiền mặt tại quầy."
             )
         if payment.status != Payment.Status.POSTED or invoice.status != Invoice.Status.PAID:
             raise ValidationError("Chỉ payment POSTED của hóa đơn PAID mới được VOID.")
@@ -297,5 +301,17 @@ class BillingService:
         invoice.status = Invoice.Status.ISSUED
         invoice.paid_at = None
         invoice.save(update_fields=["status", "paid_at", "updated_at"])
-        cls._audit(invoice, actor_user=actor_user, action="PAYMENT_VOIDED", before={"status": "PAID"}, after={"status": "ISSUED", "payment_id": payment.pk}, request=request)
+        cls._audit(
+            invoice,
+            actor_user=actor_user,
+            action="PAYMENT_VOIDED",
+            before={"status": "PAID"},
+            after={
+                "status": "ISSUED",
+                "payment_id": payment.pk,
+                "reason": payment.void_reason,
+                "cash_refund_confirmed": cash_refund_confirmed,
+            },
+            request=request,
+        )
         return payment

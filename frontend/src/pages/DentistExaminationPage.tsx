@@ -213,7 +213,7 @@ export function DentistExaminationPage() {
           throw reason;
 
         if (encounterCreationRef.current?.publicCode !== publicCode) {
-          const request = createClinicalEncounter(publicCode).catch(
+          const creationRequest = createClinicalEncounter(publicCode).catch(
             (createReason) => {
               if (
                 createReason instanceof ApiError &&
@@ -224,6 +224,11 @@ export function DentistExaminationPage() {
               throw createReason;
             },
           );
+          const request = creationRequest.catch((createReason) => {
+            if (encounterCreationRef.current?.request === request)
+              encounterCreationRef.current = null;
+            throw createReason;
+          });
           encounterCreationRef.current = { publicCode, request };
         }
 

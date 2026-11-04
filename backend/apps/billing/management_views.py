@@ -23,12 +23,19 @@ from .management_serializers import (
     InvoiceReadyAppointmentSerializer,
     InvoiceReadyAppointmentQuerySerializer,
     InvoiceSerializer,
+    PayosReviewResolutionSerializer,
+    PayosReviewTransactionSerializer,
     PaymentCreateSerializer,
+    PaymentVoidSerializer,
     PaymentSerializer,
     ReasonSerializer,
 )
-from .models import Invoice, Payment
-from .payos_service import PayosCheckoutUnavailable, create_checkout
+from .models import Invoice, Payment, PayosTransaction
+from .payos_service import (
+    PayosCheckoutUnavailable,
+    create_checkout,
+    resolve_review_transaction,
+)
 from .services import BillingService
 
 
@@ -272,8 +279,41 @@ class InvoicePayosCheckoutAPIView(ManagementAPIView):
         )
 
 
+class BranchPayosReviewTransactionListAPIView(ManagementAPIView):
+    @extend_schema(responses={200: PayosReviewTransactionSerializer(many=True)})
+    def get(self, request, branch_id):
+        branch = self.branch(branch_id)
+        transactions = PayosTransaction.objects.filter(
+            invoice__branch=branch,
+            status=PayosTransaction.Status.NEEDS_REVIEW,
+        ).select_related("invoice__patient_profile__user").order_by("-updated_at")
+        return Response({"data": PayosReviewTransactionSerializer(transactions, many=True).data})
+
+
+class PayosReviewTransactionResolutionAPIView(ManagementAPIView):
+    @extend_schema(request=PayosReviewResolutionSerializer, responses={200: PayosReviewTransactionSerializer})
+    def post(self, request, order_code):
+        payos_transaction = get_object_or_404(
+            PayosTransaction.objects.select_related("invoice__branch").filter(
+                invoice__branch_id__in=branch_ids_for(request.user, BRANCH_MANAGERS)
+            ),
+            pk=order_code,
+        )
+        payload = PayosReviewResolutionSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        try:
+            payos_transaction = resolve_review_transaction(
+                order_code=payos_transaction.order_code,
+                actor_user=request.user,
+                **payload.validated_data,
+            )
+        except DjangoValidationError as error:
+            raise billing_conflict(error)
+        return Response({"data": PayosReviewTransactionSerializer(payos_transaction).data})
+
+
 class PaymentVoidAPIView(ManagementAPIView):
-    @extend_schema(request=ReasonSerializer, responses={200: PaymentSerializer})
+    @extend_schema(request=PaymentVoidSerializer, responses={200: PaymentSerializer})
     def post(self, request, payment_id):
         payment = get_object_or_404(
             Payment.objects.select_related("invoice__branch__organization").filter(
@@ -281,11 +321,13 @@ class PaymentVoidAPIView(ManagementAPIView):
             ),
             pk=payment_id,
         )
-        payload = ReasonSerializer(data=request.data)
+        payload = PaymentVoidSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         try:
             payment = BillingService.void_payment(
-                payment_id=payment.pk, reason=payload.validated_data["reason"],
+                payment_id=payment.pk,
+                reason=payload.validated_data["reason"],
+                cash_refund_confirmed=payload.validated_data["cash_refund_confirmed"],
                 actor_user=request.user, request=request,
             )
         except DjangoValidationError as error:

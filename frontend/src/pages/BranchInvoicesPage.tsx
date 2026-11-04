@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import {
-  createManagedInvoice, createManagedPayosCheckout, getManagedInvoice, issueManagedInvoice, listInvoiceReadyAppointments, listManagedInvoices,
+  createManagedInvoice, createManagedPayosCheckout, getManagedInvoice, issueManagedInvoice, listInvoiceReadyAppointments, listManagedInvoices, listManagedPayosReviewTransactions,
   postManagedPayment, voidManagedInvoice, voidManagedPayment,
-  updateManagedInvoiceDraft, type InvoiceReadyAppointment, type ManagedInvoice, type ManagedInvoiceDraftInput,
-  type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPayosCheckout, type ManagedPaymentInput,
+  resolveManagedPayosReviewTransaction, updateManagedInvoiceDraft, type InvoiceReadyAppointment, type ManagedInvoice, type ManagedInvoiceDraftInput,
+  type ManagedInvoicePayment, type ManagedInvoiceStatus, type ManagedPayosCheckout, type ManagedPaymentInput, type ManagedPayosReviewTransaction,
 } from '../api/management'
 import { useAuth } from '../auth/AuthContext'
 import { canAccessArea } from '../auth/roles'
@@ -38,6 +38,11 @@ export function BranchInvoicesPage() {
   const [invoiceCount, setInvoiceCount] = useState(0)
   const [offset, setOffset] = useState(0)
   const [readyAppointments, setReadyAppointments] = useState<InvoiceReadyAppointment[]>([])
+  const [reviewTransactions, setReviewTransactions] = useState<ManagedPayosReviewTransaction[]>([])
+  const [reviewToResolve, setReviewToResolve] = useState<ManagedPayosReviewTransaction | null>(null)
+  const [reviewAction, setReviewAction] = useState<'CONFIRM_RECEIVED' | 'MARK_NOT_RECEIVED'>('CONFIRM_RECEIVED')
+  const [reviewReason, setReviewReason] = useState('')
+  const [reviewReference, setReviewReference] = useState('')
   const [loadingReadyAppointments, setLoadingReadyAppointments] = useState(true)
   const [readyAppointmentsError, setReadyAppointmentsError] = useState('')
   const [readyAppointmentCount, setReadyAppointmentCount] = useState(0)
@@ -110,6 +115,8 @@ export function BranchInvoicesPage() {
     setItems([])
     setInvoiceCount(0)
     setReadyAppointments([])
+    setReviewTransactions([])
+    setReviewToResolve(null)
     setLoadingReadyAppointments(true)
     setReadyAppointmentsError('')
     setReadyAppointmentCount(0)
@@ -178,6 +185,20 @@ export function BranchInvoicesPage() {
     void loadReadyAppointments(controller.signal)
     return () => controller.abort()
   }, [branchId, loadReadyAppointments])
+
+  const loadReviewTransactions = useCallback(async () => {
+    if (!branchId) return
+    try {
+      const response = await listManagedPayosReviewTransactions(branchId)
+      if (isCurrentBranch()) setReviewTransactions(response.data)
+    } catch (caught) {
+      if (isCurrentBranch()) setError(caught instanceof Error ? caught.message : 'Không thể tải giao dịch cần đối soát.')
+    }
+  // isCurrentBranch reads the current ref; only branch changes should recreate the loader.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId])
+
+  useEffect(() => { void loadReviewTransactions() }, [loadReviewTransactions])
 
   function applyReadyFilters() {
     if (readyDateFrom && readyDateTo && readyDateFrom > readyDateTo) {
@@ -329,11 +350,11 @@ export function BranchInvoicesPage() {
     setPaymentToVoid(payment)
   }
 
-  async function voidPayment(reason: string) {
+  async function voidPayment(reason: string, cashRefundConfirmed: boolean) {
     if (!selected || !paymentToVoid || !scopeReady) return
     setBusy(true); setPaymentError(''); setNotice('')
     try {
-      await voidManagedPayment(paymentToVoid.id_payment, reason)
+      await voidManagedPayment(paymentToVoid.id_payment, reason, cashRefundConfirmed)
       const refreshed = await getManagedInvoice(selected.id_invoice)
       if (!isCurrentBranch()) return
       setSelected(refreshed.data); setPaymentToVoid(null); setNotice('Đã hủy thanh toán.'); await loadInvoices()
@@ -358,6 +379,24 @@ export function BranchInvoicesPage() {
     finally { setBusy(false) }
   }
 
+  async function resolveReview(event: FormEvent) {
+    event.preventDefault()
+    if (!reviewToResolve || !scopeReady) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      await resolveManagedPayosReviewTransaction(reviewToResolve.order_code, {
+        action: reviewAction,
+        reason: reviewReason.trim(),
+        ...(reviewAction === 'CONFIRM_RECEIVED' ? { received_amount: reviewToResolve.amount, payos_reference: reviewReference.trim() } : {}),
+      })
+      if (!isCurrentBranch()) return
+      setReviewToResolve(null); setReviewReason(''); setReviewReference('')
+      setNotice('Đã lưu kết quả đối soát payOS.')
+      await Promise.all([loadReviewTransactions(), loadInvoices()])
+    } catch (caught) { if (isCurrentBranch()) setError(caught instanceof Error ? caught.message : 'Không thể xử lý giao dịch cần đối soát.') }
+    finally { setBusy(false) }
+  }
+
   if (!canAccessArea(user, 'MANAGEMENT') || !branchId) return <Navigate to="/quan-ly-chi-nhanh" replace />
   return <div className="branch-management-page invoice-management-page">
     <main><div className="branch-management-main">
@@ -365,6 +404,7 @@ export function BranchInvoicesPage() {
     <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
     {error && <div className="app-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
+    {reviewTransactions.length > 0 && <section className="branch-management-schedule invoice-management-section" aria-labelledby="payos-review-heading"><div className="invoice-management-heading"><div><span>Đối soát thủ công</span><h2 id="payos-review-heading">Giao dịch PayOS cần kiểm tra</h2><p>Chỉ xác nhận sau khi đã đối chiếu tiền thực nhận và mã tham chiếu PayOS.</p></div></div><div className="invoice-table-wrap"><table><thead><tr><th>Hóa đơn</th><th>Bệnh nhân</th><th>Mã PayOS</th><th>Số tiền</th><th>Thao tác</th></tr></thead><tbody>{reviewTransactions.map((item) => <tr key={item.order_code}><td>{item.invoice_number}</td><td>{item.patient_name}</td><td>{item.payos_reference || item.order_code}</td><td>{item.amount.toLocaleString('vi-VN')} ₫</td><td><button type="button" className="button-secondary" disabled={busy} onClick={() => { setReviewToResolve(item); setReviewAction('CONFIRM_RECEIVED'); setReviewReason(''); setReviewReference(item.payos_reference) }}>Đối soát</button></td></tr>)}</tbody></table></div></section>}
     <InvoiceReadyAppointmentQueue
       appointments={readyAppointments}
       loading={loadingReadyAppointments}
@@ -394,8 +434,9 @@ export function BranchInvoicesPage() {
     {showPayment && selected && paymentMode === 'CHOICE' && <PaymentChoiceModal busy={busy} onCancel={() => { setShowPayment(false); setPaymentError('') }} onCash={() => setPaymentMode('CASH')} onPayos={() => void createPayosCheckout()} />}
     {showPayment && selected && paymentMode === 'CASH' && <PaymentModal invoice={selected} idempotencyKey={paymentAttemptKey} busy={busy} serverError={paymentError} onCancel={() => { setPaymentMode('CHOICE'); setPaymentError('') }} onSubmit={(data) => void recordPayment(data)} />}
     {showPayment && selected && paymentMode === 'PAYOS' && <PayosCheckoutModal checkout={payosCheckout} busy={busy} serverError={paymentError} onCancel={() => { setShowPayment(false); setPaymentMode('CHOICE'); setPayosCheckout(null); setPaymentError('') }} onRetry={() => void (payosCheckout ? refreshPayosPaymentStatus() : createPayosCheckout())} />}
-    {paymentToVoid && <VoidPaymentModal payment={paymentToVoid} busy={busy} serverError={paymentError} onCancel={() => { setPaymentToVoid(null); setPaymentError('') }} onSubmit={(reason) => void voidPayment(reason)} />}
+    {paymentToVoid && <VoidPaymentModal payment={paymentToVoid} busy={busy} serverError={paymentError} onCancel={() => { setPaymentToVoid(null); setPaymentError('') }} onSubmit={(reason, cashRefundConfirmed) => void voidPayment(reason, cashRefundConfirmed)} />}
     {showDraftEditor && selected && <InvoiceDraftEditor invoice={selected} busy={busy} serverError={draftEditorError} onCancel={() => { setShowDraftEditor(false); setDraftEditorError('') }} onSubmit={(data) => void updateDraft(data)} />}
+    {reviewToResolve && <div className="branch-management-modal-backdrop"><form className="branch-management-modal" role="dialog" aria-modal="true" onSubmit={resolveReview}><h2>Đối soát giao dịch PayOS</h2><p>Hóa đơn {reviewToResolve.invoice_number} · {reviewToResolve.amount.toLocaleString('vi-VN')} ₫ · mã đơn {reviewToResolve.order_code}</p><label>Kết quả<select value={reviewAction} onChange={(event) => setReviewAction(event.target.value as 'CONFIRM_RECEIVED' | 'MARK_NOT_RECEIVED')}><option value="CONFIRM_RECEIVED">Đã xác minh tiền thực nhận</option><option value="MARK_NOT_RECEIVED">Không nhận được tiền</option></select></label>{reviewAction === 'CONFIRM_RECEIVED' && <label>Mã tham chiếu PayOS<input required value={reviewReference} onChange={(event) => setReviewReference(event.target.value)} /></label>}<label>Lý do/ghi chú đối soát<textarea required minLength={3} maxLength={1000} value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} /></label><div className="modal-actions"><button type="button" className="button-secondary" onClick={() => setReviewToResolve(null)}>Hủy</button><button type="submit" disabled={busy}>{reviewAction === 'CONFIRM_RECEIVED' ? 'Xác nhận đã nhận tiền' : 'Đánh dấu không nhận tiền'}</button></div></form></div>}
     </main>
   </div>
 }

@@ -250,6 +250,7 @@ export interface PatientClinicalEncounter {
   diagnosis_summary: string
   aftercare_instructions: string
   finalized_at: string
+  performed_services: ClinicalPerformedService[]
   attachments: ClinicalAttachment[]
 }
 
@@ -274,6 +275,18 @@ export interface PatientInvoice {
   total: string
   issued_at: string | null
   paid_at: string | null
+  lines: Array<{
+    description: string
+    quantity: number
+    unit_price: string
+    line_total: string
+  }>
+  payments: Array<{
+    method: 'CASH' | 'BANK_TRANSFER' | 'CARD'
+    amount: string
+    status: 'POSTED' | 'VOID'
+    posted_at: string
+  }>
 }
 
 export interface PatientInvoicesResponse {

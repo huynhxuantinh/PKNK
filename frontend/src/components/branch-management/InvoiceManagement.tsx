@@ -1149,7 +1149,7 @@ interface VoidPaymentModalProps {
   busy: boolean;
   serverError?: string;
   onCancel: () => void;
-  onSubmit: (reason: string) => void;
+  onSubmit: (reason: string, cashRefundConfirmed: boolean) => void;
 }
 
 export function VoidPaymentModal({
@@ -1160,6 +1160,7 @@ export function VoidPaymentModal({
   onSubmit,
 }: VoidPaymentModalProps) {
   const [reason, setReason] = useState("");
+  const [cashRefundConfirmed, setCashRefundConfirmed] = useState(false);
   const [validationError, setValidationError] = useState("");
 
   function submit(event: FormEvent) {
@@ -1169,8 +1170,12 @@ export function VoidPaymentModal({
       setValidationError("Cần nhập lý do hủy thanh toán, tối thiểu 3 ký tự.");
       return;
     }
+    if (!cashRefundConfirmed) {
+      setValidationError("Cần xác nhận đã hoàn trả hoặc điều chỉnh tiền mặt tại quầy.");
+      return;
+    }
     setValidationError("");
-    onSubmit(value);
+    onSubmit(value, cashRefundConfirmed);
   }
 
   return (
@@ -1204,6 +1209,15 @@ export function VoidPaymentModal({
             maxLength={1000}
             onChange={(event) => setReason(event.target.value)}
           />
+        </label>
+        <label className="payment-refund-confirmation">
+          <input
+            type="checkbox"
+            checked={cashRefundConfirmed}
+            disabled={busy}
+            onChange={(event) => setCashRefundConfirmed(event.target.checked)}
+          />
+          Tôi xác nhận tiền mặt đã được hoàn trả hoặc điều chỉnh tại quầy.
         </label>
         <div className="modal-actions">
           <button

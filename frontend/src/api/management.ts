@@ -74,6 +74,18 @@ export interface ManagedPayosCheckout {
   qr_code: string
   status: 'PENDING' | 'SUCCEEDED' | 'CANCELLED' | 'NEEDS_REVIEW'
 }
+export interface ManagedPayosReviewTransaction {
+  order_code: number
+  invoice_id: number
+  invoice_number: string
+  patient_name: string
+  amount: number
+  status: 'NEEDS_REVIEW'
+  payos_reference: string
+  checkout_url: string
+  created_at: string
+  updated_at: string
+}
 export interface ManagedInvoice {
   id_invoice: number; invoice_number: string; appointment_code: string; branch_id: number
   patient_profile_id: number; patient_name: string; replacement_for_id: number | null
@@ -245,7 +257,9 @@ export const issueManagedInvoice = (id: number) => apiRequest<{ data: ManagedInv
 export const voidManagedInvoice = (id: number, reason: string) => apiRequest<{ data: ManagedInvoice }>(`/management/invoices/${id}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
 export const postManagedPayment = (invoiceId: number, data: ManagedPaymentInput) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/invoices/${invoiceId}/payments/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
 export const createManagedPayosCheckout = (invoiceId: number) => apiRequest<{ data: ManagedPayosCheckout }>(`/management/invoices/${invoiceId}/payos-checkout/`, { method: 'POST' }, { auth: true })
-export const voidManagedPayment = (paymentId: number, reason: string) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/payments/${paymentId}/void/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })
+export const listManagedPayosReviewTransactions = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedPayosReviewTransaction[] }>(`/management/branches/${branchId}/payos-review-transactions/`, { signal }, { auth: true })
+export const resolveManagedPayosReviewTransaction = (orderCode: number, data: { action: 'CONFIRM_RECEIVED' | 'MARK_NOT_RECEIVED'; reason: string; received_amount?: number; payos_reference?: string }) => apiRequest<{ data: ManagedPayosReviewTransaction }>(`/management/payos-transactions/${orderCode}/resolve/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
+export const voidManagedPayment = (paymentId: number, reason: string, cashRefundConfirmed: boolean) => apiRequest<{ data: ManagedInvoicePayment }>(`/management/payments/${paymentId}/void/`, { method: 'POST', body: JSON.stringify({ reason, cash_refund_confirmed: cashRefundConfirmed }) }, { auth: true })
 
 export const getManagedBranch = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedBranchDetail }>(`/management/branches/${branchId}/`, { signal }, { auth: true })
 export const listManagedOpeningHours = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedOpeningHour[] }>(`/management/branches/${branchId}/opening-hours/`, { signal }, { auth: true })

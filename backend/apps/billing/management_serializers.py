@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.catalog.models import Service
 
-from .models import Invoice, InvoiceLine, Payment
+from .models import Invoice, InvoiceLine, Payment, PayosTransaction
 
 
 class InvoiceLineSerializer(serializers.ModelSerializer):
@@ -128,6 +128,10 @@ class ReasonSerializer(serializers.Serializer):
     reason = serializers.CharField(min_length=3, max_length=1000, trim_whitespace=True)
 
 
+class PaymentVoidSerializer(ReasonSerializer):
+    cash_refund_confirmed = serializers.BooleanField(required=False, default=False)
+
+
 class PaymentCreateSerializer(serializers.Serializer):
     # The counter confirms cash only. BANK_TRANSFER is reserved for the
     # verified payOS service path and is never a manually posted payment.
@@ -135,3 +139,31 @@ class PaymentCreateSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=1)
     external_reference = serializers.CharField(max_length=100, required=False, allow_blank=True)
     idempotency_key = serializers.CharField(min_length=8, max_length=64)
+
+
+class PayosReviewTransactionSerializer(serializers.ModelSerializer):
+    invoice_id = serializers.IntegerField(source="invoice.pk", read_only=True)
+    invoice_number = serializers.CharField(source="invoice.invoice_number", read_only=True)
+    patient_name = serializers.CharField(source="invoice.patient_profile.user.full_name", read_only=True)
+
+    class Meta:
+        model = PayosTransaction
+        fields = (
+            "order_code", "invoice_id", "invoice_number", "patient_name", "amount",
+            "status", "payos_reference", "checkout_url", "created_at", "updated_at",
+        )
+
+
+class PayosReviewResolutionSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=("CONFIRM_RECEIVED", "MARK_NOT_RECEIVED"))
+    received_amount = serializers.IntegerField(min_value=1, required=False)
+    payos_reference = serializers.CharField(max_length=100, required=False, allow_blank=False)
+    reason = serializers.CharField(min_length=3, max_length=1000, trim_whitespace=True)
+
+    def validate(self, attrs):
+        if attrs["action"] == "CONFIRM_RECEIVED":
+            if "received_amount" not in attrs or "payos_reference" not in attrs:
+                raise serializers.ValidationError(
+                    "Cần nhập số tiền thực nhận và mã tham chiếu payOS."
+                )
+        return attrs

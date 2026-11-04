@@ -530,6 +530,17 @@ class ClinicalAPITests(APITestCase):
     def test_patient_only_reads_own_completed_record_and_access_is_audited(self):
         appointment = self.appointment()
         encounter = self.create_encounter(appointment)
+        performed_services = self.client.put(
+            reverse(
+                "dentist_api:clinical-performed-services",
+                kwargs={"encounter_id": encounter.pk},
+            ),
+            {
+                "confirmed": True,
+                "items": [{"branch_service_id": self.branch_service.pk, "quantity": 2}],
+            },
+            format="json",
+        )
         self.client.patch(
             reverse(
                 "dentist_api:clinical-encounter-detail",
@@ -588,6 +599,7 @@ class ClinicalAPITests(APITestCase):
         )
 
         self.assertEqual(hidden_while_in_progress.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(performed_services.status_code, status.HTTP_200_OK)
         self.assertEqual(completed.status_code, status.HTTP_200_OK)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(history.data["data"]), 1)
@@ -600,6 +612,16 @@ class ClinicalAPITests(APITestCase):
         self.assertNotIn("notes", response.data["data"])
         self.assertEqual(response.data["data"]["appointment_status"], "COMPLETED")
         self.assertEqual(response.data["data"]["service_name"], self.service.name)
+        self.assertEqual(len(response.data["data"]["performed_services"]), 1)
+        self.assertEqual(
+            response.data["data"]["performed_services"][0]["service_name_snapshot"],
+            self.service.name,
+        )
+        self.assertEqual(response.data["data"]["performed_services"][0]["quantity"], 2)
+        self.assertEqual(
+            history.data["data"][0]["performed_services"][0]["service_name_snapshot"],
+            self.service.name,
+        )
         self.assertEqual(response.data["data"]["dentist_name"], self.dentist_user.full_name)
         self.assertEqual(response.data["data"]["branch_name"], self.branch.name)
         self.assertEqual(len(response.data["data"]["treatment_plans"]), 1)
