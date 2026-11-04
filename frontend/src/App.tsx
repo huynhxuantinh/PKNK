@@ -6,6 +6,7 @@ const BranchDetailPage = lazy(() => import('./pages/BranchDetailPage').then(({ B
 const BookingPage = lazy(() => import('./pages/BookingPage').then(({ BookingPage: Page }) => ({ default: Page })))
 const PricingPage = lazy(() => import('./pages/PricingPage').then(({ PricingPage: Page }) => ({ default: Page })))
 const AboutDentaViePage = lazy(() => import('./pages/AboutDentaViePage').then(({ AboutDentaViePage: Page }) => ({ default: Page })))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(({ NotFoundPage: Page }) => ({ default: Page })))
 const PatientProfilePage = lazy(() => import('./pages/PatientProfilePage').then(({ PatientProfilePage: Page }) => ({ default: Page })))
 const NotificationsPage = lazy(() => import('./pages/PatientRecordsPages').then(({ NotificationsPage: Page }) => ({ default: Page })))
 const PatientAppointmentsPage = lazy(() => import('./pages/PatientRecordsPages').then(({ PatientAppointmentsPage: Page }) => ({ default: Page })))
@@ -108,7 +109,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-    <Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="*" element={<NotFoundPage />} />
   </Route>,
 ))
 
