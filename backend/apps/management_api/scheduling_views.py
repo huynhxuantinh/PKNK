@@ -81,7 +81,6 @@ class BranchWorkShiftListCreateAPIView(ManagementAPIView):
             ensure_dentist_assigned(dentist=dentist, branch=branch)
             ensure_work_shift_not_overlapping(
                 dentist=dentist,
-                branch=branch,
                 weekday=serializer.validated_data["weekday"],
                 start_time=serializer.validated_data["start_time"],
                 end_time=serializer.validated_data["end_time"],
@@ -127,7 +126,6 @@ class WorkShiftDetailAPIView(ManagementAPIView):
             ensure_dentist_assigned(dentist=dentist, branch=shift.branch)
             ensure_work_shift_not_overlapping(
                 dentist=dentist,
-                branch=shift.branch,
                 weekday=serializer.validated_data.get("weekday", shift.weekday),
                 start_time=serializer.validated_data.get("start_time", shift.start_time),
                 end_time=serializer.validated_data.get("end_time", shift.end_time),

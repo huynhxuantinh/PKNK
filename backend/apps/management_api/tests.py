@@ -192,6 +192,39 @@ class ManagementAPITests(APITestCase):
         self.assertEqual(cross.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(patch.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_org_admin_can_reactivate_inactive_branch(self):
+        branch = self.make_branch(self.org_a, "REACTIVATE")
+        branch.is_active = False
+        branch.save(update_fields=["is_active", "updated_at"])
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:branch-detail", kwargs={"branch_id": branch.pk}),
+            {"is_active": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        branch.refresh_from_db()
+        self.assertTrue(branch.is_active)
+
+    def test_org_admin_can_edit_inactive_branch(self):
+        branch = self.make_branch(self.org_a, "EDIT-INACTIVE")
+        branch.is_active = False
+        branch.save(update_fields=["is_active", "updated_at"])
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:branch-detail", kwargs={"branch_id": branch.pk}),
+            {"name": "Updated while inactive"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        branch.refresh_from_db()
+        self.assertEqual(branch.name, "Updated while inactive")
+        self.assertFalse(branch.is_active)
+
     def test_patient_cannot_access_management_api(self):
         patient = self.make_user("patient-no-management@example.com")
         PatientProfile.objects.create(user=patient)
@@ -1384,6 +1417,33 @@ class ManagementAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_opening_hours_rejects_change_conflicting_with_future_appointment(self):
+        patient_user = self.make_user("opening-hours-conflict@example.com")
+        self.create_active_patient_appointment(
+            patient_user, "APT-OPENING-HOURS-CONFLICT"
+        )
+        self.client.force_authenticate(self.org_admin)
+        closed_hours = [
+            {
+                "weekday": weekday,
+                "is_closed": True,
+                "open_time": None,
+                "close_time": None,
+            }
+            for weekday in range(1, 8)
+        ]
+
+        response = self.client.put(
+            reverse(
+                "management:branch-opening-hours",
+                kwargs={"branch_id": self.branch_a.pk},
+            ),
+            {"opening_hours": closed_hours},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_cannot_deactivate_chair_with_active_future_appointment(self):
         patient_user = self.make_user("future-patient@example.com")

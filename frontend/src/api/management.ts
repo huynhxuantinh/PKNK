@@ -40,6 +40,7 @@ export interface ManagementAppointment {
 
 export interface ManagedBranch {
   id_branch: number
+  organization_id?: number
   name: string
   is_active: boolean
 }
@@ -215,7 +216,7 @@ export const createManagedWorkShift = (branchId: number, data: Omit<ManagedWorkS
 export const patchManagedWorkShift = (id: number, data: Partial<ManagedWorkShift>) => apiRequest<{ data: ManagedWorkShift }>(`/management/work-shifts/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 export const listManagedTimeOffs = (branchId: number, signal?: AbortSignal) => apiRequest<{ data: ManagedTimeOff[] }>(`/management/branches/${branchId}/time-offs/`, { signal }, { auth: true })
 export const createManagedTimeOff = (branchId: number, data: Omit<ManagedTimeOff, 'id_time_off' | 'branch_id'> & { applies_to_all_branches?: boolean }) => apiRequest<{ data: ManagedTimeOff }>(`/management/branches/${branchId}/time-offs/`, { method: 'POST', body: JSON.stringify(data) }, { auth: true })
-export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff>) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
+export const patchManagedTimeOff = (id: number, data: Partial<ManagedTimeOff> & { applies_to_all_branches?: boolean }) => apiRequest<{ data: ManagedTimeOff }>(`/management/time-offs/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }, { auth: true })
 
 export const branchReport = (
   branchId: number,

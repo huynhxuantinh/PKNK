@@ -16,7 +16,10 @@ import {
 import { DataTable, EmptyState, StatusBadge } from "../components/admin/ui";
 import { OrganizationPageLayout } from "../components/organization-management/OrganizationPageLayout";
 import { useOrganizationScope } from "../components/organization-management/useOrganizationScope";
-import { weekdayLabels } from "../components/branch-management/staffSchedulePresentation";
+import {
+  weekdayLabels,
+  workShiftStatus,
+} from "../components/branch-management/staffSchedulePresentation";
 import { settledMapWithConcurrency } from "./organizationStaffScheduleUtils";
 import styles from "./OrganizationStaffSchedulePage.module.css";
 
@@ -172,8 +175,7 @@ export function OrganizationStaffSchedulePage() {
       heroDescription="Theo dõi ca làm và lịch nghỉ giữa các chi nhánh; thay đổi được xử lý tại chi nhánh để bảo toàn lịch hẹn."
       heroAside={
         <span className="organization-hero-stat">
-          {visibleShifts.filter((item) => item.is_active).length} ca đang áp
-          dụng
+          {visibleShifts.filter((item) => workShiftStatus(item) === "ACTIVE").length} ca đang áp dụng
         </span>
       }
     >
@@ -299,13 +301,25 @@ export function OrganizationStaffSchedulePage() {
                   `${item.start_time.slice(0, 5)} – ${item.end_time.slice(0, 5)}`,
               },
               {
+                key: "validity",
+                header: "Thời hạn",
+                cell: (item) =>
+                  `${item.valid_from}${item.valid_to ? ` – ${item.valid_to}` : " – Không thời hạn"}`,
+              },
+              {
                 key: "state",
                 header: "Trạng thái",
-                cell: (item) => (
-                  <StatusBadge tone={item.is_active ? "success" : "neutral"}>
-                    {item.is_active ? "Đang áp dụng" : "Đã ngưng"}
-                  </StatusBadge>
-                ),
+                cell: (item) => {
+                  const state = workShiftStatus(item);
+                  const labels = {
+                    UPCOMING: ["info", "Sắp có hiệu lực"],
+                    ACTIVE: ["success", "Đang áp dụng"],
+                    EXPIRED: ["warning", "Đã hết hạn"],
+                    INACTIVE: ["neutral", "Đã ngưng"],
+                  } as const;
+                  const [tone, label] = labels[state];
+                  return <StatusBadge tone={tone}>{label}</StatusBadge>;
+                },
               },
               {
                 key: "action",

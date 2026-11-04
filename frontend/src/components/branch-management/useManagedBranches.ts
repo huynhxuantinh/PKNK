@@ -20,6 +20,7 @@ export function useManagedBranches(user: User | null) {
         )
         .map((membership) => ({
           id_branch: membership.branch_id as number,
+          organization_id: membership.organization_id,
           name: membership.branch_name || `Chi nhánh #${membership.branch_id}`,
           is_active: true,
         }))

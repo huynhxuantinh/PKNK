@@ -393,6 +393,90 @@ class BookingScheduleConcurrencyTests(TransactionTestCase):
             time(18),
         )
 
+    def test_chair_deactivation_waits_for_booking_holding_chair_lock(self):
+        chair = Chair.objects.get(branch=self.branch, code="CON-C1")
+        chair_locked = Event()
+        allow_booking_to_finish = Event()
+        update_started = Event()
+        update_finished = Event()
+        booking_result = []
+        update_result = []
+        worker_errors = []
+        appointment_manager = Appointment.objects
+        original_create = appointment_manager.create
+
+        def create_after_chair_lock(**kwargs):
+            if kwargs.get("status") == Appointment.Status.HELD:
+                chair_locked.set()
+                self.assertTrue(allow_booking_to_finish.wait(timeout=5))
+            return original_create(**kwargs)
+
+        def create_hold():
+            close_old_connections()
+            try:
+                BookingService.create_hold(
+                    patient_user=User.objects.get(pk=self.patient_user.pk),
+                    branch_service=BranchService.objects.select_related(
+                        "branch__organization", "service"
+                    ).get(pk=self.branch_service.pk),
+                    starts_at=self.starts_at,
+                )
+                booking_result.append("held")
+            except Exception as error:  # pragma: no cover - surfaced below
+                worker_errors.append(error)
+            finally:
+                close_old_connections()
+
+        def deactivate_chair():
+            close_old_connections()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=self.branch_admin)
+                update_started.set()
+                response = client.patch(
+                    reverse("management:chair-detail", kwargs={"chair_id": chair.pk}),
+                    {"is_active": False},
+                    format="json",
+                )
+                update_result.append(response.status_code)
+            except Exception as error:  # pragma: no cover - surfaced below
+                worker_errors.append(error)
+            finally:
+                update_finished.set()
+                close_old_connections()
+
+        booking_worker = Thread(target=create_hold)
+        update_worker = Thread(target=deactivate_chair)
+        with patch.object(
+            appointment_manager,
+            "create",
+            side_effect=create_after_chair_lock,
+        ):
+            booking_worker.start()
+            self.assertTrue(chair_locked.wait(timeout=5))
+            update_worker.start()
+            self.assertTrue(update_started.wait(timeout=5))
+            self.assertFalse(update_finished.wait(timeout=0.2))
+            allow_booking_to_finish.set()
+            booking_worker.join(timeout=5)
+            update_worker.join(timeout=5)
+
+        self.assertFalse(booking_worker.is_alive())
+        self.assertFalse(update_worker.is_alive())
+        self.assertEqual(worker_errors, [])
+        self.assertEqual(booking_result, ["held"])
+        self.assertEqual(update_result, [status.HTTP_409_CONFLICT])
+        chair.refresh_from_db()
+        self.assertTrue(chair.is_active)
+        self.assertEqual(
+            Appointment.objects.filter(
+                chair=chair,
+                patient_profile__user=self.patient_user,
+                status=Appointment.Status.HELD,
+            ).count(),
+            1,
+        )
+
     def test_reschedule_rechecks_availability_after_concurrent_time_off(self):
         dentist_two_user = User.objects.create_user(
             email="concurrency-reschedule-dentist@example.com",

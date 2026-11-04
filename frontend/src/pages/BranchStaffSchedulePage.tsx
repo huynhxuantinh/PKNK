@@ -29,6 +29,7 @@ import {
   buildWorkShiftPayload,
   toHcmLocalInput,
   type WorkShiftFormValues,
+  workShiftStatus,
   weekdayLabels,
 } from "../components/branch-management/staffSchedulePresentation";
 import { useManagedBranches } from "../components/branch-management/useManagedBranches";
@@ -103,12 +104,25 @@ export function BranchStaffSchedulePage() {
       branches: managedBranches.branches,
       loaded: !managedBranches.loading,
     }) || 0;
-  const canManageOrganizationTimeOffs = canAccessArea(user, "ORGANIZATION");
+  const currentBranch = managedBranches.branches.find(
+    (branch) => branch.id_branch === branchId,
+  );
+  const canManageOrganizationTimeOffs = Boolean(
+    currentBranch?.organization_id &&
+      user?.memberships?.some(
+        (membership) =>
+          membership.is_active &&
+          membership.role === "ORGANIZATION_ADMIN" &&
+          membership.organization_id === currentBranch.organization_id,
+      ),
+  );
   const [dentists, setDentists] = useState<ScheduleDentist[]>([]);
   const [shifts, setShifts] = useState<ManagedWorkShift[]>([]);
   const [offs, setOffs] = useState<ManagedTimeOff[]>([]);
   const [shift, setShift] = useState<WorkShiftFormValues>(emptyShift);
   const [off, setOff] = useState<TimeOffForm>(emptyOff);
+  const [offAppliesToAllBranches, setOffAppliesToAllBranches] =
+    useState(false);
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
   const [editingOffId, setEditingOffId] = useState<number | null>(null);
   const [shiftOpen, setShiftOpen] = useState(false);
@@ -166,6 +180,7 @@ export function BranchStaffSchedulePage() {
     setOffs([]);
     setShift(emptyShift());
     setOff(emptyOff());
+    setOffAppliesToAllBranches(false);
     setEditingShiftId(null);
     setEditingOffId(null);
     setShiftOpen(false);
@@ -181,7 +196,7 @@ export function BranchStaffSchedulePage() {
   }, [branchId]);
 
   const activeShiftCount = useMemo(
-    () => shifts.filter((item) => item.is_active).length,
+    () => shifts.filter((item) => workShiftStatus(item) === "ACTIVE").length,
     [shifts],
   );
   const activeOffCount = useMemo(
@@ -276,6 +291,7 @@ export function BranchStaffSchedulePage() {
   };
   const resetOff = () => {
     setOff(emptyOff());
+    setOffAppliesToAllBranches(false);
     setEditingOffId(null);
     setOffModalBranchId(null);
     setOffOpen(false);
@@ -306,6 +322,7 @@ export function BranchStaffSchedulePage() {
     )
       return;
     if (item?.branch_id === null && !canManageOrganizationTimeOffs) return;
+    setOffAppliesToAllBranches(item?.branch_id === null);
     if (item) {
       setOff({
         dentist_id: String(item.dentist_id),
@@ -401,6 +418,9 @@ export function BranchStaffSchedulePage() {
       starts_at: `${off.starts_at}:00+07:00`,
       ends_at: `${off.ends_at}:00+07:00`,
       reason: off.reason.trim(),
+      ...(canManageOrganizationTimeOffs
+        ? { applies_to_all_branches: offAppliesToAllBranches }
+        : {}),
     };
     savingRef.current = true;
     setSavingKind("off");
@@ -554,11 +574,17 @@ export function BranchStaffSchedulePage() {
               {
                 key: "state",
                 header: "Trạng thái",
-                cell: (item) => (
-                  <StatusBadge tone={item.is_active ? "success" : "neutral"}>
-                    {item.is_active ? "Đang áp dụng" : "Đã ngừng"}
-                  </StatusBadge>
-                ),
+                cell: (item) => {
+                  const state = workShiftStatus(item);
+                  const labels = {
+                    UPCOMING: ["info", "Sắp có hiệu lực"],
+                    ACTIVE: ["success", "Đang áp dụng"],
+                    EXPIRED: ["warning", "Đã hết hạn"],
+                    INACTIVE: ["neutral", "Đã ngưng"],
+                  } as const;
+                  const [tone, label] = labels[state];
+                  return <StatusBadge tone={tone}>{label}</StatusBadge>;
+                },
               },
               {
                 key: "action",
@@ -809,6 +835,31 @@ export function BranchStaffSchedulePage() {
               ))}
             </select>
           </FormField>
+          {canManageOrganizationTimeOffs ? (
+            <FormField label="Phạm vi áp dụng">
+              <select
+                value={offAppliesToAllBranches ? "ORGANIZATION" : "BRANCH"}
+                disabled={Boolean(editingOffId && offAppliesToAllBranches)}
+                onChange={(event) =>
+                  setOffAppliesToAllBranches(
+                    event.target.value === "ORGANIZATION",
+                  )
+                }
+              >
+                <option value="BRANCH">Chi nhánh hiện tại</option>
+                <option value="ORGANIZATION">Toàn bộ chi nhánh</option>
+              </select>
+              {editingOffId && offAppliesToAllBranches && (
+                <small>
+                  Lịch nghỉ toàn chuỗi không thể chuyển về phạm vi một chi nhánh.
+                </small>
+              )}
+            </FormField>
+          ) : (
+            <p className="branch-staff-page__hint">
+              Phạm vi áp dụng: chi nhánh hiện tại.
+            </p>
+          )}
           <FormRow>
             <FormField label="Bắt đầu">
               <input

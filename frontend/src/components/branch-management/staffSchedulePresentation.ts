@@ -11,6 +11,27 @@ export interface WorkShiftFormValues {
   valid_to: string
 }
 
+export type WorkShiftStatus = 'UPCOMING' | 'ACTIVE' | 'EXPIRED' | 'INACTIVE'
+
+function hcmToday() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date())
+  const valueOf = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+  return `${valueOf('year')}-${valueOf('month')}-${valueOf('day')}`
+}
+
+export function workShiftStatus(
+  shift: { is_active: boolean; valid_from: string; valid_to: string | null },
+  today = hcmToday(),
+): WorkShiftStatus {
+  if (!shift.is_active) return 'INACTIVE'
+  if (today < shift.valid_from) return 'UPCOMING'
+  if (shift.valid_to && today > shift.valid_to) return 'EXPIRED'
+  return 'ACTIVE'
+}
+
 export function buildWorkShiftPayload(shift: WorkShiftFormValues) {
   return {
     dentist_id: Number(shift.dentist_id),

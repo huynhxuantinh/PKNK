@@ -181,6 +181,92 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(WorkShift.objects.filter(branch=self.branch).count(), 1)
 
+    def test_create_shift_rejects_overlap_at_another_branch(self):
+        WorkShift.objects.create(
+            dentist=self.dentist,
+            branch=self.branch,
+            weekday=self.target_date.isoweekday(),
+            start_time=time(8),
+            end_time=time(12),
+            valid_from=self.target_date,
+            valid_to=self.target_date + timedelta(days=14),
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:branch-work-shifts",
+                kwargs={"branch_id": self.other_branch.pk},
+            ),
+            {
+                "dentist_id": self.dentist.pk,
+                "weekday": self.target_date.isoweekday(),
+                "start_time": "09:00",
+                "end_time": "13:00",
+                "valid_from": (self.target_date + timedelta(days=7)).isoformat(),
+                "valid_to": (self.target_date + timedelta(days=21)).isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(WorkShift.objects.count(), 1)
+
+    def test_update_shift_rejects_overlap_at_another_branch(self):
+        first_shift = self.create_shift(self.branch)
+        second_shift = WorkShift.objects.create(
+            dentist=self.dentist,
+            branch=self.other_branch,
+            weekday=self.target_date.isoweekday(),
+            start_time=time(14),
+            end_time=time(17),
+            valid_from=self.target_date,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse(
+                "management:work-shift-detail",
+                kwargs={"shift_id": second_shift.pk},
+            ),
+            {"start_time": "11:00", "end_time": "15:00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        second_shift.refresh_from_db()
+        self.assertEqual(second_shift.start_time, time(14))
+        self.assertEqual(first_shift.branch_id, self.branch.pk)
+
+    def test_same_hours_are_allowed_when_shift_date_ranges_do_not_overlap(self):
+        WorkShift.objects.create(
+            dentist=self.dentist,
+            branch=self.branch,
+            weekday=self.target_date.isoweekday(),
+            start_time=time(8),
+            end_time=time(12),
+            valid_from=self.target_date,
+            valid_to=self.target_date + timedelta(days=6),
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.post(
+            reverse(
+                "management:branch-work-shifts",
+                kwargs={"branch_id": self.other_branch.pk},
+            ),
+            {
+                "dentist_id": self.dentist.pk,
+                "weekday": self.target_date.isoweekday(),
+                "start_time": "08:00",
+                "end_time": "12:00",
+                "valid_from": (self.target_date + timedelta(days=7)).isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_duplicate_time_off_is_rejected(self):
         self.client.force_authenticate(self.branch_admin)
         url = reverse("management:branch-time-offs", kwargs={"branch_id": self.branch.pk})

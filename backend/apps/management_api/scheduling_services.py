@@ -78,7 +78,14 @@ def ensure_shift_change_safe(*, shift, proposed):
     appointments = active_appointments().filter(
         branch=shift.branch,
         dentist=shift.dentist,
-        starts_at__gte=timezone.now(),
+    ).filter(
+        Q(starts_at__gte=timezone.now())
+        | Q(
+            status__in=[
+                Appointment.Status.CHECKED_IN,
+                Appointment.Status.IN_PROGRESS,
+            ]
+        )
     )
     if not appointments.exists():
         return
@@ -109,15 +116,14 @@ def ensure_shift_change_safe(*, shift, proposed):
 
 
 def ensure_work_shift_not_overlapping(
-    *, dentist, branch, weekday, start_time, end_time, valid_from, valid_to,
+    *, dentist, weekday, start_time, end_time, valid_from, valid_to,
     is_active=True, exclude_id=None,
 ):
-    """Reject active shift ranges that overlap for one dentist at one branch."""
+    """Reject overlapping active shifts for a dentist across all branches."""
     if not is_active:
         return
     conflicts = WorkShift.objects.filter(
         dentist=dentist,
-        branch=branch,
         weekday=weekday,
         is_active=True,
         start_time__lt=end_time,
