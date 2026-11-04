@@ -137,12 +137,14 @@ export function PerformedServicesPanel({ encounter, branchServices, disabled, on
       <header>
         <div>
           <p className="eyebrow">Dịch vụ thực tế</p>
-          <h2 id="performed-services-title">Dịch vụ đã thực hiện</h2>
+          <div className="performed-services-title-row">
+            <h2 id="performed-services-title">Dịch vụ đã thực hiện</h2>
+            <span className={encounter.performed_services_confirmed ? 'is-confirmed' : ''}>
+              {encounter.performed_services_confirmed ? 'Đã xác nhận' : 'Chưa xác nhận'}
+            </span>
+          </div>
           <p>Chỉ ghi các thủ thuật đã làm hôm nay. Kế hoạch điều trị lần sau được quản lý riêng.</p>
         </div>
-        <span className={encounter.performed_services_confirmed ? 'is-confirmed' : ''}>
-          {encounter.performed_services_confirmed ? 'Đã xác nhận' : 'Chưa xác nhận'}
-        </span>
       </header>
 
       {disabled ? (

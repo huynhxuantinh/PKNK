@@ -49,10 +49,6 @@ function appointmentInitials(name: string) {
     .toUpperCase();
 }
 
-function appointmentContactName(appointment: DentistAppointment) {
-  return appointment.contact_name_snapshot || appointment.patient_name;
-}
-
 function bookingContactPhone(appointment: DentistAppointment) {
   return appointment.contact_phone_snapshot || appointment.patient_phone;
 }
@@ -68,8 +64,11 @@ export function DentistDashboardPage() {
     null,
   );
   const [error, setError] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
   const [branchesError, setBranchesError] = useState("");
   const [startingCode, setStartingCode] = useState("");
+  const [scheduleReload, setScheduleReload] = useState(0);
+  const [branchReload, setBranchReload] = useState(0);
   const [scheduleView, setScheduleView] =
     useState<DentistScheduleView>("UPCOMING");
   const [selectedDate, setSelectedDate] = useState(() => hcmDate(new Date()));
@@ -97,16 +96,16 @@ export function DentistDashboardPage() {
       loading = true;
       if (showLoading) {
         setAppointments(null);
-        setError("");
+        setScheduleError("");
       }
       try {
         const response = await listDentistSchedule(start, end);
         if (!active) return;
         setAppointments(response.data);
-        setError("");
+        setScheduleError("");
       } catch (reason) {
         if (active && showLoading) {
-          setError(
+          setScheduleError(
             reason instanceof Error
               ? reason.message
               : "Không thể tải lịch khám.",
@@ -130,7 +129,7 @@ export function DentistDashboardPage() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [isAuthenticated, scheduleView, selectedDate]);
+  }, [isAuthenticated, scheduleView, selectedDate, scheduleReload]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -156,18 +155,29 @@ export function DentistDashboardPage() {
     return () => {
       active = false;
     };
-  }, [assignedBranchIds, isAuthenticated]);
+  }, [assignedBranchIds, branchReload, isAuthenticated]);
 
-  const visibleAppointments = useMemo(
-    () =>
-      filterDentistSchedule(
-        appointments || [],
-        selectedBranchId,
-        scheduleView,
-        "ALL",
-      ),
-    [appointments, scheduleView, selectedBranchId],
+  const visibleAppointments = useMemo(() => {
+    const anchorDate = new Date(`${selectedDate}T00:00:00+07:00`);
+    return filterDentistSchedule(appointments || [], selectedBranchId, scheduleView, "ALL")
+      .filter((appointment) => scheduleView === "HISTORY"
+        || dayFilter === "ALL"
+        || (dayFilter === "TODAY" && isOnHcmDay(appointment.starts_at, 0, anchorDate))
+        || (dayFilter === "TOMORROW" && isOnHcmDay(appointment.starts_at, 1, anchorDate)));
+  }, [appointments, dayFilter, scheduleView, selectedBranchId, selectedDate]);
+
+  const priorityAppointments = useMemo(
+    () => visibleAppointments
+      .filter((item) => item.status === "IN_PROGRESS" || item.status === "CHECKED_IN")
+      .sort((left, right) => {
+        if (left.status !== right.status) return left.status === "IN_PROGRESS" ? -1 : 1;
+        return left.starts_at.localeCompare(right.starts_at);
+      }),
+    [visibleAppointments],
   );
+
+  const selectedBranch = workingBranches?.find((branch) => branch.id_branch === selectedBranchId);
+  const currentAppointment = priorityAppointments.find((item) => item.status === "IN_PROGRESS");
 
   const summary = useMemo(
     () => ({
@@ -188,29 +198,9 @@ export function DentistDashboardPage() {
   );
 
   const filteredAppointments = useMemo(() => {
-    const anchorDate = new Date(`${selectedDate}T00:00:00+07:00`);
-    return filterDentistSchedule(
-      appointments || [],
-      selectedBranchId,
-      scheduleView,
-      statusFilter,
-    ).filter(
-      (appointment) =>
-        scheduleView === "HISTORY" ||
-        dayFilter === "ALL" ||
-        (dayFilter === "TODAY" &&
-          isOnHcmDay(appointment.starts_at, 0, anchorDate)) ||
-        (dayFilter === "TOMORROW" &&
-          isOnHcmDay(appointment.starts_at, 1, anchorDate)),
-    );
-  }, [
-    appointments,
-    dayFilter,
-    scheduleView,
-    selectedBranchId,
-    selectedDate,
-    statusFilter,
-  ]);
+    if (statusFilter === "ALL") return visibleAppointments;
+    return visibleAppointments.filter((appointment) => appointment.status === statusFilter);
+  }, [statusFilter, visibleAppointments]);
 
   function changeScheduleView(view: DentistScheduleView) {
     setScheduleView(view);
@@ -268,28 +258,40 @@ export function DentistDashboardPage() {
             alt="DentaVie"
           />
         </Link>
-        <div className="dentist-header-context">
-          <span>Khu vực chuyên môn</span>
-          <strong>Nha sĩ</strong>
+        <nav className="dentist-dashboard-nav" aria-label="Điều hướng nha sĩ">
+          <a className="is-active" href="#overview">Tổng quan</a>
+          <a href="#schedule">Lịch khám</a>
+          <a href="#branch">Chi nhánh</a>
+        </nav>
+        <div className="dentist-account">
+          <span className="dentist-account-avatar" aria-hidden="true">
+            {appointmentInitials(user?.full_name || "BS")}
+          </span>
+          <AuthBar />
+          <small>Tài khoản nha sĩ</small>
         </div>
-        <AuthBar />
       </header>
 
-      <main className="dentist-main">
+      <main className="dentist-main" id="overview">
         <section className="dentist-welcome">
           <div>
-            <p className="eyebrow">Khu vực chuyên môn</p>
-            <h1>Chào {user?.full_name || "bác sĩ"}.</h1>
-            <p>
+            <p className="eyebrow">
               {new Intl.DateTimeFormat("vi-VN", {
                 timeZone: HCM_TIME_ZONE,
                 weekday: "long",
                 day: "2-digit",
                 month: "long",
                 year: "numeric",
-              }).format(new Date())}
+              }).format(new Date()).toLocaleUpperCase("vi-VN")}
             </p>
+            <h1>Chào bác sĩ {user?.full_name?.split(" ").slice(-2).join(" ") || "bác sĩ"}!</h1>
+            <p>Ưu tiên ca đang khám và đã đến, sau đó theo dõi lịch hẹn sắp tới.</p>
           </div>
+          <aside className="dentist-current-branch" id="branch" aria-label="Chi nhánh đang làm việc">
+            <span>Chi nhánh đang làm việc</span>
+            {selectedBranch ? <strong>{selectedBranch.name}</strong> : <strong>{workingBranches ? "Chưa tải được chi nhánh" : "Đang tải chi nhánh..."}</strong>}
+            {assignedBranchIds.length > 1 && <Link to="/bac-si/chon-chi-nhanh" aria-label="Đổi chi nhánh">Đổi chi nhánh <span aria-hidden="true">›</span></Link>}
+          </aside>
         </section>
 
         {error && (
@@ -298,108 +300,91 @@ export function DentistDashboardPage() {
           </div>
         )}
 
-        <section className="dentist-branches" aria-label="Chi nhánh làm việc">
-          <header>
-            <div>
-              <p className="eyebrow">Phân công hiện tại</p>
-              <h2>Chi nhánh làm việc</h2>
-            </div>
-            {workingBranches && <span>{workingBranches.length} chi nhánh</span>}
-          </header>
-          {branchesError && (
-            <p className="dentist-branches-error">{branchesError}</p>
-          )}
-          {!workingBranches ? (
-            <div className="dentist-branches-loading">
-              Đang tải thông tin chi nhánh...
-            </div>
-          ) : workingBranches.length === 0 ? (
-            <div className="dentist-branches-loading">
-              Chưa có chi nhánh được phân công.
-            </div>
-          ) : (
-            <div className="dentist-branch-grid">
-              {workingBranches
-                .filter((branch) => branch.id_branch === selectedBranchId)
-                .map((branch) => (
-                  <article
-                    className="dentist-branch-card is-selected"
-                    key={branch.id_branch}
-                  >
-                    <span className="dentist-branch-code">{branch.code}</span>
-                    <h3>{branch.name}</h3>
-                    <p>{branch.full_address}</p>
-                    <dl>
-                      <div>
-                        <dt>Đường dây nóng</dt>
-                        <dd>{branch.phone || "Chưa cập nhật"}</dd>
-                      </div>
-                      <div>
-                        <dt>Email</dt>
-                        <dd>{branch.email || "Chưa cập nhật"}</dd>
-                      </div>
-                    </dl>
-                    <div className="dentist-branch-actions">
-                      <span>Đang làm việc tại đây</span>
-                      <Link to="/bac-si/chon-chi-nhanh">Đổi chi nhánh →</Link>
-                    </div>
-                  </article>
-                ))}
-            </div>
-          )}
+        {branchesError && (
+          <div className="dentist-branches-error" role="alert">
+            <span>{branchesError}</span>
+            <button type="button" onClick={() => setBranchReload((value) => value + 1)}>Tải lại</button>
+          </div>
+        )}
+
+        <section className="dentist-focus-banner" aria-label="Tổng quan ca đang khám">
+          <div>
+            <p className="eyebrow">Tổng quan lịch khám</p>
+            <h2>{summary.inProgress ? "Tập trung vào bệnh nhân tiếp theo" : "Sẵn sàng cho ca khám tiếp theo"}</h2>
+            <p>Lịch được cập nhật tự động khi bạn quay lại trang.</p>
+          </div>
+          <div className="dentist-focus-count">
+            <span>Ca đang khám</span>
+            <strong>{String(summary.inProgress).padStart(2, "0")}</strong>
+            {currentAppointment ? (
+              <Link to={`/bac-si/kham/${currentAppointment.public_code}?chi-nhanh=${selectedBranchId}`}>
+                Tiếp tục khám <span aria-hidden="true">›</span>
+              </Link>
+            ) : <small>Chưa có ca đang khám</small>}
+          </div>
         </section>
 
         <section className="dentist-stat-grid" aria-label="Tổng quan lịch khám">
           <article>
-            <span>
-              {scheduleView === "UPCOMING" ? "Tổng lịch hẹn" : "Tổng lịch sử"}
-            </span>
+            <span>Tổng lịch hẹn</span>
             <strong>{summary.total}</strong>
-            <small>
-              {scheduleView === "UPCOMING"
-                ? "trong 7 ngày đang xem"
-                : "trong ngày đã chọn"}
-            </small>
+            <small>{scheduleView === "HISTORY"
+              ? "trong ngày đã chọn"
+              : dayFilter === "TODAY"
+                ? "trong ngày đã chọn"
+                : dayFilter === "TOMORROW"
+                  ? "trong ngày kế tiếp"
+                  : "trong 7 ngày đang xem"}</small>
           </article>
           <article>
-            <span>
-              {scheduleView === "UPCOMING" ? "Đã đến khám" : "Đã hoàn tất"}
-            </span>
-            <strong>
-              {scheduleView === "UPCOMING"
-                ? summary.checkedIn
-                : summary.completed}
-            </strong>
-            <small>
-              {scheduleView === "UPCOMING"
-                ? "sẵn sàng khám"
-                : "ca đã khám xong"}
-            </small>
+            <span>{scheduleView === "UPCOMING" ? "Đã đến khám" : "Đã hoàn tất"}</span>
+            <strong>{scheduleView === "UPCOMING" ? summary.checkedIn : summary.completed}</strong>
+            <small>{scheduleView === "UPCOMING" ? "sẵn sàng bắt đầu" : "ca đã khám xong"}</small>
           </article>
           <article>
-            <span>
-              {scheduleView === "UPCOMING" ? "Đang khám" : "Không đến"}
-            </span>
-            <strong>
-              {scheduleView === "UPCOMING"
-                ? summary.inProgress
-                : summary.noShow}
-            </strong>
-            <small>
-              {scheduleView === "UPCOMING" ? "lượt hiện tại" : "lịch vắng mặt"}
-            </small>
+            <span>{scheduleView === "UPCOMING" ? "Đang khám" : "Không đến"}</span>
+            <strong>{scheduleView === "UPCOMING" ? summary.inProgress : summary.noShow}</strong>
+            <small>{scheduleView === "UPCOMING" ? "có ca cần xử lý" : "lịch vắng mặt"}</small>
           </article>
         </section>
 
-        <section className="dentist-schedule-panel">
+        <section className="dentist-priority" aria-labelledby="dentist-priority-title">
           <header>
             <div>
-              <p className="eyebrow">Lịch làm việc</p>
-              <h2>
-                {scheduleView === "UPCOMING"
-                  ? "Lịch khám sắp tới"
-                  : "Lịch đã khám"}
-              </h2>
+              <h2 id="dentist-priority-title">Cần xử lý ngay</h2>
+              <p>Những ca bác sĩ cần thao tác tại chi nhánh đã chọn.</p>
+            </div>
+            {priorityAppointments.length > 0 && <span>{priorityAppointments.length} ca</span>}
+          </header>
+          {priorityAppointments.length === 0 ? (
+            <div className="dentist-priority-empty">Chưa có bệnh nhân cần xử lý ngay.</div>
+          ) : (
+            <div className="dentist-priority-list">
+              {priorityAppointments.map((appointment) => (
+                <article className="dentist-priority-card" key={appointment.public_code}>
+                  <span className={`dentist-status is-${appointment.status.toLowerCase()}`}>{statusLabel[appointment.status]}</span>
+                  <h3>{appointment.patient_name}</h3>
+                  <p className="dentist-priority-time">{formatHcmTime(appointment.starts_at)} · {appointment.service_name_snapshot}</p>
+                  <p className="dentist-priority-branch">{appointment.branch_name}</p>
+                  {appointment.patient_note && <p className="dentist-priority-note">Ghi chú: {appointment.patient_note}</p>}
+                  {appointment.status === "IN_PROGRESS" ? (
+                    <Link className="button dentist-priority-action" to={`/bac-si/kham/${appointment.public_code}?chi-nhanh=${selectedBranchId}`}>Tiếp tục khám</Link>
+                  ) : (
+                    <button type="button" className="button dentist-priority-action is-secondary" disabled={startingCode === appointment.public_code} onClick={() => startAppointment(appointment)}>
+                      {startingCode === appointment.public_code ? "Đang mở..." : "Bắt đầu khám"}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="dentist-schedule-panel" id="schedule">
+          <header>
+            <div>
+              <h2>Lịch khám của tôi</h2>
+              <p>Theo dõi lịch khám và mở đúng bệnh án từ danh sách.</p>
             </div>
             {appointments && (
               <span>{filteredAppointments.length} lịch hẹn</span>
@@ -492,11 +477,18 @@ export function DentistDashboardPage() {
                 )}
               </select>
             </label>
+            <span className="dentist-result-count">Đã tìm {filteredAppointments.length} lịch</span>
           </div>
 
-          {!appointments && !error ? (
-            <div className="dentist-empty">Đang tải lịch khám...</div>
-          ) : appointments?.length === 0 ? (
+          {scheduleError ? (
+            <div className="dentist-empty dentist-load-error" role="alert">
+              <strong>Không thể tải lịch khám.</strong>
+              <span>{scheduleError}</span>
+              <button type="button" onClick={() => setScheduleReload((value) => value + 1)}>Thử lại</button>
+            </div>
+          ) : !appointments ? (
+            <div className="dentist-empty" role="status">Đang tải lịch khám...</div>
+          ) : appointments.length === 0 ? (
             <div className="dentist-empty">
               <strong>
                 {scheduleView === "UPCOMING"
@@ -532,9 +524,6 @@ export function DentistDashboardPage() {
                     {appointmentInitials(appointment.patient_name)}
                   </div>
                   <div className="dentist-appointment-main">
-                    <span className="dentist-appointment-branch">
-                      {appointment.branch_name}
-                    </span>
                     <div className="dentist-appointment-title">
                       <h3>{appointment.patient_name}</h3>
                       <span
@@ -544,14 +533,7 @@ export function DentistDashboardPage() {
                       </span>
                     </div>
                     <p>{appointment.service_name_snapshot}</p>
-                    <small>
-                      Liên hệ: {appointmentContactName(appointment)} ·{" "}
-                      {bookingContactPhone(appointment) ||
-                        "Chưa có số điện thoại"}
-                      {appointment.contact_email_snapshot
-                        ? ` · ${appointment.contact_email_snapshot}`
-                        : ""}
-                    </small>
+                    <small>{appointment.branch_name} · {bookingContactPhone(appointment) || "Chưa có số điện thoại"}</small>
                     {appointment.patient_note && (
                       <p className="dentist-appointment-note">
                         <strong>Ghi chú:</strong> {appointment.patient_note}
@@ -594,6 +576,10 @@ export function DentistDashboardPage() {
           )}
         </section>
       </main>
+      <footer className="dentist-dashboard-footer">
+        <span>DentaVie · Khu vực nha sĩ</span>
+        <small>Lịch khám được cập nhật tự động</small>
+      </footer>
     </div>
   );
 }
