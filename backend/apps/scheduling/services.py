@@ -318,10 +318,13 @@ class AppointmentService:
         return appointment
 
     @classmethod
+    @transaction.atomic
     def confirm_hold(cls, *, appointment_id, patient_user, request=None):
-        appointment = Appointment.objects.select_related(
-            "branch__organization"
-        ).get(pk=appointment_id)
+        appointment = (
+            Appointment.objects.select_for_update()
+            .select_related("branch__organization")
+            .get(pk=appointment_id)
+        )
         # A network failure can leave the browser unsure whether the first
         # confirmation reached the server. Returning an already-confirmed
         # appointment makes a retry safe instead of reporting a false conflict.

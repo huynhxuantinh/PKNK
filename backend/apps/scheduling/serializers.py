@@ -23,6 +23,7 @@ class SlotQuerySerializer(serializers.Serializer):
 
 class PatientRescheduleSlotQuerySerializer(serializers.Serializer):
     date = serializers.DateField()
+    dentist_id = serializers.IntegerField(min_value=1, required=False)
 
     def validate_date(self, value):
         today = timezone.localdate()
@@ -153,6 +154,7 @@ class PatientAppointmentSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source="branch.name", read_only=True)
     branch_address = serializers.CharField(source="branch.address_line", read_only=True)
     branch_service_id = serializers.IntegerField(read_only=True)
+    service_id = serializers.IntegerField(source="branch_service.service_id", read_only=True)
     dentist_id = serializers.IntegerField(read_only=True)
     dentist_name = serializers.CharField(source="dentist.user.full_name", read_only=True)
     rescheduled_from_code = serializers.CharField(
@@ -168,7 +170,7 @@ class PatientAppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = (
             "public_code", "status", "branch_id", "branch_name", "branch_address",
-            "branch_service_id", "service_name_snapshot", "service_price_snapshot",
+            "branch_service_id", "service_id", "service_name_snapshot", "service_price_snapshot",
             "contact_name_snapshot", "contact_phone_snapshot", "contact_email_snapshot",
             "patient_note",
             "dentist_id", "dentist_name", "starts_at", "ends_at", "occupied_until",

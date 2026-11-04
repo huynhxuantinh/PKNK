@@ -316,11 +316,10 @@ export function BranchManagementPage() {
   }
 
   async function findRescheduleSlots(moveDate: string, moveDentistId?: number) {
-    if (!moving) return [];
+    if (!moving) throw new Error("Không tìm thấy lịch hẹn cần dời.");
     if (!isInActiveBranch(moving)) {
       setMoving(null);
-      setError("Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.");
-      return [];
+      throw new Error("Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.");
     }
     try {
       const response = await listManagedRescheduleSlots(
@@ -330,14 +329,10 @@ export function BranchManagementPage() {
       );
       return response.data;
     } catch (caughtError) {
-      if (isInActiveBranch(moving)) {
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Không thể tải giờ trống.",
-        );
-      }
-      return [];
+      // Let the modal distinguish a failed lookup from a valid empty result.
+      throw caughtError instanceof Error
+        ? caughtError
+        : new Error("Không thể tải giờ trống.");
     }
   }
 

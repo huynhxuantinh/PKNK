@@ -359,6 +359,15 @@
   color: var(--ink);
   padding: 11px 12px;
 }
+.flow :global(.slot-refresh-controls) {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.flow :global(.slot-refresh-controls .button) {
+  min-height: 42px;
+  white-space: nowrap;
+}
 .flow :global(.slot-grid) {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -848,6 +857,10 @@
   }
   .flow :global(.booking-layout--refined .date-field) {
     width: 100%;
+  }
+  .flow :global(.slot-refresh-controls) {
+    align-items: stretch;
+    flex-direction: column;
   }
   .flow :global(.booking-summary--refined) {
     padding: 22px;

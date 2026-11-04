@@ -681,6 +681,35 @@ class CounterBillingTests(APITestCase):
         payos_class.return_value.payment_requests.create.assert_not_called()
 
     @patch("apps.billing.payos_service.PayOS")
+    def test_paid_previous_link_is_committed_before_replacement_is_rejected(self, payos_class):
+        invoice = self.issued_invoice("APT-PAYOS-PAID-OLD-LINK")
+        previous = PayosTransaction.objects.create(
+            invoice=invoice,
+            initiated_by=self.patient_user,
+            amount=500000,
+            checkout_url="https://pay.payos.vn/web/old-link",
+        )
+        PayosTransaction.objects.filter(pk=previous.pk).update(
+            created_at=timezone.now() - timedelta(minutes=16)
+        )
+        payos_class.return_value.payment_requests.get.return_value = SimpleNamespace(
+            status="PAID",
+            amount_paid=500000,
+            id="old-link",
+            transactions=[SimpleNamespace(reference="PAYOS-OLD-LINK")],
+        )
+
+        with self.assertRaises(ValidationError):
+            create_checkout(invoice=invoice, user=self.patient_user)
+
+        invoice.refresh_from_db()
+        previous.refresh_from_db()
+        self.assertEqual(invoice.status, Invoice.Status.PAID)
+        self.assertEqual(previous.status, PayosTransaction.Status.SUCCEEDED)
+        self.assertEqual(Payment.objects.filter(invoice=invoice).count(), 1)
+        payos_class.return_value.payment_requests.create.assert_not_called()
+
+    @patch("apps.billing.payos_service.PayOS")
     def test_create_checkout_rechecks_invoice_status_after_lock(self, payos_class):
         invoice = self.issued_invoice("APT-PAYOS-STALE-STATUS")
         BillingService.void_invoice(

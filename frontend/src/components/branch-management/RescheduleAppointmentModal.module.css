@@ -1,5 +1,6 @@
 .controls { display: flex; flex-wrap: wrap; gap: 8px; }
-.error { margin: 14px 0 0; color: var(--admin-danger); font-size: 12px; }
+.error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 0; color: var(--admin-danger); font-size: 12px; }
+.error p { margin: 0; }
 .slots { display: grid; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--admin-border); }
 .slots header strong, .slots header span { display: block; }
 .slots header strong { color: var(--admin-navy-900); font-size: 13px; }

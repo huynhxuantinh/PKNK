@@ -177,9 +177,17 @@ export function RescheduleAppointmentModal({
         </div>
       </AdminForm>
       {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+        <div className={styles.error} role="alert">
+          <p>{error}</p>
+          <AdminButton
+            type="button"
+            tone="secondary"
+            disabled={loadingSlots || busy}
+            onClick={() => void findSlots()}
+          >
+            Thử lại
+          </AdminButton>
+        </div>
       )}
       {slots !== null && (
         <section className={styles.slots} aria-live="polite">

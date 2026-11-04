@@ -1,5 +1,6 @@
 from datetime import datetime, time, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from django.urls import reverse
@@ -12,7 +13,7 @@ from apps.audit.models import AuditEvent
 from apps.catalog.models import BranchService, DentistService, Service
 from apps.locations.models import Branch, BranchOpeningHour, Chair, Province, Ward
 from apps.organizations.models import Membership, Organization
-from apps.scheduling.availability import AvailabilityService
+from apps.scheduling.availability import AvailabilityService, SlotOption
 from apps.scheduling.models import Appointment, TimeOff, WorkShift
 
 
@@ -449,6 +450,54 @@ class BranchSchedulingManagementTests(APITestCase):
         self.assertEqual(successor.buffer_minutes, 5)
         self.assertEqual(successor.ends_at, self.at(10, 45))
         self.assertEqual(successor.occupied_until, self.at(10, 50))
+
+    def test_reschedule_uses_another_chair_when_first_choice_becomes_unavailable(self):
+        self.create_shift()
+        second_chair = Chair.objects.create(
+            branch=self.branch,
+            code="C-RESCHEDULE-2",
+            name="Reschedule chair 2",
+            resource_type=Chair.ResourceType.CHAIR,
+        )
+        original = self.create_appointment("APT-RESCHEDULE-CHAIR", starts_at=self.at(9))
+        selected = SlotOption(
+            starts_at=self.at(10),
+            ends_at=self.at(10, 30),
+            occupied_until=self.at(10, 40),
+            dentist_ids=(self.dentist.pk,),
+            chair_ids=(self.chair.pk, second_chair.pk),
+        )
+        only_second_chair = SlotOption(
+            starts_at=self.at(10),
+            ends_at=self.at(10, 30),
+            occupied_until=self.at(10, 40),
+            dentist_ids=(self.dentist.pk,),
+            chair_ids=(second_chair.pk,),
+        )
+        self.client.force_authenticate(self.branch_admin)
+
+        # The first result is the snapshot sent to the service. Before it
+        # rechecks the first chair, another booking has made that chair busy.
+        with patch(
+            "apps.management_api.scheduling_services.AvailabilityService.list_slots",
+            side_effect=([selected], [only_second_chair], [only_second_chair]),
+        ):
+            response = self.client.post(
+                reverse(
+                    "management:appointment-reschedule",
+                    kwargs={"public_code": original.public_code},
+                ),
+                {
+                    "starts_at": self.at(10).isoformat(),
+                    "reason": "Patient requested another time",
+                    "idempotency_key": "reschedule-second-chair-001",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        successor = Appointment.objects.get(rescheduled_from=original)
+        self.assertEqual(successor.chair_id, second_chair.pk)
 
     def test_reschedule_keeps_original_dentist_when_no_replacement_is_requested(self):
         alternate_user = self.make_user("alternate-dentist@example.com", "Alternate Dentist")

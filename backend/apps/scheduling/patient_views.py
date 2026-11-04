@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from apps.accounts.models import PatientProfile
+from apps.accounts.models import Dentist, PatientProfile
 from apps.accounts.permissions import IsEmailVerified, IsPatientOnly
 from apps.audit.services import AuditService
 from apps.management_api.exceptions import ManagementConflict
@@ -216,10 +216,19 @@ class PatientAppointmentRescheduleSlotsAPIView(PatientAppointmentBaseAPIView):
             )
 
         AppointmentService.expire_due_holds(branch_id=appointment.branch_id)
+        dentist = appointment.dentist
+        if dentist_id := query.validated_data.get("dentist_id"):
+            dentist = get_object_or_404(
+                Dentist.objects.filter(
+                    pk=dentist_id,
+                    organization=appointment.branch.organization,
+                    is_active=True,
+                )
+            )
         slots = AvailabilityService.list_slots(
             branch_service=appointment.branch_service,
             target_date=query.validated_data["date"],
-            dentist=appointment.dentist,
+            dentist=dentist,
             exclude_appointment_id=appointment.pk,
         )
         return Response({

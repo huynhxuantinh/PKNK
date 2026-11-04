@@ -39,6 +39,28 @@ export function formatHcmTime(value: string) {
   }).format(new Date(value))
 }
 
+export function formatHcmDateTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: HCM_TIME_ZONE,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+export function formatHcmDayOfMonth(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: HCM_TIME_ZONE,
+    day: '2-digit',
+  }).format(new Date(value))
+}
+
+export function formatHcmShortMonth(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: HCM_TIME_ZONE,
+    month: 'short',
+  }).format(new Date(value))
+}
+
 export function formatHcmDay(value: string, now = new Date()) {
   if (isOnHcmDay(value, 0, now)) return 'Hôm nay'
   if (isOnHcmDay(value, 1, now)) return 'Ngày mai'

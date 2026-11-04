@@ -297,80 +297,95 @@ class RescheduleService:
                 "Vui lòng chọn ngày khác hoặc hủy lịch hiện có."
             )
 
-        selected_chair_id = selected.chair_ids[0]
         dentist = Dentist.objects.select_for_update().get(pk=selected_dentist_id)
-        # Work-shift and time-off edits lock the same dentist row. Re-evaluate
-        # availability after obtaining it so a schedule update committed while
-        # waiting cannot be bypassed by the earlier slot snapshot.
-        current_options = AvailabilityService.list_slots(
-            branch_service=original.branch_service,
-            target_date=target_date,
-            dentist=dentist,
-            exclude_appointment_id=original.pk,
-        )
-        current_selected = next(
-            (
-                option
-                for option in current_options
-                if option.starts_at == starts_at
-                and dentist.pk in option.dentist_ids
-                and selected_chair_id in option.chair_ids
-            ),
-            None,
-        )
-        if current_selected is None:
-            raise ManagementConflict("Khung giờ mới không còn trống.")
-        chair = Chair.objects.select_for_update().get(pk=selected_chair_id)
-        AppointmentService.transition_status(
-            appointment_id=original.pk,
-            to_status=Appointment.Status.CANCELLED,
-            actor_type=actor_type,
-            actor_user=actor_user,
-            reason=f"Dời lịch: {reason}",
-            request=request,
-            notify=False,
-        )
-        try:
-            with transaction.atomic():
-                successor = Appointment.objects.create(
-                    public_code=f"APT-{uuid.uuid4().hex[:20].upper()}",
-                    patient_profile=patient_profile,
-                    branch=original.branch,
-                    branch_service=original.branch_service,
-                    dentist=dentist,
-                    chair=chair,
-                    service_name_snapshot=original.service_name_snapshot,
-                    service_price_snapshot=original.service_price_snapshot,
-                    contact_name_snapshot=original.contact_name_snapshot,
-                    contact_phone_snapshot=original.contact_phone_snapshot,
-                    contact_email_snapshot=original.contact_email_snapshot,
-                    patient_note=original.patient_note,
-                    duration_minutes=int(
+        successor = None
+        # Try every chair advertised for this slot. Each attempt uses a savepoint:
+        # if a concurrent booking wins the database constraint for one chair, the
+        # cancellation is rolled back and another still-available chair can win.
+        for chair_id in selected.chair_ids:
+            try:
+                with transaction.atomic():
+                    chair = Chair.objects.select_for_update().get(
+                        pk=chair_id,
+                        is_active=True,
+                    )
+                    # Work-shift/time-off changes lock the dentist row. Recheck
+                    # after acquiring the chair as well, so the availability view
+                    # cannot become stale while this request was waiting.
+                    current_options = AvailabilityService.list_slots(
+                        branch_service=original.branch_service,
+                        target_date=target_date,
+                        dentist=dentist,
+                        exclude_appointment_id=original.pk,
+                    )
+                    current_selected = next(
                         (
-                            current_selected.ends_at - current_selected.starts_at
-                        ).total_seconds()
-                        / 60
-                    ),
-                    buffer_minutes=int(
-                        (
-                            current_selected.occupied_until - current_selected.ends_at
-                        ).total_seconds()
-                        / 60
-                    ),
-                    starts_at=current_selected.starts_at,
-                    ends_at=current_selected.ends_at,
-                    occupied_until=current_selected.occupied_until,
-                    status=original.status,
-                    confirmed_at=(
-                        timezone.now()
-                        if original.status == Appointment.Status.CONFIRMED
-                        else None
-                    ),
-                    rescheduled_from=original,
-                    reschedule_idempotency_key=idempotency_key,
-                )
-        except IntegrityError as error:
-            raise ManagementConflict("Khung giờ mới vừa được người khác đặt.") from error
+                            option
+                            for option in current_options
+                            if option.starts_at == starts_at
+                            and dentist.pk in option.dentist_ids
+                            and chair.pk in option.chair_ids
+                        ),
+                        None,
+                    )
+                    if current_selected is None:
+                        continue
+
+                    AppointmentService.transition_status(
+                        appointment_id=original.pk,
+                        to_status=Appointment.Status.CANCELLED,
+                        actor_type=actor_type,
+                        actor_user=actor_user,
+                        reason=f"Dời lịch: {reason}",
+                        request=request,
+                        notify=False,
+                    )
+                    successor = Appointment.objects.create(
+                        public_code=f"APT-{uuid.uuid4().hex[:20].upper()}",
+                        patient_profile=patient_profile,
+                        branch=original.branch,
+                        branch_service=original.branch_service,
+                        dentist=dentist,
+                        chair=chair,
+                        service_name_snapshot=original.service_name_snapshot,
+                        service_price_snapshot=original.service_price_snapshot,
+                        contact_name_snapshot=original.contact_name_snapshot,
+                        contact_phone_snapshot=original.contact_phone_snapshot,
+                        contact_email_snapshot=original.contact_email_snapshot,
+                        patient_note=original.patient_note,
+                        duration_minutes=int(
+                            (
+                                current_selected.ends_at - current_selected.starts_at
+                            ).total_seconds()
+                            / 60
+                        ),
+                        buffer_minutes=int(
+                            (
+                                current_selected.occupied_until
+                                - current_selected.ends_at
+                            ).total_seconds()
+                            / 60
+                        ),
+                        starts_at=current_selected.starts_at,
+                        ends_at=current_selected.ends_at,
+                        occupied_until=current_selected.occupied_until,
+                        status=original.status,
+                        confirmed_at=(
+                            timezone.now()
+                            if original.status == Appointment.Status.CONFIRMED
+                            else None
+                        ),
+                        rescheduled_from=original,
+                        reschedule_idempotency_key=idempotency_key,
+                    )
+            except (Chair.DoesNotExist, IntegrityError):
+                # A concurrent request can make this chair unavailable between
+                # the availability query and insert. Try the next candidate.
+                continue
+            break
+
+        if successor is None:
+            raise ManagementConflict("Khung giờ mới vừa được người khác đặt.")
 
         AppointmentStatusHistory.objects.create(
             appointment=successor,

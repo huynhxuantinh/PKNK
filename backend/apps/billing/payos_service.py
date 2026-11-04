@@ -28,6 +28,10 @@ class PayosCancellationUnavailable(Exception):
     pass
 
 
+class PayosInvoicePaid(Exception):
+    pass
+
+
 def get_payos_client():
     credentials = (
         settings.PAYOS_CLIENT_ID,
@@ -90,7 +94,7 @@ def _retire_previous_checkouts(invoice):
                     "Giao dịch payOS trước đó cần được kiểm tra."
                 )
             if invoice.status == Invoice.Status.PAID or outcome == "SUCCEEDED":
-                raise ValidationError("Hóa đơn đã được thanh toán qua payOS.")
+                raise PayosInvoicePaid
             if outcome == "CANCELLED":
                 continue
 
@@ -101,7 +105,7 @@ def _retire_previous_checkouts(invoice):
             outcome = apply_remote_status(item, payment_link)
             invoice.refresh_from_db(fields=["status", "paid_at"])
             if invoice.status == Invoice.Status.PAID or outcome == "SUCCEEDED":
-                raise ValidationError("Hóa đơn đã được thanh toán qua payOS.")
+                raise PayosInvoicePaid
             if outcome != "CANCELLED":
                 raise PayosCheckoutUnavailable(
                     "payOS không xác nhận link cũ đã hết hiệu lực hoặc được hủy."
@@ -114,6 +118,7 @@ def _retire_previous_checkouts(invoice):
 
 def create_checkout(*, invoice, user):
     provider_error = None
+    invoice_was_paid = False
     with transaction.atomic():
         invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
         if invoice.status != Invoice.Status.ISSUED:
@@ -128,57 +133,69 @@ def create_checkout(*, invoice, user):
         if reusable:
             return reusable, False
 
-        _retire_previous_checkouts(invoice)
-        invoice.refresh_from_db(fields=["status"])
-        if invoice.status != Invoice.Status.ISSUED:
-            raise ValidationError("Hóa đơn không còn ở trạng thái chờ thanh toán.")
-
-        payos_transaction = PayosTransaction.objects.create(
-            invoice=invoice,
-            initiated_by=user,
-            amount=amount,
-        )
-        payment_data = CreatePaymentLinkRequest(
-            order_code=payos_transaction.order_code,
-            amount=amount,
-            description=f"DV{payos_transaction.order_code}"[-9:],
-            return_url=_with_invoice_id(settings.PAYOS_RETURN_URL, invoice.pk),
-            cancel_url=_with_invoice_id(settings.PAYOS_CANCEL_URL, invoice.pk),
-        )
         try:
-            response = get_payos_client().payment_requests.create(
-                payment_data=payment_data
+            _retire_previous_checkouts(invoice)
+        except PayosInvoicePaid:
+            # Do not let the deliberate response error roll back the verified
+            # payment written by apply_remote_status in this transaction.
+            invoice_was_paid = True
+        if not invoice_was_paid:
+            invoice.refresh_from_db(fields=["status"])
+            if invoice.status != Invoice.Status.ISSUED:
+                raise ValidationError("Hóa đơn không còn ở trạng thái chờ thanh toán.")
+
+        if invoice_was_paid:
+            # Exit the atomic block normally so the verified payment commits.
+            pass
+        else:
+            payos_transaction = PayosTransaction.objects.create(
+                invoice=invoice,
+                initiated_by=user,
+                amount=amount,
             )
-        except (PayOSError, httpx.RequestError) as error:
-            # A timeout can happen after payOS has accepted the order. Never
-            # label that outcome as cancelled until the remote order is known.
+            payment_data = CreatePaymentLinkRequest(
+                order_code=payos_transaction.order_code,
+                amount=amount,
+                description=f"DV{payos_transaction.order_code}"[-9:],
+                return_url=_with_invoice_id(settings.PAYOS_RETURN_URL, invoice.pk),
+                cancel_url=_with_invoice_id(settings.PAYOS_CANCEL_URL, invoice.pk),
+            )
             try:
-                payment_link = get_payos_client().payment_requests.get(
-                    payos_transaction.order_code
+                response = get_payos_client().payment_requests.create(
+                    payment_data=payment_data
                 )
-            except (PayOSError, httpx.RequestError, ImproperlyConfigured):
-                _mark_for_review(
-                    payos_transaction,
-                    reason="CHECKOUT_CREATION_OUTCOME_UNKNOWN",
-                )
-            else:
-                if payment_link.status in {"CANCELLED", "EXPIRED", "FAILED"}:
-                    apply_remote_status(payos_transaction, payment_link)
-                else:
+            except (PayOSError, httpx.RequestError) as error:
+                # A timeout can happen after payOS has accepted the order. Never
+                # label that outcome as cancelled until the remote order is known.
+                try:
+                    payment_link = get_payos_client().payment_requests.get(
+                        payos_transaction.order_code
+                    )
+                except (PayOSError, httpx.RequestError, ImproperlyConfigured):
                     _mark_for_review(
                         payos_transaction,
                         reason="CHECKOUT_CREATION_OUTCOME_UNKNOWN",
                     )
-            provider_error = error
-        else:
-            payos_transaction.checkout_url = response.checkout_url
-            payos_transaction.qr_code = getattr(response, "qr_code", "")
-            payos_transaction.payos_reference = response.payment_link_id
-            payos_transaction.save(
-                update_fields=["checkout_url", "qr_code", "payos_reference", "updated_at"]
-            )
-            return payos_transaction, True
+                else:
+                    if payment_link.status in {"CANCELLED", "EXPIRED", "FAILED"}:
+                        apply_remote_status(payos_transaction, payment_link)
+                    else:
+                        _mark_for_review(
+                            payos_transaction,
+                            reason="CHECKOUT_CREATION_OUTCOME_UNKNOWN",
+                        )
+                provider_error = error
+            else:
+                payos_transaction.checkout_url = response.checkout_url
+                payos_transaction.qr_code = getattr(response, "qr_code", "")
+                payos_transaction.payos_reference = response.payment_link_id
+                payos_transaction.save(
+                    update_fields=["checkout_url", "qr_code", "payos_reference", "updated_at"]
+                )
+                return payos_transaction, True
 
+    if invoice_was_paid:
+        raise ValidationError("Hóa đơn đã được thanh toán qua payOS.")
     raise PayosCheckoutUnavailable("Không thể kết nối payOS.") from provider_error
 
 

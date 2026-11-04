@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type FormEvent } from "react";
+import { useEffect, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -61,8 +61,8 @@ function LoadingState({ label }: { label: string }) {
   );
 }
 
-function EmptyState({ label }: { label: string }) {
-  return <p className={styles.stateMessage}>{label}</p>;
+function EmptyState({ label, children }: { label: string; children?: ReactNode }) {
+  return <div className={styles.stateMessage}><p>{label}</p>{children}</div>;
 }
 
 function holdIsNoLongerUsable(reason: unknown) {
@@ -101,9 +101,19 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   const [servicesLoading, setServicesLoading] = useState(false);
   const [dentistsLoading, setDentistsLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [loadFailures, setLoadFailures] = useState({
+    branches: false,
+    services: false,
+    slots: false,
+    dentists: false,
+  });
+  const [reloads, setReloads] = useState({ branches: 0, services: 0, slots: 0, dentists: 0 });
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState("");
   const [heldAppointment, setHeldAppointment] = useState<Appointment | null>(
+    null,
+  );
+  const [holdRemainingSeconds, setHoldRemainingSeconds] = useState<number | null>(
     null,
   );
   const [appointment, setAppointment] = useState<Appointment | null>(null);
@@ -133,6 +143,47 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           ),
         )
       : null;
+  const holdExpired = holdRemainingSeconds === 0;
+
+  useEffect(() => {
+    const hold = heldAppointment;
+    const expiresAt = hold?.expires_at;
+    if (!hold || !expiresAt) {
+      setHoldRemainingSeconds(null);
+      return;
+    }
+
+    let active = true;
+    let expirySynced = false;
+    const updateRemainingTime = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000),
+      );
+      if (active) setHoldRemainingSeconds(remaining);
+      if (remaining !== 0 || expirySynced) return;
+      expirySynced = true;
+      void (async () => {
+        const outcome = await syncHeldAppointment(hold);
+        if (!active) return;
+        if (outcome === "released") {
+          await refreshSlots();
+          if (active) setError("Chỗ giữ đã hết hạn. Bạn có thể chọn giờ khác.");
+        } else if (outcome === "unknown") {
+          setError("Chỗ giữ đã hết hạn, nhưng chưa thể đồng bộ với hệ thống. Vui lòng thử lại.");
+        }
+      })();
+    };
+
+    updateRemainingTime();
+    const timer = window.setInterval(updateRemainingTime, 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  // This timer must restart only when the current hold changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heldAppointment?.expires_at, heldAppointment?.public_code]);
 
   useEffect(() => {
     if (!selection.branch) {
@@ -202,6 +253,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     const controller = new AbortController();
     const requestId = ++branchesRequestId.current;
     setBranchesLoading(true);
+    setLoadFailures((current) => ({ ...current, branches: false }));
     setError("");
 
     // A branch pinned in the URL can sit outside the first paginated page, so
@@ -250,13 +302,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             ? reason.message
             : "Không tải được chi nhánh.",
         );
+        setLoadFailures((current) => ({ ...current, branches: true }));
       })
       .finally(() => {
         if (requestId === branchesRequestId.current && !controller.signal.aborted)
           setBranchesLoading(false);
       });
     return () => controller.abort();
-  }, [branchQuery, initialBranchId]);
+  }, [branchQuery, initialBranchId, reloads.branches]);
 
   useEffect(() => {
     if (!selection.branch) {
@@ -269,6 +322,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     const requestId = ++servicesRequestId.current;
     setServices([]);
     setServicesLoading(true);
+    setLoadFailures((current) => ({ ...current, services: false }));
     setError("");
     listBranchServices(selection.branch.id_branch, controller.signal)
       .then((response) => {
@@ -284,13 +338,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         setError(
           reason instanceof Error ? reason.message : "Không tải được dịch vụ.",
         );
+        setLoadFailures((current) => ({ ...current, services: true }));
       })
       .finally(() => {
         if (requestId === servicesRequestId.current && !controller.signal.aborted)
           setServicesLoading(false);
       });
     return () => controller.abort();
-  }, [selection.branch]);
+  }, [selection.branch, reloads.services]);
 
   useEffect(() => {
     if (!selection.service || !selection.date) {
@@ -303,6 +358,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     const requestId = ++slotsRequestId.current;
     setSlots([]);
     setSlotsLoading(true);
+    setLoadFailures((current) => ({ ...current, slots: false }));
     setError("");
     listSlots(
       selection.service.id_branch_service,
@@ -322,13 +378,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         setError(
           reason instanceof Error ? reason.message : "Không tải được slot.",
         );
+        setLoadFailures((current) => ({ ...current, slots: true }));
       })
       .finally(() => {
         if (requestId === slotsRequestId.current && !controller.signal.aborted)
           setSlotsLoading(false);
       });
     return () => controller.abort();
-  }, [selection.date, selection.service]);
+  }, [selection.date, selection.service, reloads.slots]);
 
   useEffect(() => {
     if (!selection.branch || !selection.service) {
@@ -341,6 +398,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
     const requestId = ++dentistsRequestId.current;
     setDentists([]);
     setDentistsLoading(true);
+    setLoadFailures((current) => ({ ...current, dentists: false }));
     setError("");
     listBranchDentists(
       selection.branch.id_branch,
@@ -362,13 +420,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             ? reason.message
             : "Không tải được danh sách bác sĩ.",
         );
+        setLoadFailures((current) => ({ ...current, dentists: true }));
       })
       .finally(() => {
         if (requestId === dentistsRequestId.current && !controller.signal.aborted)
           setDentistsLoading(false);
       });
     return () => controller.abort();
-  }, [selection.branch, selection.service]);
+  }, [selection.branch, selection.service, reloads.dentists]);
 
   const availableDentists = selection.slot
     ? dentists.filter((dentist) =>
@@ -799,8 +858,9 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         )}
         {heldAppointment && (
           <div className={styles.heldLockBanner} role="status">
-            Bạn đang giữ một chỗ cho lịch hẹn trong phần tóm tắt. Hãy xác
-            nhận hoặc chọn giờ khác trước khi thay đổi lựa chọn.
+            {holdExpired
+              ? "Chỗ giữ đã hết hạn, đang đồng bộ với hệ thống…"
+              : "Bạn đang giữ một chỗ cho lịch hẹn trong phần tóm tắt. Hãy xác nhận hoặc chọn giờ khác trước khi thay đổi lựa chọn."}
           </div>
         )}
 
@@ -835,6 +895,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             </div>
             {branchesLoading ? (
               <LoadingState label="Đang tải chi nhánh…" />
+            ) : loadFailures.branches ? (
+              <EmptyState label="Không thể tải chi nhánh."><button type="button" className="button button-secondary" onClick={() => setReloads((current) => ({ ...current, branches: current.branches + 1 }))}>Thử lại</button></EmptyState>
             ) : displayedBranches.length === 0 ? (
               <EmptyState label="Không tìm thấy chi nhánh phù hợp." />
             ) : (
@@ -985,6 +1047,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             <EmptyState label="Hãy chọn chi nhánh trước." />
           ) : servicesLoading ? (
             <LoadingState label="Đang tải dịch vụ…" />
+          ) : loadFailures.services ? (
+            <EmptyState label="Không thể tải dịch vụ."><button type="button" className="button button-secondary" onClick={() => setReloads((current) => ({ ...current, services: current.services + 1 }))}>Thử lại</button></EmptyState>
           ) : services.length === 0 ? (
             <EmptyState label="Chi nhánh chưa có dịch vụ khả dụng." />
           ) : (
@@ -1031,22 +1095,34 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             <div>
               <h2>Chọn ngày và giờ</h2>
             </div>
-            <label className="date-field">
-              Ngày khám
-              <input
-                type="date"
-                min={dateInputValue()}
-                max={dateInputValue(90)}
-                value={selection.date}
-                onChange={(event) => selectDate(event.target.value)}
-                disabled={!selection.service || selectionLocked}
-              />
-            </label>
+            <div className="slot-refresh-controls">
+              <label className="date-field">
+                Ngày khám
+                <input
+                  type="date"
+                  min={dateInputValue()}
+                  max={dateInputValue(90)}
+                  value={selection.date}
+                  onChange={(event) => selectDate(event.target.value)}
+                  disabled={!selection.service || selectionLocked}
+                />
+              </label>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void refreshSlots()}
+                disabled={!selection.service || !selection.date || slotsLoading || selectionLocked}
+              >
+                Làm mới giờ trống
+              </button>
+            </div>
           </div>
           {!selection.service ? (
             <EmptyState label="Hãy chọn dịch vụ trước." />
           ) : slotsLoading ? (
             <LoadingState label="Đang kiểm tra lịch trống…" />
+          ) : loadFailures.slots ? (
+            <EmptyState label="Không thể tải giờ trống."><button type="button" className="button button-secondary" onClick={() => setReloads((current) => ({ ...current, slots: current.slots + 1 }))}>Thử lại</button></EmptyState>
           ) : slots.length === 0 ? (
             <EmptyState label="Ngày này chưa còn khung giờ phù hợp. Hãy chọn ngày khác." />
           ) : (
@@ -1079,6 +1155,8 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             <EmptyState label="Hãy chọn ngày và khung giờ trước." />
           ) : dentistsLoading ? (
             <LoadingState label="Đang tải bác sĩ phù hợp…" />
+          ) : loadFailures.dentists ? (
+            <EmptyState label="Không thể tải danh sách bác sĩ."><button type="button" className="button button-secondary" onClick={() => setReloads((current) => ({ ...current, dentists: current.dentists + 1 }))}>Thử lại</button></EmptyState>
           ) : availableDentists.length === 0 ? (
             <EmptyState label="Không còn bác sĩ phù hợp trong khung giờ này. Hãy chọn giờ khác." />
           ) : (
@@ -1175,7 +1253,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             <button
               className="button button-primary button-wide"
               type="button"
-              disabled={booking}
+              disabled={booking || holdExpired}
               onClick={retryConfirmation}
             >
               {booking ? "Đang xác nhận…" : "Xác nhận chỗ đang giữ"}
@@ -1207,7 +1285,11 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
           </button>
         )}
         <small className="policy-note">
-          {holdMinutes
+          {holdExpired
+            ? "Chỗ giữ đã hết hạn."
+            : holdRemainingSeconds !== null
+            ? `Thời gian giữ chỗ còn lại: ${Math.floor(holdRemainingSeconds / 60)}:${String(holdRemainingSeconds % 60).padStart(2, "0")}.`
+            : holdMinutes
             ? `Chỗ của bạn được giữ trong ${holdMinutes} phút để xác nhận.`
             : "Thời gian giữ chỗ được áp dụng theo chính sách của chi nhánh."}
         </small>

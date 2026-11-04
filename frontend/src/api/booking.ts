@@ -82,9 +82,11 @@ export function listSlots(
 export function listPatientRescheduleSlots(
   publicCode: string,
   date: string,
+  dentistId?: number,
   signal?: AbortSignal,
 ) {
   const params = new URLSearchParams({ date })
+  if (dentistId) params.set('dentist_id', String(dentistId))
   return apiRequest<SlotResponse>(
     `/patients/me/appointments/${publicCode}/reschedule-slots/?${params}`,
     { signal },

@@ -9,7 +9,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 
 import { createPayosPayment, getPatientInvoice } from "../api/billing";
 import { apiRequest, downloadAuthenticatedFile } from "../api/client";
-import { listPatientRescheduleSlots } from "../api/booking";
+import { listBranchDentists, listPatientRescheduleSlots } from "../api/booking";
 import { AuthBar } from "../auth/AuthBar";
 import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { useAuth } from "../auth/AuthContext";
@@ -18,9 +18,11 @@ import { AuthenticatedThumbnail } from "../components/clinical/AuthenticatedThum
 import { ClinicalImageLightbox } from "../components/clinical/ClinicalImageLightbox";
 import { PatientInvoiceActions } from "../components/billing/PatientInvoiceActions";
 import { dateInputValue } from "../features/booking/bookingState";
+import { formatHcmDateTime, formatHcmDayOfMonth, formatHcmShortMonth, formatHcmTime } from "../utils/hcmDateTime";
 import { Seo } from "../seo/Seo";
 import type {
   ClinicalAttachment,
+  BranchDentist,
   PatientAppointment,
   PatientAppointmentsResponse,
   PatientClinicalEncounter,
@@ -48,17 +50,11 @@ const PATIENT_INVOICE_PAGE_SIZE = 10;
 
 function formatDateTime(value: string | null) {
   if (!value) return "Chưa cập nhật";
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatHcmDateTime(value);
 }
 
 function formatSlotTime(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatHcmTime(value);
 }
 
 function isOverdueUnprocessedAppointment(appointment: PatientAppointment) {
@@ -146,6 +142,9 @@ export function PatientAppointmentsPage() {
     null,
   );
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleDentists, setRescheduleDentists] = useState<BranchDentist[]>([]);
+  const [rescheduleDentistId, setRescheduleDentistId] = useState<number | null>(null);
+  const [loadingRescheduleDentists, setLoadingRescheduleDentists] = useState(false);
   const [slotOptions, setSlotOptions] = useState<Slot[] | null>(null);
   const [rescheduleError, setRescheduleError] = useState("");
   const [rescheduleIdempotencyKey, setRescheduleIdempotencyKey] = useState("");
@@ -236,6 +235,7 @@ export function PatientAppointmentsPage() {
       const response = await listPatientRescheduleSlots(
         requestedCode,
         requestedDate,
+        rescheduleDentistId || undefined,
         controller.signal,
       );
       if (requestId !== slotRequestId.current) return;
@@ -272,6 +272,7 @@ export function PatientAppointmentsPage() {
           method: "POST",
           body: JSON.stringify({
             starts_at: slot.starts_at,
+            dentist_id: rescheduleDentistId || undefined,
             reason: "Người bệnh chủ động đổi lịch.",
             idempotency_key: rescheduleIdempotencyKey,
           }),
@@ -291,6 +292,24 @@ export function PatientAppointmentsPage() {
       );
     } finally {
       setSubmittingReschedule(false);
+    }
+  }
+
+  async function openReschedule(appointment: PatientAppointment) {
+    clearRescheduleSlots();
+    setRescheduling(appointment);
+    setRescheduleDate("");
+    setRescheduleDentistId(appointment.dentist_id);
+    setRescheduleDentists([]);
+    setRescheduleIdempotencyKey(`patient-${crypto.randomUUID()}`);
+    setLoadingRescheduleDentists(true);
+    try {
+      const response = await listBranchDentists(appointment.branch_id, appointment.service_id);
+      setRescheduleDentists(response.data);
+    } catch (reason) {
+      setRescheduleError(reason instanceof Error ? reason.message : "Không thể tải danh sách nha sĩ.");
+    } finally {
+      setLoadingRescheduleDentists(false);
     }
   }
 
@@ -314,6 +333,24 @@ export function PatientAppointmentsPage() {
       setCancelReason("");
       await loadAppointments();
     } catch (reason) {
+      // The cancellation can have committed even if its response was lost.
+      // Read the authoritative appointment state before showing an error.
+      try {
+        const current = await apiRequest<{ data: PatientAppointment }>(
+          `/patients/me/appointments/${appointment.public_code}/`,
+          {},
+          { auth: true },
+        );
+        if (current.data.status === "CANCELLED") {
+          setNotice("Đã hủy lịch khám.");
+          setCancellingAppointment(null);
+          setCancelReason("");
+          await loadAppointments();
+          return;
+        }
+      } catch {
+        // Keep the original cancellation error when the reconciliation read fails.
+      }
       setError(
         reason instanceof Error
           ? reason.message
@@ -395,14 +432,10 @@ export function PatientAppointmentsPage() {
                 <article className="patient-record-card appointment-record">
                   <time dateTime={appointment.starts_at}>
                     <strong>
-                      {new Intl.DateTimeFormat("vi-VN", {
-                        day: "2-digit",
-                      }).format(new Date(appointment.starts_at))}
+                      {formatHcmDayOfMonth(appointment.starts_at)}
                     </strong>
                     <span>
-                      {new Intl.DateTimeFormat("vi-VN", {
-                        month: "short",
-                      }).format(new Date(appointment.starts_at))}
+                      {formatHcmShortMonth(appointment.starts_at)}
                     </span>
                   </time>
                   <div className="patient-record-content">
@@ -460,14 +493,7 @@ export function PatientAppointmentsPage() {
                         {appointment.can_reschedule && (
                           <button
                             type="button"
-                            onClick={() => {
-                              clearRescheduleSlots();
-                              setRescheduling(appointment);
-                              setRescheduleDate("");
-                              setRescheduleIdempotencyKey(
-                                `patient-${crypto.randomUUID()}`,
-                              );
-                            }}
+                            onClick={() => void openReschedule(appointment)}
                           >
                             Đổi lịch
                           </button>
@@ -523,10 +549,29 @@ export function PatientAppointmentsPage() {
                           }}
                         />
                       </label>
+                      <label>
+                        Nha sĩ
+                        <select
+                          value={rescheduleDentistId || ""}
+                          disabled={loadingRescheduleDentists}
+                          onChange={(event) => {
+                            setRescheduleDentistId(Number(event.target.value) || null);
+                            clearRescheduleSlots();
+                          }}
+                        >
+                          {rescheduleDentists.map((dentist) => (
+                            <option key={dentist.id_dentist} value={dentist.id_dentist}>
+                              {dentist.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <button
                         type="button"
                         disabled={
                           !rescheduleDate ||
+                          !rescheduleDentistId ||
+                          loadingRescheduleDentists ||
                           loadingSlots ||
                           submittingReschedule
                         }

@@ -217,6 +217,7 @@ export interface PatientAppointment {
   branch_name: string
   branch_address: string
   branch_service_id: number
+  service_id: number
   service_name_snapshot: string
   patient_note: string
   dentist_name: string
