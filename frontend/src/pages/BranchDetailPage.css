@@ -1,15 +1,15 @@
-:global .clinic-detail-page {
+.clinic-detail-page {
   min-height: 100vh;
   overflow-x: clip;
   background: #f7fbfc;
 }
-:global .clinic-detail-main {
+.clinic-detail-main {
   width: min(1160px, calc(100% - 40px));
   margin: 0 auto;
   padding: 32px 0 90px;
 }
 
-:global .clinic-breadcrumb {
+.clinic-breadcrumb {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -18,24 +18,24 @@
   font-size: 12.5px;
   color: var(--aurelia-body);
 }
-:global .clinic-breadcrumb a {
+.clinic-breadcrumb a {
   color: var(--aurelia-blue-dark);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.18s;
 }
-:global .clinic-breadcrumb a:hover {
+.clinic-breadcrumb a:hover {
   color: var(--aurelia-blue);
   text-decoration: underline;
 }
-:global .clinic-breadcrumb .current {
+.clinic-breadcrumb .current {
   min-width: 0;
   color: var(--aurelia-ink);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
-:global .clinic-detail-hero {
+.clinic-detail-hero {
   height: 360px;
   min-height: 360px;
   display: grid;
@@ -46,13 +46,13 @@
   background: #fff;
   box-shadow: 0 16px 45px rgba(24, 71, 86, 0.07);
 }
-:global .clinic-hero-meta {
+.clinic-hero-meta {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
 }
-:global .clinic-code-badge {
+.clinic-code-badge {
   padding: 3px 8px;
   border-radius: 6px;
   background: var(--aurelia-cyan-soft);
@@ -61,14 +61,14 @@
   font-weight: 700;
   letter-spacing: 0.05em;
 }
-:global .clinic-detail-copy {
+.clinic-detail-copy {
   min-width: 0;
   padding: clamp(30px, 4vw, 46px);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-:global .clinic-detail-copy h1 {
+.clinic-detail-copy h1 {
   margin: 6px 0 12px;
   color: var(--aurelia-ink);
   font-size: clamp(28px, 3.4vw, 42px);
@@ -76,20 +76,20 @@
   line-height: 1.18;
   letter-spacing: -0.02em;
 }
-:global .clinic-detail-address {
+.clinic-detail-address {
   margin: 0 0 18px;
   color: var(--aurelia-body);
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
-:global .clinic-detail-facts {
+.clinic-detail-facts {
   margin: 4px 0 26px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-block: 1px solid var(--aurelia-line);
 }
-:global .clinic-detail-fact {
+.clinic-detail-fact {
   min-width: 0;
   padding: 13px 14px 13px 0;
   display: grid;
@@ -97,33 +97,33 @@
   color: var(--aurelia-ink);
   text-decoration: none;
 }
-:global .clinic-detail-fact + .clinic-detail-fact {
+.clinic-detail-fact + .clinic-detail-fact {
   padding-left: 14px;
   border-left: 1px solid var(--aurelia-line);
 }
-:global .clinic-detail-fact small {
+.clinic-detail-fact small {
   color: #526571;
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-:global .clinic-detail-fact strong {
+.clinic-detail-fact strong {
   color: var(--aurelia-ink);
   font-size: 13px;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
-:global a.clinic-detail-fact:hover strong {
+a.clinic-detail-fact:hover strong {
   color: var(--aurelia-blue-dark);
 }
-:global .clinic-hero-actions {
+.clinic-hero-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
-:global .clinic-btn {
+.clinic-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -138,60 +138,60 @@
   transition: all 0.18s ease;
   font-family: inherit;
 }
-:global .clinic-btn.primary {
+.clinic-btn.primary {
   background: var(--aurelia-blue-dark);
   color: #fff;
 }
-:global .clinic-btn.primary:hover {
+.clinic-btn.primary:hover {
   background: var(--aurelia-blue-dark);
 }
-:global .clinic-btn.primary.active {
+.clinic-btn.primary.active {
   background: #0b6b85;
 }
-:global .clinic-btn.secondary {
+.clinic-btn.secondary {
   background: #f1fafb;
   border-color: #bee2ea;
   color: var(--aurelia-blue-dark);
 }
-:global .clinic-btn.secondary:hover {
+.clinic-btn.secondary:hover {
   background: #e2f5f8;
   border-color: var(--aurelia-cyan);
 }
-:global .clinic-btn.outline {
+.clinic-btn.outline {
   border-color: var(--aurelia-line);
   color: var(--aurelia-ink);
   background: #fff;
 }
-:global .clinic-btn.outline:hover {
+.clinic-btn.outline:hover {
   border-color: var(--aurelia-cyan);
   color: var(--aurelia-blue-dark);
 }
-:global .clinic-detail-image {
+.clinic-detail-image {
   height: 100%;
   min-height: 0;
   position: relative;
   overflow: hidden;
   background: linear-gradient(145deg, #dff5f8, #c7e9ef);
 }
-:global .clinic-gallery-track {
+.clinic-gallery-track {
   width: 100%;
   height: 100%;
   display: flex;
   transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
   touch-action: pan-y;
 }
-:global .clinic-gallery-slide {
+.clinic-gallery-slide {
   width: 100%;
   height: 100%;
   flex: 0 0 100%;
 }
-:global .clinic-gallery-slide img {
+.clinic-gallery-slide img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
 }
-:global .clinic-gallery-arrow {
+.clinic-gallery-arrow {
   width: 38px;
   height: 38px;
   padding: 0;
@@ -209,17 +209,17 @@
   font-size: 25px;
   line-height: 1;
 }
-:global .clinic-gallery-arrow:hover {
+.clinic-gallery-arrow:hover {
   background: #fff;
   color: var(--aurelia-blue-dark);
 }
-:global .clinic-gallery-arrow.prev {
+.clinic-gallery-arrow.prev {
   left: 14px;
 }
-:global .clinic-gallery-arrow.next {
+.clinic-gallery-arrow.next {
   right: 14px;
 }
-:global .clinic-gallery-dots {
+.clinic-gallery-dots {
   padding: 7px 9px;
   position: absolute;
   z-index: 2;
@@ -231,7 +231,7 @@
   border-radius: 999px;
   background: rgba(12, 43, 56, 0.58);
 }
-:global .clinic-gallery-dots button {
+.clinic-gallery-dots button {
   width: 7px;
   height: 7px;
   padding: 0;
@@ -239,12 +239,12 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.55);
 }
-:global .clinic-gallery-dots button.active {
+.clinic-gallery-dots button.active {
   width: 20px;
   border-radius: 999px;
   background: #fff;
 }
-:global .clinic-gallery-count {
+.clinic-gallery-count {
   position: absolute;
   z-index: 2;
   right: 14px;
@@ -256,7 +256,7 @@
   font-size: 10px;
   font-weight: 750;
 }
-:global .clinic-detail-placeholder {
+.clinic-detail-placeholder {
   height: 100%;
   display: grid;
   place-items: center;
@@ -265,14 +265,14 @@
 }
 
 /* Location & Route Directions Section */
-:global .clinic-location-section {
+.clinic-location-section {
   margin-top: 24px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 22px;
   align-items: stretch;
 }
-:global .clinic-location-card {
+.clinic-location-card {
   width: auto;
   max-height: none;
   min-width: 0;
@@ -286,19 +286,19 @@
   display: flex;
   flex-direction: column;
 }
-:global .clinic-location-card h2 {
+.clinic-location-card h2 {
   margin: 0 0 16px;
   color: var(--aurelia-ink);
   font-size: 24px;
   font-weight: 700;
 }
-:global .clinic-location-summary {
+.clinic-location-summary {
   margin: -6px 0 22px;
   color: var(--aurelia-body);
   font-size: 13px;
   line-height: 1.6;
 }
-:global .route-info-box {
+.route-info-box {
   margin-top: 0;
   padding: 18px;
   border-radius: 14px;
@@ -307,22 +307,22 @@
   display: grid;
   gap: 12px;
 }
-:global .route-stat {
+.route-stat {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-:global .route-stat small {
+.route-stat small {
   display: block;
   color: var(--aurelia-body);
   font-size: 11.5px;
 }
-:global .route-stat strong {
+.route-stat strong {
   color: var(--aurelia-blue-dark);
   font-size: 20px;
   font-weight: 800;
 }
-:global .route-estimates {
+.route-estimates {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -334,16 +334,16 @@
   font-weight: 600;
   color: var(--aurelia-ink);
 }
-:global .route-loading {
+.route-loading {
   color: var(--aurelia-blue);
   font-size: 11px;
   font-style: italic;
 }
-:global .route-steps-container {
+.route-steps-container {
   border-top: 1px dashed #bee2ea;
   padding-top: 10px;
 }
-:global .route-steps-toggle {
+.route-steps-toggle {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #cbe6ec;
@@ -357,11 +357,11 @@
   transition: all 0.18s;
   font-family: inherit;
 }
-:global .route-steps-toggle:hover {
+.route-steps-toggle:hover {
   background: #eaf7f9;
   border-color: var(--aurelia-cyan);
 }
-:global .route-steps-list {
+.route-steps-list {
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
@@ -370,7 +370,7 @@
   display: grid;
   gap: 7px;
 }
-:global .route-step-item {
+.route-step-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -380,7 +380,7 @@
   border: 1px solid #eef5f7;
   font-size: 11.5px;
 }
-:global .step-badge {
+.step-badge {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
@@ -392,25 +392,25 @@
   display: grid;
   place-items: center;
 }
-:global .step-body {
+.step-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-:global .step-desc {
+.step-desc {
   color: var(--aurelia-ink);
   font-weight: 600;
   line-height: 1.35;
 }
-:global .step-meter {
+.step-meter {
   color: var(--aurelia-body);
   font-size: 10.5px;
 }
-:global .route-actions {
+.route-actions {
   display: grid;
   gap: 8px;
 }
-:global .route-gmap-btn {
+.route-gmap-btn {
   display: block;
   padding: 10px 14px;
   border-radius: 8px;
@@ -422,10 +422,10 @@
   text-decoration: none;
   transition: background 0.18s;
 }
-:global .route-gmap-btn:hover {
+.route-gmap-btn:hover {
   background: var(--aurelia-blue-dark);
 }
-:global .route-clear-btn {
+.route-clear-btn {
   padding: 7px 10px;
   border: none;
   background: transparent;
@@ -435,10 +435,10 @@
   text-align: center;
   transition: color 0.18s;
 }
-:global .route-clear-btn:hover {
+.route-clear-btn:hover {
   color: #c93b2b;
 }
-:global .route-prompt-box {
+.route-prompt-box {
   margin-top: 18px;
   padding: 18px;
   border-radius: 14px;
@@ -447,17 +447,17 @@
   display: grid;
   gap: 12px;
 }
-:global .route-prompt-box p {
+.route-prompt-box p {
   margin: 0;
   color: var(--aurelia-body);
   font-size: 13px;
   line-height: 1.5;
 }
-:global .route-prompt-actions {
+.route-prompt-actions {
   display: grid;
   gap: 8px;
 }
-:global .route-locate-btn {
+.route-locate-btn {
   padding: 10px 14px;
   border-radius: 8px;
   border: none;
@@ -469,16 +469,16 @@
   transition: background 0.18s;
   font-family: inherit;
 }
-:global .route-locate-btn:hover {
+.route-locate-btn:hover {
   background: var(--aurelia-blue-dark);
 }
-:global .route-error {
+.route-error {
   margin: 0;
   color: #c93b2b;
   font-size: 11.5px;
   line-height: 1.4;
 }
-:global .clinic-detail-map-wrap {
+.clinic-detail-map-wrap {
   position: relative;
   min-width: 0;
   min-height: 420px;
@@ -489,51 +489,51 @@
   background: var(--aurelia-cyan-soft);
   box-shadow: 0 10px 30px rgba(28, 77, 93, 0.05);
 }
-:global .clinic-detail-map-wrap .branch-map-canvas {
+.clinic-detail-map-wrap .branch-map-canvas {
   width: 100%;
   height: 100%;
   min-height: 404px;
   overflow: hidden;
   border-radius: 12px;
 }
-:global .clinic-detail-map-wrap .leaflet-control-attribution {
+.clinic-detail-map-wrap .leaflet-control-attribution {
   margin: 0 4px 4px 0;
   padding: 2px 5px;
   font-size: 10px;
   line-height: 1.35;
 }
-:global .clinic-detail-map-wrap .leaflet-top.leaflet-left {
+.clinic-detail-map-wrap .leaflet-top.leaflet-left {
   right: auto;
   left: 10px;
 }
 /* Operating Hours & Services Grid */
-:global .clinic-detail-grid {
+.clinic-detail-grid {
   margin-top: 24px;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 22px;
 }
-:global .clinic-info-card {
+.clinic-info-card {
   padding: 30px;
   border: 1px solid var(--aurelia-line);
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 10px 30px rgba(28, 77, 93, 0.05);
 }
-:global .clinic-info-card h2 {
+.clinic-info-card h2 {
   margin: 0 0 20px;
   color: var(--aurelia-ink);
   font-size: 22px;
   font-weight: 700;
 }
-:global .clinic-hours-card {
+.clinic-hours-card {
   display: flex;
   flex-direction: column;
 }
-:global .clinic-hours-list {
+.clinic-hours-list {
   display: grid;
 }
-:global .clinic-hour-row {
+.clinic-hour-row {
   padding: 11px 0;
   display: flex;
   align-items: center;
@@ -542,14 +542,14 @@
   font-size: 12.5px;
   color: var(--aurelia-body);
 }
-:global .clinic-hour-row:last-child {
+.clinic-hour-row:last-child {
   border-bottom: 0;
 }
-:global .clinic-hour-row.today {
+.clinic-hour-row.today {
   color: var(--aurelia-blue-dark);
   font-weight: 700;
 }
-:global .clinic-hour-today {
+.clinic-hour-today {
   margin-left: 8px;
   padding: 2px 7px;
   border-radius: 999px;
@@ -559,37 +559,37 @@
   font-weight: 800;
   text-transform: uppercase;
 }
-:global .hour-time {
+.hour-time {
   color: inherit;
 }
-:global .clinic-hours-note {
+.clinic-hours-note {
   margin: auto 0 0;
   padding-top: 16px;
   font-size: 13px;
   color: #526571;
 }
-:global .clinic-service-list {
+.clinic-service-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-:global .clinic-service-list.is-scrollable {
+.clinic-service-list.is-scrollable {
   max-height: 370px;
   padding-right: 7px;
   overflow-y: auto;
   scrollbar-color: var(--aurelia-cyan) transparent;
   scrollbar-width: thin;
 }
-:global .clinic-service-list.is-scrollable .clinic-service-card {
+.clinic-service-list.is-scrollable .clinic-service-card {
   scroll-snap-align: start;
 }
-:global .clinic-service-scroll-hint {
+.clinic-service-scroll-hint {
   margin: 12px 0 0;
   color: var(--aurelia-body);
   font-size: 11px;
   text-align: right;
 }
-:global .clinic-service-card {
+.clinic-service-card {
   padding: 16px;
   border-radius: 12px;
   border: 1px solid var(--aurelia-line);
@@ -599,40 +599,40 @@
   gap: 6px;
   transition: all 0.18s;
 }
-:global .clinic-service-card:hover {
+.clinic-service-card:hover {
   border-color: var(--aurelia-cyan);
   box-shadow: 0 4px 14px rgba(28, 77, 93, 0.06);
 }
-:global .service-card-top {
+.service-card-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
-:global .service-card-top strong {
+.service-card-top strong {
   color: var(--aurelia-ink);
   font-size: 13.5px;
   font-weight: 700;
 }
-:global .service-duration {
+.service-duration {
   color: var(--aurelia-blue-dark);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
-:global .service-price {
+.service-price {
   font-size: 12.5px;
   color: var(--aurelia-body);
   display: flex;
   align-items: center;
   gap: 5px;
 }
-:global .service-price strong {
+.service-price strong {
   color: #1a7a58;
   font-size: 13px;
   font-weight: 750;
 }
-:global .clinic-service-card p {
+.clinic-service-card p {
   margin: 2px 0 0;
   color: var(--aurelia-body);
   font-size: 13px;
@@ -640,7 +640,7 @@
 }
 
 /* Dentists Section */
-:global .clinic-dentists-section {
+.clinic-dentists-section {
   margin-top: 24px;
   padding: 36px;
   border: 1px solid var(--aurelia-line);
@@ -648,21 +648,21 @@
   background: #fff;
   box-shadow: 0 10px 30px rgba(28, 77, 93, 0.05);
 }
-:global .clinic-dentists-section .section-heading-centered {
+.clinic-dentists-section .section-heading-centered {
   max-width: none;
   margin: 0;
   text-align: left;
 }
-:global .clinic-dentists-section .section-heading-centered > p:last-child {
+.clinic-dentists-section .section-heading-centered > p:last-child {
   margin-inline: 0;
 }
-:global .clinic-dentist-grid {
+.clinic-dentist-grid {
   margin-top: 24px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
-:global .dentist-card {
+.dentist-card {
   padding: 20px;
   border: 1px solid var(--aurelia-line);
   border-radius: 14px;
@@ -672,10 +672,10 @@
   gap: 14px;
   transition: border-color 0.18s;
 }
-:global .dentist-card:hover {
+.dentist-card:hover {
   border-color: var(--aurelia-cyan);
 }
-:global .dentist-avatar {
+.dentist-avatar {
   width: 46px;
   height: 46px;
   flex: 0 0 auto;
@@ -688,28 +688,28 @@
   font-size: 13px;
   font-weight: 800;
 }
-:global .dentist-info {
+.dentist-info {
   display: grid;
   gap: 4px;
 }
-:global .dentist-info strong {
+.dentist-info strong {
   color: var(--aurelia-ink);
   font-size: 14px;
   font-weight: 700;
 }
-:global .dentist-license {
+.dentist-license {
   color: var(--aurelia-blue-dark);
   font-size: 11px;
   font-weight: 700;
 }
-:global .dentist-info p {
+.dentist-info p {
   margin: 4px 0 0;
   color: var(--aurelia-body);
   font-size: 11.5px;
   line-height: 1.5;
 }
 
-:global .clinic-detail-state {
+.clinic-detail-state {
   width: min(680px, calc(100% - 40px));
   min-height: 100vh;
   margin: 0 auto;
@@ -719,93 +719,93 @@
   color: var(--aurelia-body);
   text-align: center;
 }
-:global .clinic-detail-state a {
+.clinic-detail-state a {
   color: var(--aurelia-blue-dark);
   font-weight: 750;
 }
-:global .clinic-detail-main > .support-banner {
+.clinic-detail-main > .support-banner {
   width: 100%;
   margin: 24px 0 0;
 }
 
 @media (max-width: 900px) {
-  :global .clinic-detail-hero {
+  .clinic-detail-hero {
     height: auto;
     min-height: 0;
     grid-template-columns: 1fr;
   }
-  :global .clinic-detail-image {
+  .clinic-detail-image {
     height: 300px;
     order: -1;
   }
-  :global .clinic-location-section,
-  :global .clinic-detail-grid {
+  .clinic-location-section,
+  .clinic-detail-grid {
     grid-template-columns: 1fr;
   }
-  :global .clinic-dentist-grid {
+  .clinic-dentist-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  :global .clinic-detail-main {
+  .clinic-detail-main {
     width: calc(100% - 24px);
     padding: 18px 0 52px;
   }
-  :global .clinic-breadcrumb {
+  .clinic-breadcrumb {
     margin-bottom: 16px;
   }
-  :global .clinic-detail-hero,
-  :global .clinic-info-card,
-  :global .clinic-location-card,
-  :global .clinic-detail-map-wrap,
-  :global .clinic-dentists-section {
+  .clinic-detail-hero,
+  .clinic-info-card,
+  .clinic-location-card,
+  .clinic-detail-map-wrap,
+  .clinic-dentists-section {
     border-radius: 16px;
   }
-  :global .clinic-detail-image {
+  .clinic-detail-image {
     height: 230px;
   }
-  :global .clinic-detail-copy,
-  :global .clinic-info-card,
-  :global .clinic-location-card {
+  .clinic-detail-copy,
+  .clinic-info-card,
+  .clinic-location-card {
     padding: 22px;
   }
-  :global .clinic-detail-copy h1 {
+  .clinic-detail-copy h1 {
     font-size: 30px;
   }
-  :global .clinic-detail-facts {
+  .clinic-detail-facts {
     grid-template-columns: 1fr;
     margin-bottom: 20px;
   }
-  :global .clinic-detail-fact,
-  :global .clinic-detail-fact + .clinic-detail-fact {
+  .clinic-detail-fact,
+  .clinic-detail-fact + .clinic-detail-fact {
     padding: 10px 0;
     border-left: 0;
   }
-  :global .clinic-detail-fact + .clinic-detail-fact {
+  .clinic-detail-fact + .clinic-detail-fact {
     border-top: 1px solid var(--aurelia-line);
   }
-  :global .clinic-hero-actions,
-  :global .clinic-hero-actions .clinic-btn {
+  .clinic-hero-actions,
+  .clinic-hero-actions .clinic-btn {
     width: 100%;
   }
-  :global .clinic-location-section,
-  :global .clinic-detail-grid {
+  .clinic-location-section,
+  .clinic-detail-grid {
     gap: 16px;
     margin-top: 16px;
   }
-  :global .clinic-detail-map-wrap {
+  .clinic-detail-map-wrap {
     min-height: 300px;
     padding: 6px;
   }
-  :global .clinic-detail-map-wrap .branch-map-canvas {
+  .clinic-detail-map-wrap .branch-map-canvas {
     min-height: 288px;
   }
-  :global .clinic-service-list,
-  :global .clinic-dentist-grid {
+  .clinic-service-list,
+  .clinic-dentist-grid {
     grid-template-columns: 1fr;
   }
-  :global .clinic-dentists-section {
+  .clinic-dentists-section {
     margin-top: 16px;
     padding: 22px;
   }

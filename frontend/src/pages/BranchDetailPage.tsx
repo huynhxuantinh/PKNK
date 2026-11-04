@@ -14,7 +14,7 @@ import { SITE_URL, absoluteUrl } from "../seo/seoConfig";
 import { shouldShowRoadRoute } from "../services/routeDisplay";
 import { fetchRoadRoute, type RoadRoute } from "../services/routing";
 import type { Branch, BranchDetail } from "../types/api";
-import "./BranchDetailPage.module.css";
+import "./BranchDetailPage.css";
 
 function computeDistanceKm(
   lat1: number,
