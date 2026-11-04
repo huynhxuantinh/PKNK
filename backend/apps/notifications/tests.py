@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
@@ -106,6 +107,10 @@ class BillingNotificationTests(APITestCase):
         self.assertNotIn(self.service.name, mail.outbox[0].body)
         self.assertNotIn(invoice.invoice_number, mail.outbox[0].body)
         self.assertNotIn("1000000", mail.outbox[0].body)
+        self.assertIn(
+            f"{settings.FRONTEND_URL.rstrip('/')}/thong-bao",
+            mail.outbox[0].body,
+        )
 
     def test_payment_notification_is_idempotent(self):
         invoice = self.issue()

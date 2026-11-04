@@ -348,7 +348,10 @@ export interface Notification {
   created_at: string
 }
 
-export interface NotificationsResponse { data: Notification[]; meta: { count: number } }
+export interface NotificationsResponse {
+  data: Notification[]
+  meta: { count: number; page: number; page_size: number; total_pages: number; unread_count: number }
+}
 
 export interface PatientClinicalEncountersResponse {
   data: PatientClinicalEncounter[]

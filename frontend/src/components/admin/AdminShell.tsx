@@ -8,10 +8,14 @@ import { Seo } from '../../seo/Seo'
 import { useManagedBranchScope } from '../branch-management/useManagedBranches'
 import { useOrganizationScope } from '../organization-management/useOrganizationScope'
 import { AdminNotificationMenu } from './AdminNotificationMenu'
+import {
+  ADMIN_BRANCH_NOTIFICATIONS_PATH,
+  ADMIN_ORGANIZATION_NOTIFICATIONS_PATH,
+} from '../../notifications/adminNotificationNavigation'
 import './admin-shell.css'
 import { AdminToastProvider } from './ui'
 
-type NavigationIcon = 'overview' | 'calendar' | 'schedule' | 'reports' | 'invoice' | 'settings' | 'branches' | 'staff' | 'services' | 'audit'
+type NavigationIcon = 'overview' | 'calendar' | 'schedule' | 'reports' | 'invoice' | 'settings' | 'branches' | 'staff' | 'services' | 'audit' | 'notifications'
 type NavigationItem = { label: string; path: string; icon: NavigationIcon }
 
 const branchItems: NavigationItem[] = [
@@ -20,6 +24,7 @@ const branchItems: NavigationItem[] = [
   { label: 'Ca làm & nghỉ phép', path: '/quan-ly-chi-nhanh/ca-lam', icon: 'schedule' },
   { label: 'Báo cáo', path: '/quan-ly-chi-nhanh/bao-cao', icon: 'reports' },
   { label: 'Hóa đơn', path: '/quan-ly-chi-nhanh/hoa-don', icon: 'invoice' },
+  { label: 'Thông báo', path: ADMIN_BRANCH_NOTIFICATIONS_PATH, icon: 'notifications' },
   { label: 'Cấu hình', path: '/quan-ly-chi-nhanh/cau-hinh', icon: 'settings' },
 ]
 
@@ -33,6 +38,7 @@ const organizationItems: NavigationItem[] = [
   { label: 'Nhân sự', path: '/quan-ly-to-chuc/nhan-su', icon: 'staff' },
   { label: 'Dịch vụ', path: '/quan-ly-to-chuc/dich-vu', icon: 'services' },
   { label: 'Nhật ký', path: '/quan-ly-to-chuc/nhat-ky', icon: 'audit' },
+  { label: 'Thông báo', path: ADMIN_ORGANIZATION_NOTIFICATIONS_PATH, icon: 'notifications' },
   { label: 'Cấu hình', path: '/quan-ly-to-chuc/cau-hinh', icon: 'settings' },
 ]
 
@@ -48,6 +54,7 @@ function SidebarIcon({ name }: { name: NavigationIcon }) {
     staff: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.6-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5M17 14c2.4.4 4 2.5 4 5" /></>,
     services: <><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" /></>,
     audit: <><path d="M5 3h11l3 3v15H5zM16 3v4h4M8 11h8M8 15h6" /></>,
+    notifications: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
   }
   return <svg className="admin-nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
 }

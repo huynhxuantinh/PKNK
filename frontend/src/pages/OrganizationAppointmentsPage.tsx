@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import {
   type ManagementAppointment,
@@ -68,14 +68,18 @@ function statusTone(status: ManagementAppointmentStatus) {
 
 export function OrganizationAppointmentsPage() {
   const scope = useOrganizationScope();
+  const [searchParams] = useSearchParams();
+  const focusAppointmentCode = searchParams.get("appointment") || "";
+  const focusDate = searchParams.get("date") || "";
+  const focusBranchId = searchParams.get("chi-nhanh") || "";
   const [branches, setBranches] = useState<OrganizationBranch[]>([]);
   const [dentists, setDentists] = useState<OrganizationDentist[]>([]);
-  const [date, setDate] = useState(todayHcm);
+  const [date, setDate] = useState(() => focusDate || todayHcm());
   const [days, setDays] = useState<1 | 7>(1);
-  const [branchId, setBranchId] = useState("");
+  const [branchId, setBranchId] = useState(focusBranchId);
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [dentistId, setDentistId] = useState("");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(focusAppointmentCode);
   const [items, setItems] = useState<AppointmentRow[] | null>(null);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -91,10 +95,11 @@ export function OrganizationAppointmentsPage() {
     const controller = new AbortController();
     setBranches([]);
     setDentists([]);
-    setBranchId("");
+    setBranchId(focusBranchId);
     setDentistId("");
     setStatus("ALL");
-    setQuery("");
+    setQuery(focusAppointmentCode);
+    setDate(focusDate || todayHcm());
     setOffset(0);
     setSelected(null);
     setTotal(0);
@@ -119,7 +124,17 @@ export function OrganizationAppointmentsPage() {
           );
       });
     return () => controller.abort();
-  }, [scope.organizationId]);
+  }, [focusAppointmentCode, focusBranchId, focusDate, scope.organizationId]);
+
+  useEffect(() => {
+    if (!focusAppointmentCode) return;
+    setDate(focusDate || todayHcm());
+    setBranchId(focusBranchId);
+    setStatus("ALL");
+    setDentistId("");
+    setQuery(focusAppointmentCode);
+    setOffset(0);
+  }, [focusAppointmentCode, focusBranchId, focusDate]);
 
   useEffect(() => {
     if (!scope.organizationId) {
@@ -151,14 +166,21 @@ export function OrganizationAppointmentsPage() {
     )
       .then((response) => {
         if (controller.signal.aborted) return;
-        setItems(
-          response.data.map((appointment) => ({
+        const nextItems = response.data.map((appointment) => ({
             ...appointment,
             branchName:
               names.get(appointment.branch_id) ||
               `Chi nhánh #${appointment.branch_id}`,
-          })),
-        );
+          }));
+        setItems(nextItems);
+        if (focusAppointmentCode) {
+          setSelected(
+            nextItems.find(
+              (appointment) =>
+                appointment.public_code === focusAppointmentCode,
+            ) || null,
+          );
+        }
         setTotal(response.meta.count);
       })
       .catch((caught) => {
@@ -179,6 +201,7 @@ export function OrganizationAppointmentsPage() {
     date,
     days,
     dentistId,
+    focusAppointmentCode,
     offset,
     query,
     scope.organizationId,

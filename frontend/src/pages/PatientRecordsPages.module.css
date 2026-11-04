@@ -103,6 +103,30 @@
   background: #fff;
   box-shadow: var(--shadow);
 }
+.page :global(.notification-record-actions) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.page :global(.notification-record-actions a),
+.page :global(.notification-record-actions button) {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.page :global(.notification-record-actions button:disabled) {
+  cursor: default;
+  opacity: .65;
+}
 .page :global(.appointment-record) {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);

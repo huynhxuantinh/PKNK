@@ -32,6 +32,7 @@ const OrganizationStaffPage = lazy(() => import('./pages/OrganizationStaffPage')
 const OrganizationServicesPage = lazy(() => import('./pages/OrganizationServicesPage').then(({ OrganizationServicesPage: Page }) => ({ default: Page })))
 const OrganizationAuditPage = lazy(() => import('./pages/OrganizationAuditPage').then(({ OrganizationAuditPage: Page }) => ({ default: Page })))
 const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettingsPage').then(({ OrganizationSettingsPage: Page }) => ({ default: Page })))
+const AdminNotificationsPage = lazy(() => import('./pages/AdminNotificationsPage').then(({ AdminNotificationsPage: Page }) => ({ default: Page })))
 const AccountSecurityPage = lazy(() => import('./pages/AccountSecurityPage').then(({ AccountSecurityPage: Page }) => ({ default: Page })))
 const PrivacyPolicyPage = lazy(() => import('./pages/LegalPages').then(({ PrivacyPolicyPage: Page }) => ({ default: Page })))
 const TermsPage = lazy(() => import('./pages/LegalPages').then(({ TermsPage: Page }) => ({ default: Page })))
@@ -44,6 +45,10 @@ const VerifyEmailPage = lazy(() => import('./pages/AuthPages').then(({ VerifyEma
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AdminShell } from './components/admin/AdminShell'
 import { RequireRole } from './auth/RequireRole'
+import {
+  ADMIN_BRANCH_NOTIFICATIONS_PATH,
+  ADMIN_ORGANIZATION_NOTIFICATIONS_PATH,
+} from './notifications/adminNotificationNavigation'
 
 const router = createBrowserRouter(createRoutesFromElements(
   <Route>
@@ -77,6 +82,7 @@ const router = createBrowserRouter(createRoutesFromElements(
         <Route path="/quan-ly-chi-nhanh/ca-lam" element={<BranchStaffSchedulePage />} />
         <Route path="/quan-ly-chi-nhanh/bao-cao" element={<BranchReportsPage />} />
         <Route path="/quan-ly-chi-nhanh/hoa-don" element={<BranchInvoicesPage />} />
+        <Route path={ADMIN_BRANCH_NOTIFICATIONS_PATH} element={<AdminNotificationsPage />} />
         <Route path="/quan-ly-chi-nhanh/cau-hinh" element={<BranchConfigurationPage />} />
       </Route>
     </Route>
@@ -91,6 +97,7 @@ const router = createBrowserRouter(createRoutesFromElements(
         <Route path="/quan-ly-to-chuc/nhan-su" element={<OrganizationStaffPage />} />
         <Route path="/quan-ly-to-chuc/dich-vu" element={<OrganizationServicesPage />} />
         <Route path="/quan-ly-to-chuc/nhat-ky" element={<OrganizationAuditPage />} />
+        <Route path={ADMIN_ORGANIZATION_NOTIFICATIONS_PATH} element={<AdminNotificationsPage />} />
         <Route path="/quan-ly-to-chuc/cau-hinh" element={<OrganizationSettingsPage />} />
       </Route>
     </Route>

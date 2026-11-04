@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ManagementAppointment } from "../../api/management";
 import { DataTable, EmptyState, StatusBadge } from "../admin/ui";
@@ -17,6 +17,7 @@ type AppointmentAction = "confirm" | "check-in";
 interface AppointmentListProps {
   items: ManagementAppointment[] | null;
   busyCode: string;
+  autoOpenCode?: string;
   onAction: (item: ManagementAppointment, action: AppointmentAction) => void;
   onNoShow: (item: ManagementAppointment) => void;
   onCancel: (item: ManagementAppointment) => void;
@@ -47,6 +48,7 @@ export function ManagementErrorBanner({ message }: { message: string }) {
 export function AppointmentList({
   items,
   busyCode,
+  autoOpenCode,
   onAction,
   onNoShow,
   onCancel,
@@ -54,6 +56,8 @@ export function AppointmentList({
 }: AppointmentListProps) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState("");
+  const autoOpenRequestedCode = useRef("");
+  const autoOpenedCode = useRef("");
   const now = useManagementClock();
   const rows = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("vi-VN");
@@ -81,6 +85,25 @@ export function AppointmentList({
   useEffect(() => {
     if (selectedCode && !selected) setSelectedCode("");
   }, [selectedCode, selected]);
+
+  useEffect(() => {
+    if (autoOpenCode && autoOpenRequestedCode.current !== autoOpenCode) {
+      autoOpenRequestedCode.current = autoOpenCode;
+      setQuery("");
+      setSelectedCode("");
+    }
+  }, [autoOpenCode]);
+
+  useEffect(() => {
+    if (
+      autoOpenCode &&
+      autoOpenedCode.current !== autoOpenCode &&
+      rows.some((item) => item.public_code === autoOpenCode)
+    ) {
+      autoOpenedCode.current = autoOpenCode;
+      setSelectedCode(autoOpenCode);
+    }
+  }, [autoOpenCode, rows]);
 
   if (!items) return <div className={styles.loading} role="status">Đang tải lịch hẹn...</div>;
 

@@ -316,6 +316,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.publish_due_appointment_reminders",
         "schedule": 300.0,
     },
+    "recover-notification-email-deliveries-every-five-minutes": {
+        "task": "apps.notifications.tasks.recover_notification_email_deliveries",
+        "schedule": 300.0,
+    },
     "reconcile-pending-payos-every-five-minutes": {
         "task": "apps.billing.tasks.reconcile_pending_payos_transactions",
         "schedule": 300.0,

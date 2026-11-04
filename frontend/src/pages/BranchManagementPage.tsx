@@ -76,8 +76,10 @@ export function BranchManagementPage() {
   const [loaded, setLoaded] = useState(organizationIds.length === 0);
   const [branch, setBranch] = useState<BranchDetail | null>(null);
   const [branchLoading, setBranchLoading] = useState(false);
-  const [date, setDate] = useState(() => hcmDate(new Date()));
-  const [days, setDays] = useState<1 | 7>(7);
+  const [date, setDate] = useState(
+    () => params.get("date") || hcmDate(new Date()),
+  );
+  const [days, setDays] = useState<1 | 7>(params.has("appointment") ? 1 : 7);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [dentistId, setDentistId] = useState<number>();
   const [status, setStatus] = useState<ManagementAppointmentStatus | "">("");
@@ -104,11 +106,22 @@ export function BranchManagementPage() {
     branches,
     loaded,
   });
+  const focusAppointmentCode = params.get("appointment") || "";
+  const focusDate = params.get("date") || "";
   const isManager = canAccessArea(user, "MANAGEMENT");
   const knownPendingCodes = useRef(new Set<string>());
   const activeBranchIdRef = useRef<number | null>(branchId);
   const branchRequestId = useRef(0);
   activeBranchIdRef.current = branchId;
+
+  useEffect(() => {
+    if (!focusAppointmentCode) return;
+    if (focusDate) setDate(focusDate);
+    setDays(1);
+    setDentistId(undefined);
+    setStatus("");
+    setViewMode("table");
+  }, [focusAppointmentCode, focusDate]);
 
   const isInActiveBranch = (appointment: ManagementAppointment) =>
     appointment.branch_id === activeBranchIdRef.current;
@@ -593,6 +606,7 @@ export function BranchManagementPage() {
             <AppointmentList
               items={items}
               busyCode={busy}
+              autoOpenCode={focusAppointmentCode || undefined}
               onAction={updateAppointment}
               onNoShow={setNoShowing}
               onCancel={setCancelling}

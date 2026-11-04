@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../../api/client'
+import { adminAppointmentPath, adminNotificationsPath } from '../../notifications/adminNotificationNavigation'
 import type { Notification, NotificationsResponse } from '../../types/api'
 
 function relativeTime(value: string) {
@@ -12,6 +14,8 @@ function relativeTime(value: string) {
 }
 
 export function AdminNotificationMenu() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Notification[]>([])
   const [count, setCount] = useState(0)
@@ -35,7 +39,7 @@ export function AdminNotificationMenu() {
       )
       if (!controller.signal.aborted) {
         setItems(response.data)
-        setCount(response.meta.count)
+        setCount(response.meta.unread_count)
       }
     } catch (requestError) {
       if (!controller.signal.aborted) setError(requestError instanceof Error ? requestError.message : 'Không thể tải thông báo.')
@@ -75,14 +79,31 @@ export function AdminNotificationMenu() {
   }, [open])
 
   async function markRead(notification: Notification) {
-    if (notification.read_at) return
+    if (notification.read_at) return true
     try {
       await apiRequest(`/notifications/${notification.id_notification}/read/`, { method: 'POST' }, { auth: true })
       setItems((current) => current.filter((item) => item.id_notification !== notification.id_notification))
       setCount((current) => Math.max(0, current - 1))
+      return true
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Không thể cập nhật thông báo.')
+      return false
     }
+  }
+
+  async function selectNotification(notification: Notification) {
+    setOpen(false)
+    const destination = adminAppointmentPath(
+      notification,
+      location.pathname,
+      location.search,
+    )
+    if (destination) {
+      void markRead(notification)
+      navigate(destination)
+      return
+    }
+    await markRead(notification)
   }
 
   async function markAllRead() {
@@ -118,12 +139,20 @@ export function AdminNotificationMenu() {
           {!loading && error && <div className="admin-notification-state is-error"><span>{error}</span><button type="button" onClick={() => void load()}>Thử lại</button></div>}
           {!loading && !error && !items.length && <p className="admin-notification-state">Chưa có thông báo mới.</p>}
           {!loading && !error && items.slice(0, 8).map((notification) => (
-            <button className="admin-notification-item" type="button" key={notification.id_notification} onClick={() => void markRead(notification)}>
+            <button className="admin-notification-item" type="button" key={notification.id_notification} onClick={() => void selectNotification(notification)}>
               <strong>{notification.title}</strong>
               <span>{notification.body}</span>
               <time dateTime={notification.created_at}>{relativeTime(notification.created_at)}</time>
             </button>
           ))}
+          <footer className="admin-notification-footer">
+            <Link
+              to={`${adminNotificationsPath(location.pathname)}${location.search}`}
+              onClick={() => setOpen(false)}
+            >
+              Xem tất cả thông báo
+            </Link>
+          </footer>
         </section>
       )}
     </div>

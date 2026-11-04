@@ -682,6 +682,13 @@ export function PatientAppointmentsPage() {
               </button>
             </nav>
           )}
+          {meta && meta.total_pages > 1 && (
+            <nav className="patient-record-pagination" aria-label="Phân trang lịch hẹn">
+              <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Trước</button>
+              <span>Page {meta.page} / {meta.total_pages}</span>
+              <button type="button" disabled={page === meta.total_pages} onClick={() => setPage((current) => current + 1)}>Sau</button>
+            </nav>
+          )}
         </>
       )}
     </RecordsLayout>
@@ -1098,28 +1105,52 @@ export function PatientInvoicesPage() {
 
 export function NotificationsPage() {
   const { isAuthenticated } = useAuth();
+  const [readError, setReadError] = useState("");
+  const [markingId, setMarkingId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<NotificationsResponse["meta"] | null>(null);
   const [notifications, setNotifications] = useState<Notification[] | null>(
     null,
   );
   const [error, setError] = useState("");
   const load = useCallback(
     () =>
-      apiRequest<NotificationsResponse>("/notifications/", {}, { auth: true })
-        .then((response) => setNotifications(response.data))
+      apiRequest<NotificationsResponse>(`/notifications/?page=${page}`, {}, { auth: true })
+        .then((response) => {
+          setNotifications(response.data);
+          setMeta(response.meta);
+          setError("");
+        })
         .catch(() => setError("Không thể tải thông báo.")),
-    [],
+    [page],
   );
   useEffect(() => {
     if (isAuthenticated) void load();
   }, [isAuthenticated, load]);
   async function markRead(item: Notification) {
-    if (item.read_at) return;
-    await apiRequest(
-      `/notifications/${item.id_notification}/read/`,
-      { method: "POST" },
-      { auth: true },
-    );
-    void load();
+    if (item.read_at || markingId === item.id_notification) return;
+    setMarkingId(item.id_notification);
+    setReadError("");
+    try {
+      await apiRequest(
+        `/notifications/${item.id_notification}/read/`,
+        { method: "POST" },
+        { auth: true },
+      );
+      setNotifications((current) => current?.map((notification) =>
+        notification.id_notification === item.id_notification
+          ? { ...notification, read_at: new Date().toISOString() }
+          : notification,
+      ) ?? null);
+    } catch (requestError) {
+      setReadError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể cập nhật thông báo. Vui lòng thử lại.",
+      );
+    } finally {
+      setMarkingId(null);
+    }
   }
   if (!isAuthenticated)
     return <Navigate to="/dang-nhap?returnTo=%2Fthong-bao" replace />;
@@ -1140,11 +1171,9 @@ export function NotificationsPage() {
       ) : (
         <div className="patient-record-list">
           {notifications.map((item) => (
-            <button
-              type="button"
+            <article
               className={`patient-record-card notification-record ${item.read_at ? "" : "is-unread"}`}
               key={item.id_notification}
-              onClick={() => markRead(item)}
             >
               <strong>{item.title}</strong>
               <span>{item.body}</span>
@@ -1152,9 +1181,34 @@ export function NotificationsPage() {
                 {formatDateTime(item.created_at)}
                 {item.read_at ? "" : " · Chưa đọc"}
               </small>
-            </button>
+              <div className="notification-record-actions">
+                {item.resource_type === "Appointment" && (
+                  <Link to="/lich-hen">Xem lịch hẹn</Link>
+                )}
+                {item.resource_type === "Invoice" && (
+                  <Link to="/hoa-don">Xem hóa đơn</Link>
+                )}
+                <button
+                  type="button"
+                  disabled={Boolean(item.read_at) || markingId === item.id_notification}
+                  onClick={() => void markRead(item)}
+                >
+                  {markingId === item.id_notification
+                    ? "Đang cập nhật..."
+                    : item.read_at ? "Đã đọc" : "Đánh dấu đã đọc"}
+                </button>
+              </div>
+            </article>
           ))}
         </div>
+      )}
+      {readError && <p className="patient-record-error" role="alert">{readError}</p>}
+      {meta && meta.total_pages > 1 && (
+        <nav className="patient-record-pagination" aria-label="Phân trang thông báo">
+          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>Trước</button>
+          <span>Trang {meta.page} / {meta.total_pages} ({meta.count} thông báo)</span>
+          <button type="button" disabled={page >= meta.total_pages} onClick={() => setPage((current) => current + 1)}>Sau</button>
+        </nav>
       )}
     </RecordsLayout>
   );

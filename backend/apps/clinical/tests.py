@@ -1,6 +1,7 @@
 from io import BytesIO
 from datetime import timedelta
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 from django.db import DatabaseError, transaction
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -315,7 +316,8 @@ class ClinicalAPITests(APITestCase):
             ClinicalEncounter.objects.filter(pk=encounter.pk).update(notes="tampered")
 
     def test_dentist_uploads_and_downloads_private_clinical_attachment(self):
-        encounter = self.create_encounter(self.appointment())
+        appointment = self.appointment()
+        encounter = self.create_encounter(appointment)
         upload = self.client.post(
             reverse(
                 "dentist_api:clinical-attachments",
@@ -351,12 +353,25 @@ class ClinicalAPITests(APITestCase):
             encounter_detail.data["data"]["attachments"][0]["download_url"],
         )
 
-        download = self.client.get(
+        # Simulate refreshing the examination page, which loads the encounter
+        # through the appointment endpoint used by the FE.
+        refreshed_encounter = self.client.get(
+            reverse(
+                "dentist_api:appointment-clinical-encounter",
+                kwargs={"public_code": appointment.public_code},
+            )
+        )
+        refreshed_attachment = refreshed_encounter.data["data"]["attachments"][0]
+        self.assertEqual(refreshed_encounter.status_code, status.HTTP_200_OK)
+        self.assertIn(
             reverse(
                 "dentist_api:clinical-attachment-download",
                 kwargs={"attachment_id": attachment.pk},
-            )
+            ),
+            refreshed_attachment["download_url"],
         )
+
+        download = self.client.get(urlsplit(refreshed_attachment["download_url"]).path)
         downloaded = b"".join(download.streaming_content)
         self.assertEqual(download.status_code, status.HTTP_200_OK)
         self.assertTrue(downloaded.startswith(b"\x89PNG"))

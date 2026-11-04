@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -13,6 +14,7 @@ from .serializers import NotificationSerializer
 
 class NotificationQuerySerializer(serializers.Serializer):
     unread = serializers.BooleanField(required=False)
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
 
 
 class NotificationListAPIView(APIView):
@@ -25,17 +27,35 @@ class NotificationListAPIView(APIView):
 
     @extend_schema(
         operation_id="notification_list",
-        parameters=[OpenApiParameter(name="unread", type=bool, required=False)],
+        parameters=[
+            OpenApiParameter(name="unread", type=bool, required=False),
+            OpenApiParameter(name="page", type=int, required=False),
+        ],
         responses={200: NotificationSerializer(many=True)},
     )
     def get(self, request):
         query = NotificationQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
-        notifications = Notification.objects.filter(recipient=request.user)
+        user_notifications = Notification.objects.filter(recipient=request.user)
+        unread_count = user_notifications.filter(read_at__isnull=True).count()
+        notifications = user_notifications
         if query.validated_data.get("unread"):
             notifications = notifications.filter(read_at__isnull=True)
-        data = NotificationSerializer(notifications, many=True).data
-        return Response({"data": data, "meta": {"count": len(data)}})
+        paginator = Paginator(notifications, 20)
+        page = paginator.get_page(query.validated_data["page"])
+        data = NotificationSerializer(page.object_list, many=True).data
+        return Response(
+            {
+                "data": data,
+                "meta": {
+                    "count": paginator.count,
+                    "page": page.number,
+                    "page_size": paginator.per_page,
+                    "total_pages": paginator.num_pages,
+                    "unread_count": unread_count,
+                },
+            }
+        )
 
 
 class NotificationReadAPIView(APIView):

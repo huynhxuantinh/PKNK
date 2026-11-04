@@ -229,6 +229,6 @@ class NotificationService:
         email_delivery_id = notification.deliveries.get(
             channel=NotificationDelivery.Channel.EMAIL
         ).pk
-        from .tasks import deliver_notification_email
-        transaction.on_commit(lambda: deliver_notification_email.delay(email_delivery_id))
+        from .tasks import enqueue_notification_email
+        transaction.on_commit(lambda: enqueue_notification_email(email_delivery_id))
         return notification
