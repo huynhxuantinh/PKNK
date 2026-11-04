@@ -18,6 +18,7 @@ describe('BranchManagementPage structure', () => {
       '../components/branch-management/ManagedBranchSelector.tsx',
       '../components/branch-management/ManagementPageHeader.tsx',
       '../components/branch-management/ManagementSectionNav.tsx',
+      '../components/branch-management/NoShowAppointmentModal.tsx',
       '../components/branch-management/RescheduleAppointmentModal.tsx',
       '../components/branch-management/StaffScheduleList.tsx',
     ])

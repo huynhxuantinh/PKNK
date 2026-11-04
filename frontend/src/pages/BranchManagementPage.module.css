@@ -49,6 +49,12 @@
   color: #087c9d;
   font-weight: 700;
 }
+.branchLoading {
+  margin: 1rem 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
 .schedule {
   padding: 1.5rem;
   border: 1px solid #d9e8ed;

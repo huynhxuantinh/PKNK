@@ -1,20 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ManagementAppointment } from "../../api/management";
 import { DataTable, EmptyState, StatusBadge } from "../admin/ui";
 import {
   appointmentStatusLabels,
+  appointmentActionHint,
+  appointmentActionWindow,
   hcmDate,
   hcmTime,
+  useManagementClock,
 } from "./appointmentPresentation";
 import styles from "./AppointmentList.module.css";
 
-type AppointmentAction = "confirm" | "check-in" | "no-show";
+type AppointmentAction = "confirm" | "check-in";
 
 interface AppointmentListProps {
   items: ManagementAppointment[] | null;
   busyCode: string;
   onAction: (item: ManagementAppointment, action: AppointmentAction) => void;
+  onNoShow: (item: ManagementAppointment) => void;
   onCancel: (item: ManagementAppointment) => void;
   onReschedule: (item: ManagementAppointment) => void;
 }
@@ -44,11 +48,13 @@ export function AppointmentList({
   items,
   busyCode,
   onAction,
+  onNoShow,
   onCancel,
   onReschedule,
 }: AppointmentListProps) {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<ManagementAppointment | null>(null);
+  const [selectedCode, setSelectedCode] = useState("");
+  const now = useManagementClock();
   const rows = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("vi-VN");
     if (!keyword || !items) return items || [];
@@ -67,6 +73,14 @@ export function AppointmentList({
         ),
     );
   }, [items, query]);
+  const selected = useMemo(
+    () => rows.find((item) => item.public_code === selectedCode) ?? null,
+    [rows, selectedCode],
+  );
+
+  useEffect(() => {
+    if (selectedCode && !selected) setSelectedCode("");
+  }, [selectedCode, selected]);
 
   if (!items) return <div className={styles.loading} role="status">Đang tải lịch hẹn...</div>;
 
@@ -142,12 +156,14 @@ export function AppointmentList({
             className: "appointment-list__actions-cell",
             cell: (item) => {
               const busy = busyCode === item.public_code;
+              const actionWindow = appointmentActionWindow(item, now);
+              const actionHint = appointmentActionHint(item, now);
               return (
                 <div className="appointment-list__actions">
                   <button
                     className="is-detail"
                     type="button"
-                    onClick={() => setSelected(item)}
+                    onClick={() => setSelectedCode(item.public_code)}
                   >
                     Xem chi tiết
                   </button>
@@ -161,7 +177,12 @@ export function AppointmentList({
                   )}
                   {item.status === "CONFIRMED" && (
                     <button
-                      disabled={busy}
+                      disabled={busy || !actionWindow.canCheckIn}
+                      title={
+                        actionWindow.canCheckIn
+                          ? undefined
+                          : `Có thể check-in từ ${hcmTime(actionWindow.checkInOpensAt)}.`
+                      }
                       onClick={() => onAction(item, "check-in")}
                     >
                       Xác nhận đến khám
@@ -188,11 +209,21 @@ export function AppointmentList({
                   {item.status === "CONFIRMED" && (
                     <button
                       className="is-quiet"
-                      disabled={busy}
-                      onClick={() => onAction(item, "no-show")}
+                      disabled={busy || !actionWindow.canMarkNoShow}
+                      title={
+                        actionWindow.canMarkNoShow
+                          ? undefined
+                          : `Có thể đánh dấu không đến từ ${hcmTime(actionWindow.noShowOpensAt)}.`
+                      }
+                      onClick={() => onNoShow(item)}
                     >
                       Không đến
                     </button>
+                  )}
+                  {item.status === "CONFIRMED" && actionHint && (
+                    <small className="appointment-list__action-note">
+                      {actionHint}
+                    </small>
                   )}
                 </div>
               );
@@ -204,7 +235,7 @@ export function AppointmentList({
         <div
           className={styles.drawerBackdrop}
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelected(null);
+            if (event.target === event.currentTarget) setSelectedCode("");
           }}
         >
           <aside
@@ -212,7 +243,7 @@ export function AppointmentList({
             role="dialog"
             aria-modal="true"
             aria-labelledby="appointment-detail-title"
-            onKeyDown={(event) => event.key === "Escape" && setSelected(null)}
+            onKeyDown={(event) => event.key === "Escape" && setSelectedCode("")}
             tabIndex={-1}
           >
             <header>
@@ -223,7 +254,7 @@ export function AppointmentList({
               <button
                 type="button"
                 aria-label="Đóng"
-                onClick={() => setSelected(null)}
+                onClick={() => setSelectedCode("")}
               >
                 ×
               </button>

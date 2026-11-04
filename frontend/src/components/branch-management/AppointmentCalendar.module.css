@@ -36,4 +36,5 @@
 .root :global(.appointment-calendar__detail-actions button) { padding: 7px 10px; border: 0; border-radius: 7px; background: var(--admin-teal-700); color: #fff; font-size: 11px; font-weight: 800; }
 .root :global(.appointment-calendar__detail-actions .button-secondary) { border: 1px solid #eab5ba; background: #fff; color: #b54a52; }
 .root :global(.appointment-calendar__detail-actions .button-quiet) { background: #e9f4f6; color: #087c9d; }
+.root :global(.appointment-calendar__action-note) { flex-basis: 100%; color: var(--admin-muted); font-size: 10px; text-align: right; }
 @media (max-width: 700px) { .root :global(.appointment-calendar__detail) { align-items: flex-start; flex-direction: column; } .root :global(.appointment-calendar__detail-actions) { justify-content: flex-start; } }

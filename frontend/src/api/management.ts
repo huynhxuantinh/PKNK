@@ -27,6 +27,8 @@ export interface ManagementAppointment {
   chair_name: string | null
   starts_at: string
   ends_at: string
+  check_in_opens_at?: string
+  no_show_opens_at?: string
   status: ManagementAppointmentStatus
   confirmed_at: string | null
   checked_in_at: string | null
@@ -180,7 +182,18 @@ function updateAppointment(publicCode: string, action: 'confirm' | 'check-in' | 
 
 export const confirmManagedAppointment = (code: string) => updateAppointment(code, 'confirm')
 export const checkInManagedAppointment = (code: string) => updateAppointment(code, 'check-in')
-export const markManagedAppointmentNoShow = (code: string) => updateAppointment(code, 'no-show')
+export const getManagedAppointment = (code: string, signal?: AbortSignal) =>
+  apiRequest<{ data: ManagementAppointment }>(
+    `/management/appointments/${code}/`,
+    { signal },
+    { auth: true },
+  )
+export const markManagedAppointmentNoShow = (code: string, reason: string) =>
+  apiRequest<{ data: ManagementAppointment }>(
+    `/management/appointments/${code}/no-show/`,
+    { method: 'POST', body: JSON.stringify({ reason }) },
+    { auth: true },
+  )
 
 export function cancelManagedAppointment(publicCode: string, reason: string) {
   return apiRequest<{ data: ManagementAppointment }>(`/management/appointments/${publicCode}/cancel/`, { method: 'POST', body: JSON.stringify({ reason }) }, { auth: true })

@@ -126,6 +126,14 @@
   color: #b84950;
 }
 
+.root :global(.appointment-list__action-note) {
+  flex-basis: 100%;
+  color: var(--admin-muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: right;
+}
+
 .drawerBackdrop {
   position: fixed;
   z-index: 75;

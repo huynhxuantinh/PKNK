@@ -2,10 +2,17 @@ import { useMemo, useState } from 'react'
 
 import type { ManagementAppointment } from '../../api/management'
 import type { BranchDentist, BranchOpeningHour } from '../../types/api'
-import { appointmentStatusLabels, hcmDate, hcmTime } from './appointmentPresentation'
+import {
+  appointmentActionHint,
+  appointmentActionWindow,
+  appointmentStatusLabels,
+  hcmDate,
+  hcmTime,
+  useManagementClock,
+} from './appointmentPresentation'
 import styles from './AppointmentCalendar.module.css'
 
-type AppointmentAction = 'confirm' | 'check-in' | 'no-show'
+type AppointmentAction = 'confirm' | 'check-in'
 
 type Props = {
   items: ManagementAppointment[] | null
@@ -15,6 +22,7 @@ type Props = {
   days: 1 | 7
   busyCode: string
   onAction: (item: ManagementAppointment, action: AppointmentAction) => void
+  onNoShow: (item: ManagementAppointment) => void
   onCancel: (item: ManagementAppointment) => void
   onReschedule: (item: ManagementAppointment) => void
 }
@@ -54,14 +62,25 @@ function tone(status: ManagementAppointment['status']) {
   return 'info'
 }
 
-export function AppointmentCalendar({ items, dentists, openingHours, selectedDate, days, busyCode, onAction, onCancel, onReschedule }: Props) {
+export function AppointmentCalendar({ items, dentists, openingHours, selectedDate, days, busyCode, onAction, onNoShow, onCancel, onReschedule }: Props) {
   const [selectedCode, setSelectedCode] = useState('')
+  const now = useManagementClock()
   const columns = useMemo(() => {
     if (!items) return []
-    const effectiveDentists = dentists.length ? dentists : items.map((item) => ({ id_dentist: item.dentist_id, full_name: item.dentist_name }))
-    const uniqueDentists = [...new Map(effectiveDentists.map((dentist) => [dentist.id_dentist, dentist])).values()]
+    const dentistsById = new Map<number, Pick<BranchDentist, 'id_dentist' | 'full_name'>>(
+      dentists.map((dentist) => [dentist.id_dentist, dentist]),
+    )
+    for (const item of items) {
+      if (!dentistsById.has(item.dentist_id)) {
+        dentistsById.set(item.dentist_id, {
+          id_dentist: item.dentist_id,
+          full_name: item.dentist_name,
+        })
+      }
+    }
+    const effectiveDentists = [...dentistsById.values()]
     const dates = dateRange(selectedDate, days)
-    return dates.flatMap((date) => uniqueDentists.map((dentist) => ({ date, dentist })))
+    return dates.flatMap((date) => effectiveDentists.map((dentist) => ({ date, dentist })))
   }, [days, dentists, items, selectedDate])
   const calendarHours = useMemo(() => {
     const dates = dateRange(selectedDate, days)
@@ -79,6 +98,8 @@ export function AppointmentCalendar({ items, dentists, openingHours, selectedDat
     return { start: Math.floor(first / 60) * 60, end: Math.max((Math.ceil(last / 60) * 60), Math.floor(first / 60) * 60 + 60) }
   }, [days, items, openingHours, selectedDate])
   const selected = items?.find((item) => item.public_code === selectedCode) || null
+  const selectedActionWindow = selected ? appointmentActionWindow(selected, now) : null
+  const selectedActionHint = selected ? appointmentActionHint(selected, now) : null
 
   if (!items) return <div className="dentist-empty">Đang tải lịch hẹn...</div>
   if (!columns.length) return <div className="dentist-empty">Chi nhánh chưa có nha sĩ để hiển thị lịch.</div>
@@ -103,7 +124,43 @@ export function AppointmentCalendar({ items, dentists, openingHours, selectedDat
           })}</div>)}</div>
         </div>
       </div>
-      {selected && <aside className="appointment-calendar__detail" aria-live="polite"><div><p className="eyebrow">Thông tin nhanh</p><h3>{selected.patient_name}</h3><p>{selected.service_name_snapshot} · {selected.dentist_name}</p><small>{hcmTime(selected.starts_at)} · {selected.contact_phone_snapshot || selected.patient_phone || 'Chưa có số liên hệ'}</small>{selected.patient_note && <em>Ghi chú: {selected.patient_note}</em>}</div><div className="appointment-calendar__detail-actions"><span className={`admin-status is-${tone(selected.status)}`}>{appointmentStatusLabels[selected.status]}</span>{selected.status === 'PENDING' && <button disabled={busyCode === selected.public_code} onClick={() => onAction(selected, 'confirm')}>Xác nhận</button>}{selected.status === 'CONFIRMED' && <button disabled={busyCode === selected.public_code} onClick={() => onAction(selected, 'check-in')}>Xác nhận đến khám</button>}{selected.status === 'CONFIRMED' && <button className="button-quiet" disabled={busyCode === selected.public_code} onClick={() => onAction(selected, 'no-show')}>Không đến</button>}{['PENDING', 'CONFIRMED'].includes(selected.status) && <button className="button-quiet" onClick={() => onReschedule(selected)}>Đổi lịch</button>}{['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(selected.status) && <button className="button-secondary" onClick={() => onCancel(selected)}>Hủy lịch</button>}</div></aside>}
+      {selected && (
+        <aside className="appointment-calendar__detail" aria-live="polite">
+          <div>
+            <p className="eyebrow">Thông tin nhanh</p>
+            <h3>{selected.patient_name}</h3>
+            <p>{selected.service_name_snapshot} · {selected.dentist_name}</p>
+            <small>{hcmTime(selected.starts_at)} · {selected.contact_phone_snapshot || selected.patient_phone || 'Chưa có số liên hệ'}</small>
+            {selected.patient_note && <em>Ghi chú: {selected.patient_note}</em>}
+          </div>
+          <div className="appointment-calendar__detail-actions">
+            <span className={`admin-status is-${tone(selected.status)}`}>{appointmentStatusLabels[selected.status]}</span>
+            {selected.status === 'PENDING' && <button disabled={busyCode === selected.public_code} onClick={() => onAction(selected, 'confirm')}>Xác nhận</button>}
+            {selected.status === 'CONFIRMED' && selectedActionWindow && (
+              <button
+                disabled={busyCode === selected.public_code || !selectedActionWindow.canCheckIn}
+                title={selectedActionWindow.canCheckIn ? undefined : `Có thể check-in từ ${hcmTime(selectedActionWindow.checkInOpensAt)}.`}
+                onClick={() => onAction(selected, 'check-in')}
+              >
+                Xác nhận đến khám
+              </button>
+            )}
+            {selected.status === 'CONFIRMED' && selectedActionWindow && (
+              <button
+                className="button-quiet"
+                disabled={busyCode === selected.public_code || !selectedActionWindow.canMarkNoShow}
+                title={selectedActionWindow.canMarkNoShow ? undefined : `Có thể đánh dấu không đến từ ${hcmTime(selectedActionWindow.noShowOpensAt)}.`}
+                onClick={() => onNoShow(selected)}
+              >
+                Không đến
+              </button>
+            )}
+            {['PENDING', 'CONFIRMED'].includes(selected.status) && <button className="button-quiet" onClick={() => onReschedule(selected)}>Đổi lịch</button>}
+            {['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(selected.status) && <button className="button-secondary" onClick={() => onCancel(selected)}>Hủy lịch</button>}
+            {selected.status === 'CONFIRMED' && selectedActionHint && <small className="appointment-calendar__action-note">{selectedActionHint}</small>}
+          </div>
+        </aside>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 .modal { display: grid; width: min(100%, 440px); max-height: calc(100dvh - 2rem); gap: 1rem; box-sizing: border-box; overflow-y: auto; padding: 1.5rem; border-radius: 16px; background: #fff; box-shadow: 0 20px 60px rgb(0 0 0 / .2); }
 .modal h2, .modal p { margin: 0; }
 .modal p { color: #638095; }
+.modal .warning { color: var(--admin-danger); font-size: 12px; font-weight: 700; line-height: 1.5; }
 .modal label { display: grid; gap: .4rem; font-size: .82rem; font-weight: 800; }
 .modal textarea { min-height: 110px; padding: .7rem; border: 1px solid #cbdfe7; border-radius: 8px; resize: vertical; font: inherit; }
 .modal :global(.modal-actions) { display: flex; justify-content: flex-end; gap: .6rem; }

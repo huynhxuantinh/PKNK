@@ -1,4 +1,9 @@
-import type { ManagementAppointmentStatus } from '../../api/management'
+import { useEffect, useState } from 'react'
+
+import type { ManagementAppointment, ManagementAppointmentStatus } from '../../api/management'
+
+const CHECK_IN_EARLY_MINUTES = 120
+const DEFAULT_NO_SHOW_GRACE_MINUTES = 15
 
 export const appointmentStatusLabels: Record<ManagementAppointmentStatus, string> = {
   HELD: 'Đang giữ chỗ',
@@ -27,4 +32,51 @@ export function hcmTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+export function useManagementClock() {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  return now
+}
+
+export function appointmentActionWindow(
+  appointment: ManagementAppointment,
+  now = Date.now(),
+) {
+  const startsAt = new Date(appointment.starts_at).getTime()
+  const checkInOpensAt = new Date(
+    appointment.check_in_opens_at
+      ?? startsAt - CHECK_IN_EARLY_MINUTES * 60_000,
+  ).getTime()
+  const noShowOpensAt = new Date(
+    appointment.no_show_opens_at
+      ?? startsAt + DEFAULT_NO_SHOW_GRACE_MINUTES * 60_000,
+  ).getTime()
+
+  return {
+    canCheckIn: now >= checkInOpensAt && now <= noShowOpensAt,
+    canMarkNoShow: now >= noShowOpensAt,
+    checkInOpensAt: new Date(checkInOpensAt).toISOString(),
+    noShowOpensAt: new Date(noShowOpensAt).toISOString(),
+  }
+}
+
+export function appointmentActionHint(
+  appointment: ManagementAppointment,
+  now = Date.now(),
+) {
+  const window = appointmentActionWindow(appointment, now)
+  if (!window.canCheckIn && now < new Date(window.checkInOpensAt).getTime()) {
+    return `Có thể check-in từ ${hcmTime(window.checkInOpensAt)}.`
+  }
+  if (!window.canMarkNoShow) {
+    return `Có thể đánh dấu không đến từ ${hcmTime(window.noShowOpensAt)}.`
+  }
+  return null
 }

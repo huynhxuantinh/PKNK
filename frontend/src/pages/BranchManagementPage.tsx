@@ -4,6 +4,7 @@ import {
   cancelManagedAppointment,
   checkInManagedAppointment,
   confirmManagedAppointment,
+  getManagedAppointment,
   listBranchAppointments,
   listManagedOrganizationBranches,
   listManagedRescheduleSlots,
@@ -22,6 +23,7 @@ import {
 } from "../components/branch-management/AppointmentList";
 import { AppointmentCalendar } from "../components/branch-management/AppointmentCalendar";
 import { CancelAppointmentModal } from "../components/branch-management/CancelAppointmentModal";
+import { NoShowAppointmentModal } from "../components/branch-management/NoShowAppointmentModal";
 import { RescheduleAppointmentModal } from "../components/branch-management/RescheduleAppointmentModal";
 import {
   appointmentStatusLabels,
@@ -31,7 +33,7 @@ import { resolveScopedManagedBranchId } from "../components/branch-management/ma
 import styles from "./BranchManagementPage.module.css";
 import type { BranchDetail, Slot } from "../types/api";
 
-type AppointmentAction = "confirm" | "check-in" | "no-show";
+type AppointmentAction = "confirm" | "check-in";
 
 const BRANCH_APPOINTMENT_REFRESH_MS = 30_000;
 
@@ -73,6 +75,7 @@ export function BranchManagementPage() {
   const [branches, setBranches] = useState<ManagedBranch[]>(directBranches);
   const [loaded, setLoaded] = useState(organizationIds.length === 0);
   const [branch, setBranch] = useState<BranchDetail | null>(null);
+  const [branchLoading, setBranchLoading] = useState(false);
   const [date, setDate] = useState(() => hcmDate(new Date()));
   const [days, setDays] = useState<1 | 7>(7);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
@@ -85,6 +88,7 @@ export function BranchManagementPage() {
   const [cancelling, setCancelling] = useState<ManagementAppointment | null>(
     null,
   );
+  const [noShowing, setNoShowing] = useState<ManagementAppointment | null>(null);
   const [moving, setMoving] = useState<ManagementAppointment | null>(null);
   const [appointmentReloadVersion, setAppointmentReloadVersion] = useState(0);
 
@@ -103,6 +107,7 @@ export function BranchManagementPage() {
   const isManager = canAccessArea(user, "MANAGEMENT");
   const knownPendingCodes = useRef(new Set<string>());
   const activeBranchIdRef = useRef<number | null>(branchId);
+  const branchRequestId = useRef(0);
   activeBranchIdRef.current = branchId;
 
   const isInActiveBranch = (appointment: ManagementAppointment) =>
@@ -150,21 +155,34 @@ export function BranchManagementPage() {
   }, [branchId, requestedBranchId, setParams]);
 
   useEffect(() => {
+    const requestId = ++branchRequestId.current;
+    setBranch(null);
+    setBranchLoading(Boolean(branchId));
+    setDentistId(undefined);
+    setError("");
     if (!branchId) return;
     const controller = new AbortController();
     getBranchDetail(branchId, controller.signal)
       .then((response) => {
-        if (!controller.signal.aborted) setBranch(response.data);
+        if (requestId === branchRequestId.current && !controller.signal.aborted) {
+          setBranch(response.data);
+        }
       })
       .catch(
         (caughtError) =>
+          requestId === branchRequestId.current &&
           !controller.signal.aborted &&
           setError(
             caughtError instanceof Error
               ? caughtError.message
               : "Không thể tải chi nhánh.",
           ),
-      );
+      )
+      .finally(() => {
+        if (requestId === branchRequestId.current && !controller.signal.aborted) {
+          setBranchLoading(false);
+        }
+      });
     return () => controller.abort();
   }, [branchId]);
 
@@ -240,6 +258,7 @@ export function BranchManagementPage() {
 
   useEffect(() => {
     setCancelling(null);
+    setNoShowing(null);
     setMoving(null);
     setBusy("");
   }, [branchId]);
@@ -268,11 +287,24 @@ export function BranchManagementPage() {
       const response =
         action === "confirm"
           ? await confirmManagedAppointment(item.public_code)
-          : action === "check-in"
-            ? await checkInManagedAppointment(item.public_code)
-            : await markManagedAppointmentNoShow(item.public_code);
+          : await checkInManagedAppointment(item.public_code);
       if (isInActiveBranch(response.data)) replaceAppointment(response.data);
     } catch (caughtError) {
+      if (action === "check-in") {
+        try {
+          const current = await getManagedAppointment(item.public_code);
+          if (
+            isInActiveBranch(current.data) &&
+            ["CHECKED_IN", "IN_PROGRESS"].includes(current.data.status)
+          ) {
+            replaceAppointment(current.data);
+            setPendingNotice("Check-in đã được ghi nhận.");
+            return;
+          }
+        } catch {
+          // Preserve the original action error if the reconciliation read fails.
+        }
+      }
       if (isInActiveBranch(item)) {
         setError(
           caughtError instanceof Error
@@ -312,6 +344,36 @@ export function BranchManagementPage() {
       }
     } finally {
       if (isInActiveBranch(cancelling)) setBusy("");
+    }
+  }
+
+  async function markAppointmentNoShow(reason: string) {
+    if (!noShowing) return;
+    if (!isInActiveBranch(noShowing)) {
+      setNoShowing(null);
+      setError("Chi nhánh đã thay đổi. Hãy mở lại lịch hẹn cần thao tác.");
+      return;
+    }
+    setBusy(noShowing.public_code);
+    try {
+      const response = await markManagedAppointmentNoShow(
+        noShowing.public_code,
+        reason,
+      );
+      if (isInActiveBranch(response.data)) {
+        replaceAppointment(response.data);
+        setNoShowing(null);
+      }
+    } catch (caughtError) {
+      if (isInActiveBranch(noShowing)) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Không thể đánh dấu không đến.",
+        );
+      }
+    } finally {
+      if (isInActiveBranch(noShowing)) setBusy("");
     }
   }
 
@@ -377,8 +439,11 @@ export function BranchManagementPage() {
     return <Navigate to="/dang-nhap?returnTo=%2Fquan-ly-chi-nhanh" replace />;
   }
   if (!isManager || (loaded && !branchId)) return <Navigate to="/" replace />;
+  const currentBranch = branch?.id_branch === branchId ? branch : null;
+  const isCurrentBranchLoading = Boolean(branchId && (!currentBranch || branchLoading));
   const activeCancellation =
     cancelling && isInActiveBranch(cancelling) ? cancelling : null;
+  const activeNoShow = noShowing && isInActiveBranch(noShowing) ? noShowing : null;
   const activeReschedule = moving && isInActiveBranch(moving) ? moving : null;
 
   return (
@@ -387,8 +452,8 @@ export function BranchManagementPage() {
         <section className={styles.hero}>
           <div>
             <p className="eyebrow">Vận hành hằng ngày</p>
-            <h1>{branch?.name || "Quản lý chi nhánh"}</h1>
-            <p>{branch?.full_address || "Đang tải..."}</p>
+            <h1>{currentBranch?.name || "Quản lý chi nhánh"}</h1>
+            <p>{currentBranch?.full_address || "Đang tải..."}</p>
           </div>
           {!isBranchAdmin && branchIds.length > 1 && (
             <label>
@@ -408,6 +473,12 @@ export function BranchManagementPage() {
             </label>
           )}
         </section>
+
+        {isCurrentBranchLoading && (
+          <p className={styles.branchLoading} role="status">
+            Đang tải thông tin chi nhánh...
+          </p>
+        )}
 
         {error && <ManagementErrorBanner message={error} />}
         {pendingNotice && (
@@ -476,7 +547,7 @@ export function BranchManagementPage() {
                 }
               >
                 <option value="">Tất cả nha sĩ</option>
-                {branch?.dentists.map((dentist) => (
+                {currentBranch?.dentists.map((dentist) => (
                   <option key={dentist.id_dentist} value={dentist.id_dentist}>
                     {dentist.full_name}
                   </option>
@@ -508,12 +579,13 @@ export function BranchManagementPage() {
           {viewMode === "calendar" ? (
             <AppointmentCalendar
               items={items}
-              dentists={branch?.dentists || []}
-              openingHours={branch?.opening_hours || []}
+              dentists={currentBranch?.dentists || []}
+              openingHours={currentBranch?.opening_hours || []}
               selectedDate={date}
               days={days}
               busyCode={busy}
               onAction={updateAppointment}
+              onNoShow={setNoShowing}
               onCancel={setCancelling}
               onReschedule={setMoving}
             />
@@ -522,6 +594,7 @@ export function BranchManagementPage() {
               items={items}
               busyCode={busy}
               onAction={updateAppointment}
+              onNoShow={setNoShowing}
               onCancel={setCancelling}
               onReschedule={setMoving}
             />
@@ -537,10 +610,18 @@ export function BranchManagementPage() {
           onConfirm={cancelAppointment}
         />
       )}
+      {activeNoShow && (
+        <NoShowAppointmentModal
+          appointment={activeNoShow}
+          busy={busy === activeNoShow.public_code}
+          onClose={() => setNoShowing(null)}
+          onConfirm={markAppointmentNoShow}
+        />
+      )}
       {activeReschedule && (
         <RescheduleAppointmentModal
           appointment={activeReschedule}
-          dentists={branch?.dentists || []}
+          dentists={currentBranch?.dentists || []}
           busy={busy === activeReschedule.public_code}
           onClose={() => setMoving(null)}
           onFindSlots={findRescheduleSlots}
