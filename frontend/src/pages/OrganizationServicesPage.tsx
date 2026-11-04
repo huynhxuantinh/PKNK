@@ -518,10 +518,11 @@ export function OrganizationServicesPage() {
                   header: "Thời lượng",
                   cell: (branch) => {
                     const service = branchServiceMap[branch.id_branch];
+                    const bufferMinutes = service?.buffer_minutes ?? comparing.buffer_minutes;
                     return comparisonFailedBranchIds.includes(branch.id_branch)
                       ? "—"
                       : service
-                        ? `${service.duration_minutes ?? comparing.standard_duration_minutes} phút${service.buffer_minutes ? ` · đệm ${service.buffer_minutes} phút` : ""}`
+                        ? `${service.duration_minutes ?? comparing.standard_duration_minutes} phút${bufferMinutes > 0 ? ` · đệm ${bufferMinutes} phút` : ""}`
                         : "—";
                   },
                 },
