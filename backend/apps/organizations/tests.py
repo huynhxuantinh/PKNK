@@ -1,13 +1,19 @@
+import threading
 from datetime import timedelta
 
-from django.db import DatabaseError, IntegrityError, transaction
-from django.test import TestCase, override_settings
+from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.locations.models import Branch, Province, Ward
 
 from .models import Membership, Organization, StaffInvitation
+from .services import (
+    BranchAdminConflict,
+    StaffInvitationService,
+    StaffRoleConflict,
+)
 from .tasks import archive_expired_staff_invitations
 
 
@@ -172,3 +178,89 @@ class StaffInvitationCleanupTaskTests(TestCase):
         self.assertIsNotNone(stale.revoked_at)
         self.assertIsNone(recent.revoked_at)
         self.assertIsNone(accepted.revoked_at)
+
+
+class StaffInvitationConcurrencyTests(TransactionTestCase):
+    reset_sequences = True
+
+    def setUp(self):
+        province = Province.objects.create(code="79", name="HCM", full_name="HCM")
+        ward = Ward.objects.create(
+            code="00001", province=province, name="Ward", full_name="Ward"
+        )
+        self.organization = Organization.objects.create(
+            name="Concurrent Org", slug="concurrent-invite-org"
+        )
+        self.branch = Branch.objects.create(
+            organization=self.organization,
+            code="CI1",
+            name="CI1",
+            province=province,
+            ward=ward,
+            address_line="CI1",
+            location="POINT(106.7 10.7)",
+        )
+        self.inviter = User.objects.create_user(
+            email="concurrent-inviter@example.com",
+            password="test",
+            full_name="Concurrent Inviter",
+        )
+        self.user = User.objects.create_user(
+            email="concurrent-invitee@example.com",
+            password="StrongPassword!2026",
+            full_name="Concurrent Invitee",
+            email_verified_at=timezone.now(),
+        )
+        _, self.organization_admin_token = StaffInvitationService.create(
+            organization=self.organization,
+            branch=None,
+            email=self.user.email,
+            role=Membership.Role.ORGANIZATION_ADMIN,
+            invited_by=self.inviter,
+        )
+        _, self.branch_admin_token = StaffInvitationService.create(
+            organization=self.organization,
+            branch=self.branch,
+            email=self.user.email,
+            role=Membership.Role.BRANCH_ADMIN,
+            invited_by=self.inviter,
+        )
+
+    def test_concurrent_acceptance_grants_only_one_staff_role(self):
+        barrier = threading.Barrier(2)
+        outcomes = []
+        conflicts = []
+        outcomes_lock = threading.Lock()
+
+        def accept(token):
+            try:
+                barrier.wait(timeout=10)
+                membership, _ = StaffInvitationService.accept(
+                    raw_token=token, user=self.user
+                )
+                with outcomes_lock:
+                    outcomes.append(membership.role)
+            except (StaffRoleConflict, BranchAdminConflict) as error:
+                with outcomes_lock:
+                    conflicts.append(str(error))
+            finally:
+                connection.close()
+
+        threads = [
+            threading.Thread(target=accept, args=(token,))
+            for token in (self.organization_admin_token, self.branch_admin_token)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(len(outcomes), 1)
+        self.assertEqual(len(conflicts), 1)
+        active_roles = list(
+            Membership.objects.filter(user=self.user, is_active=True).values_list(
+                "role", flat=True
+            )
+        )
+        self.assertEqual(active_roles, outcomes)

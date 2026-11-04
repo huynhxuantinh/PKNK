@@ -44,6 +44,18 @@ ROLE_LABELS = {
 }
 
 
+def lock_membership_scope(user_id):
+    """Serialize every staff-role grant for one account.
+
+    Role separation is a cross-row invariant ("one active staff role per
+    account"), which no database constraint can express. Callers lock the User
+    row before reading or locking memberships, so two concurrent requests for
+    the same account serialize and the role checks run against the membership
+    written by the request that went first.
+    """
+    return User.objects.select_for_update().get(pk=user_id)
+
+
 def _active_branch_admin_memberships(*, exclude_membership_id=None):
     memberships = Membership.objects.filter(
         role=Membership.Role.BRANCH_ADMIN,
@@ -263,6 +275,10 @@ class StaffInvitationService:
     @classmethod
     @transaction.atomic
     def accept(cls, *, raw_token, user, request=None):
+        # Lock the account before the invitation and membership rows so that
+        # concurrent acceptances for the same account cannot both pass the
+        # "one active staff role" check below.
+        user = lock_membership_scope(user.pk)
         invitation = cls._invitation(raw_token, lock=True)
         now = timezone.now()
         if (

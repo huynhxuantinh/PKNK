@@ -34,6 +34,7 @@ from apps.organizations.services import (
     StaffInvitationService,
     StaffRoleConflict,
     deactivate_patient_memberships,
+    lock_membership_scope,
     validate_branch_admin_scope,
     validate_staff_role_separation,
 )
@@ -757,6 +758,9 @@ class MembershipDetailAPIView(ManagementAPIView):
                 organization_id__in=organization_ids_for(request.user, ORG_ADMIN)
             ), pk=membership_id,
         )
+        # Same lock order as StaffInvitationService.accept: account first, then
+        # membership rows, so role grants for one user are serialized.
+        lock_membership_scope(membership.user_id)
         membership = Membership.objects.select_for_update().get(pk=membership.pk)
         serializer = MembershipManagementSerializer(membership, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -765,6 +769,27 @@ class MembershipDetailAPIView(ManagementAPIView):
         active = serializer.validated_data.get("is_active", membership.is_active)
         if branch and branch.organization_id != membership.organization_id:
             raise ValidationError({"branch_id": "Chi nhánh không thuộc organization."})
+        leaves_current_dentist_branch = (
+            membership.role == Membership.Role.DENTIST
+            and membership.is_active
+            and membership.branch_id is not None
+            and (
+                not active
+                or role != Membership.Role.DENTIST
+                or branch is None
+                or branch.pk != membership.branch_id
+            )
+        )
+        if leaves_current_dentist_branch:
+            dentist = Dentist.objects.filter(
+                user=membership.user, organization=membership.organization
+            ).first()
+            if dentist is not None:
+                ensure_no_active_future_appointments(
+                    "Không thể gỡ nha sĩ khỏi chi nhánh đang có lịch tương lai.",
+                    dentist=dentist,
+                    branch_id=membership.branch_id,
+                )
         if role == Membership.Role.ORGANIZATION_ADMIN and branch is not None:
             raise ValidationError(
                 {"branch_id": "Quản trị viên tổ chức không được gắn trực tiếp với một chi nhánh."}
@@ -972,6 +997,9 @@ class DentistBranchesAPIView(ManagementAPIView):
     @transaction.atomic
     def put(self, request, dentist_id):
         dentist = self.dentist(dentist_id)
+        # Role grants are serialized per account: account row first, then
+        # memberships (same order as StaffInvitationService.accept).
+        lock_membership_scope(dentist.user_id)
         payload = IdListSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         branches = list(Branch.objects.filter(

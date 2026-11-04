@@ -123,6 +123,60 @@ class ManagementAPITests(APITestCase):
             status=Appointment.Status.CONFIRMED,
         )
 
+    def create_dentist_with_future_appointment(self, public_code):
+        dentist = Dentist.objects.create(
+            user=self.dentist_user,
+            organization=self.org_a,
+        )
+        membership = Membership.objects.create(
+            user=self.dentist_user,
+            organization=self.org_a,
+            branch=self.branch_a,
+            role=Membership.Role.DENTIST,
+        )
+        patient_user = self.make_user(f"patient-{public_code.lower()}@example.com")
+        patient = PatientProfile.objects.create(user=patient_user)
+        Membership.objects.create(
+            user=patient_user,
+            organization=self.org_a,
+            role=Membership.Role.PATIENT,
+        )
+        service = Service.objects.create(
+            organization=self.org_a,
+            code=f"SVC-{public_code}",
+            name="Khám tổng quát",
+            standard_duration_minutes=30,
+            standard_price=100,
+        )
+        branch_service = BranchService.objects.create(
+            branch=self.branch_a,
+            service=service,
+            price=100,
+        )
+        chair = Chair.objects.create(
+            branch=self.branch_a,
+            code=f"C-{public_code}",
+            name="Ghế khám",
+            resource_type=Chair.ResourceType.CHAIR,
+        )
+        starts_at = timezone.now() + timedelta(days=1)
+        Appointment.objects.create(
+            public_code=public_code,
+            patient_profile=patient,
+            branch=self.branch_a,
+            branch_service=branch_service,
+            dentist=dentist,
+            chair=chair,
+            service_name_snapshot=service.name,
+            service_price_snapshot=branch_service.price,
+            duration_minutes=30,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            occupied_until=starts_at + timedelta(minutes=30),
+            status=Appointment.Status.CONFIRMED,
+        )
+        return dentist, membership
+
     def test_branch_scope_and_branch_admin_cannot_patch_branch(self):
         self.client.force_authenticate(self.branch_admin)
 
@@ -1365,3 +1419,71 @@ class ManagementAPITests(APITestCase):
         response = self.client.get(reverse("management:branch-detail", kwargs={"branch_id": self.branch_a.pk}))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cannot_move_dentist_membership_branch_with_active_future_appointment(self):
+        other_branch = self.make_branch(self.org_a, "A2")
+        _, membership = self.create_dentist_with_future_appointment("APT-DENTIST-MOVE")
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
+            {"branch_id": other_branch.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("lịch tương lai", response.data["message"])
+        membership.refresh_from_db()
+        self.assertEqual(membership.branch_id, self.branch_a.pk)
+        self.assertEqual(membership.role, Membership.Role.DENTIST)
+        self.assertTrue(membership.is_active)
+
+    def test_cannot_deactivate_dentist_membership_with_active_future_appointment(self):
+        _, membership = self.create_dentist_with_future_appointment("APT-DENTIST-OFF")
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)
+
+    def test_cannot_change_dentist_role_with_active_future_appointment(self):
+        _, membership = self.create_dentist_with_future_appointment("APT-DENTIST-ROLE")
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
+            {"role": Membership.Role.BRANCH_ADMIN},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        membership.refresh_from_db()
+        self.assertEqual(membership.role, Membership.Role.DENTIST)
+
+    def test_can_move_dentist_membership_branch_without_future_appointments(self):
+        other_branch = self.make_branch(self.org_a, "A2")
+        Dentist.objects.create(user=self.dentist_user, organization=self.org_a)
+        membership = Membership.objects.create(
+            user=self.dentist_user,
+            organization=self.org_a,
+            branch=self.branch_a,
+            role=Membership.Role.DENTIST,
+        )
+        self.client.force_authenticate(self.org_admin)
+
+        response = self.client.patch(
+            reverse("management:membership-detail", kwargs={"membership_id": membership.pk}),
+            {"branch_id": other_branch.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        membership.refresh_from_db()
+        self.assertEqual(membership.branch_id, other_branch.pk)
+        self.assertTrue(membership.is_active)
