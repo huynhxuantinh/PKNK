@@ -781,7 +781,11 @@ class MembershipDetailAPIView(ManagementAPIView):
             )
         )
         if leaves_current_dentist_branch:
-            dentist = Dentist.objects.filter(
+            # Booking locks the dentist row while it re-checks availability and
+            # creates the hold, so lock it before the future-appointment check
+            # to keep the check and the membership change atomic with respect
+            # to a booking that is being created right now.
+            dentist = Dentist.objects.select_for_update().filter(
                 user=membership.user, organization=membership.organization
             ).first()
             if dentist is not None:
@@ -949,6 +953,12 @@ class DentistServicesAPIView(ManagementAPIView):
     @transaction.atomic
     def put(self, request, dentist_id):
         dentist = self.dentist(dentist_id)
+        # Booking locks this row before it re-checks availability and creates
+        # the hold, so taking the same lock makes the future-appointment check
+        # and the service removal atomic with respect to new bookings.
+        dentist = Dentist.objects.select_for_update(of=("self",)).select_related(
+            "organization"
+        ).get(pk=dentist.pk)
         payload = IdListSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         services = list(Service.objects.filter(
@@ -1000,6 +1010,12 @@ class DentistBranchesAPIView(ManagementAPIView):
         # Role grants are serialized per account: account row first, then
         # memberships (same order as StaffInvitationService.accept).
         lock_membership_scope(dentist.user_id)
+        # Booking locks this same dentist row while it re-checks availability
+        # and creates the hold, so the future-appointment check below and the
+        # branch removal are atomic with respect to new bookings.
+        dentist = Dentist.objects.select_for_update(of=("self",)).select_related(
+            "organization"
+        ).get(pk=dentist.pk)
         payload = IdListSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         branches = list(Branch.objects.filter(
