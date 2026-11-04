@@ -114,7 +114,7 @@ describe('OrganizationBranchesPage', () => {
     )
   })
 
-  it('hides previous branch KPIs after details fail for the newly selected branch', async () => {
+  it('shows basic details without requesting operational data for inactive branches', async () => {
     await act(async () => {
       renderer = create(
         <MemoryRouter>
@@ -136,13 +136,21 @@ describe('OrganizationBranchesPage', () => {
     })
     expect(renderer!.root.findByProps({ className: 'organization-detail-kpis' }).findAllByType('strong').map((node) => node.children[0])).toEqual(['2', '1', '1'])
 
+    apiMocks.listManagedBranchDentists.mockClear()
+    apiMocks.listManagedBranchServices.mockClear()
+    apiMocks.listManagedChairs.mockClear()
     await act(async () => {
       openDetails(2)?.props.onClick()
       await Promise.resolve()
     })
 
     expect(renderer!.root.findAllByProps({ className: 'organization-detail-kpis' })).toHaveLength(0)
-    expect(renderer!.root.findByProps({ role: 'alert' }).children).toContain('Branch details unavailable')
+    expect(apiMocks.listManagedBranchDentists).not.toHaveBeenCalled()
+    expect(apiMocks.listManagedBranchServices).not.toHaveBeenCalled()
+    expect(apiMocks.listManagedChairs).not.toHaveBeenCalled()
+    expect(renderer!.root.findAllByType('p').some((node) =>
+      node.children.join('').includes('Chi nhánh đã ngưng hoạt động'),
+    )).toBe(true)
 
     await act(async () => renderer!.unmount())
   })

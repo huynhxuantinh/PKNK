@@ -50,7 +50,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
     getOrganization(organizationId, controller.signal)
       .then((response) => {
         if (response.data.id_organization !== organizationId) {
-          setError('Loaded organization does not match the selected organization.')
+          setError('Dữ liệu tải về không khớp với tổ chức đã chọn.')
           return
         }
         setOrganization(response.data)
@@ -110,7 +110,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
       })
       if (organizationIdRef.current !== requestedOrganizationId) return
       if (response.data.id_organization !== requestedOrganizationId) {
-        setError('Saved organization does not match the selected organization.')
+        setError('Dữ liệu sau khi lưu không khớp với tổ chức đã chọn.')
         return
       }
       setOrganization(response.data)
