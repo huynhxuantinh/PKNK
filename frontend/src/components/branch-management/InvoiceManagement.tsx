@@ -419,6 +419,7 @@ interface InvoiceDetailPanelProps {
   onEdit: () => void;
   onRecordPayment: () => void;
   onVoidPayment: (payment: ManagedInvoicePayment) => void;
+  onCreateReplacement: () => void;
 }
 export function InvoiceDetailPanel({
   invoice,
@@ -429,6 +430,7 @@ export function InvoiceDetailPanel({
   onEdit,
   onRecordPayment,
   onVoidPayment,
+  onCreateReplacement,
 }: InvoiceDetailPanelProps) {
   const postedPayment = invoice.payments.find(
     (payment) => payment.status === "POSTED",
@@ -577,6 +579,15 @@ export function InvoiceDetailPanel({
           {invoice.status === "ISSUED" && (
             <button type="button" disabled={busy} onClick={onRecordPayment}>
               Thanh toán
+            </button>
+          )}
+          {invoice.status === "VOID" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onCreateReplacement}
+            >
+              Tạo hóa đơn thay thế
             </button>
           )}
           {invoice.status === "PAID" && postedPayment?.source === "PAYOS" && (

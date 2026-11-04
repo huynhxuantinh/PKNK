@@ -49,7 +49,7 @@ describe('invoice management UI', () => {
 
   it('only offers payment for an issued invoice', () => {
     const detail = (invoice: ManagedInvoice) => renderToStaticMarkup(
-      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
+      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} onCreateReplacement={() => {}} />,
     )
     const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
     const paid = { ...issued, status: 'PAID' as const, paid_at: '2026-10-24T09:05:00+07:00' }
@@ -63,7 +63,7 @@ describe('invoice management UI', () => {
 
   it('only offers draft editing before the invoice is issued', () => {
     const detail = (invoice: ManagedInvoice) => renderToStaticMarkup(
-      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} />,
+      <InvoiceDetailPanel invoice={invoice} busy={false} onClose={() => {}} onIssue={() => {}} onVoid={() => {}} onEdit={() => {}} onRecordPayment={() => {}} onVoidPayment={() => {}} onCreateReplacement={() => {}} />,
     )
     const issued = { ...draftInvoice, status: 'ISSUED' as const, issued_at: '2026-10-24T09:00:00+07:00' }
 
