@@ -14,6 +14,7 @@ import {
   InvoiceDraftEditor,
   InvoiceDetailPanel,
   InvoiceFilters,
+  InvoiceList,
   InvoiceTable,
   InvoicePagination,
   PaymentChoiceModal, PaymentModal, PayosCheckoutModal,
@@ -22,6 +23,7 @@ import {
 import {
   latestVoidedInvoiceId,
 } from '../components/branch-management/invoicePresentation'
+import { useManagedBranches } from '../components/branch-management/useManagedBranches'
 import './BranchInvoicesPage.legacy.css'
 
 const INVOICE_PAGE_SIZE = 20
@@ -29,6 +31,7 @@ const INVOICE_READY_PAGE_SIZE = 10
 
 export function BranchInvoicesPage() {
   const { user } = useAuth()
+  const { branches } = useManagedBranches(user)
   const [params] = useSearchParams()
   const branchId = Number(params.get('chi-nhanh')) || 0
   const [status, setStatus] = useState<ManagedInvoiceStatus | ''>('')
@@ -36,6 +39,12 @@ export function BranchInvoicesPage() {
   const [appliedAppointmentFilter, setAppliedAppointmentFilter] = useState('')
   const [items, setItems] = useState<ManagedInvoice[]>([])
   const [invoiceCount, setInvoiceCount] = useState(0)
+  const [issuedCount, setIssuedCount] = useState<number | null>(null)
+  const [paidCount, setPaidCount] = useState<number | null>(null)
+  const [queueMode, setQueueMode] = useState<'READY' | 'ISSUED'>('READY')
+  const [issuedQueue, setIssuedQueue] = useState<ManagedInvoice[]>([])
+  const [issuedQueueLoading, setIssuedQueueLoading] = useState(true)
+  const [invoiceSummaryError, setInvoiceSummaryError] = useState('')
   const [offset, setOffset] = useState(0)
   const [readyAppointments, setReadyAppointments] = useState<InvoiceReadyAppointment[]>([])
   const [reviewTransactions, setReviewTransactions] = useState<ManagedPayosReviewTransaction[]>([])
@@ -74,6 +83,33 @@ export function BranchInvoicesPage() {
   const activeBranchId = useRef(branchId)
   activeBranchId.current = branchId
   const isCurrentBranch = () => activeBranchId.current === branchId
+  const currentBranch = branches.find((branch) => branch.id_branch === branchId)
+
+  const loadInvoiceSummary = useCallback(async () => {
+    if (!branchId) return
+    const requestId = loadRequestId.current
+    try {
+      const [issued, paid, queue] = await Promise.all([
+        listManagedInvoices(branchId, { status: 'ISSUED', limit: 1 }),
+        listManagedInvoices(branchId, { status: 'PAID', limit: 1 }),
+        listManagedInvoices(branchId, { status: 'ISSUED', limit: 5 }),
+      ])
+      if (activeBranchId.current !== branchId || requestId !== loadRequestId.current) return
+      setIssuedCount(issued.meta.count)
+      setPaidCount(paid.meta.count)
+      setIssuedQueue(queue.data)
+      setInvoiceSummaryError('')
+    } catch {
+      if (activeBranchId.current === branchId && requestId === loadRequestId.current) {
+        setIssuedCount(null)
+        setPaidCount(null)
+        setIssuedQueue([])
+        setInvoiceSummaryError('Không thể tải số liệu thu ngân. Vui lòng thử lại.')
+      }
+    } finally {
+      if (activeBranchId.current === branchId && requestId === loadRequestId.current) setIssuedQueueLoading(false)
+    }
+  }, [branchId])
 
   const loadInvoices = useCallback(async (signal?: AbortSignal) => {
     if (!branchId) return
@@ -94,6 +130,7 @@ export function BranchInvoicesPage() {
       setItems(response.data)
       setInvoiceCount(response.meta.count)
       setError('')
+      void loadInvoiceSummary()
     } catch (caught) {
       if (signal?.aborted || branchId !== activeBranchId.current || requestId !== loadRequestId.current) return
       setInvoiceCount(0)
@@ -105,7 +142,7 @@ export function BranchInvoicesPage() {
         setScopeReady(true)
       }
     }
-  }, [appliedAppointmentFilter, branchId, offset, status])
+  }, [appliedAppointmentFilter, branchId, offset, status, loadInvoiceSummary])
 
   useEffect(() => {
     loadRequestId.current += 1
@@ -114,6 +151,12 @@ export function BranchInvoicesPage() {
     setLoading(true)
     setItems([])
     setInvoiceCount(0)
+    setIssuedCount(null)
+    setPaidCount(null)
+    setIssuedQueue([])
+    setIssuedQueueLoading(true)
+    setInvoiceSummaryError('')
+    setQueueMode('READY')
     setReadyAppointments([])
     setReviewTransactions([])
     setReviewToResolve(null)
@@ -401,11 +444,27 @@ export function BranchInvoicesPage() {
   return <div className="branch-management-page invoice-management-page">
     <main><div className="branch-management-main">
     <Link className="staff-schedule-back" to={`/quan-ly-chi-nhanh?chi-nhanh=${branchId}`}>← Quay lại quản lý chi nhánh</Link>
-    <header className="invoice-management-heading"><div><span>Thu ngân chi nhánh</span><h1>Hóa đơn</h1><p>Tạo hóa đơn từ lịch khám đã hoàn tất, kiểm tra và phát hành cho bệnh nhân.</p></div><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>+ Tạo hóa đơn</button></header>
+    <header className="invoice-management-heading"><div><span>Thu ngân &amp; quản lý hóa đơn</span><h1>Hóa đơn &amp; thanh toán</h1><p>Ưu tiên xử lý lượt khám chờ lập hóa đơn, theo dõi tiền cần thu và đối soát giao dịch payOS.</p></div><div className="invoice-heading-actions"><span className="invoice-branch-pill">{currentBranch?.name || `Chi nhánh #${branchId}`}</span><button type="button" disabled={!scopeReady} onClick={() => setShowCreate(true)}>＋ Lập hóa đơn mới</button></div></header>
     {error && <div className="app-error" role="alert">{error}</div>}
     {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
-    {reviewTransactions.length > 0 && <section className="branch-management-schedule invoice-management-section" aria-labelledby="payos-review-heading"><div className="invoice-management-heading"><div><span>Đối soát thủ công</span><h2 id="payos-review-heading">Giao dịch PayOS cần kiểm tra</h2><p>Chỉ xác nhận sau khi đã đối chiếu tiền thực nhận và mã tham chiếu PayOS.</p></div></div><div className="invoice-table-wrap"><table><thead><tr><th>Hóa đơn</th><th>Bệnh nhân</th><th>Mã PayOS</th><th>Số tiền</th><th>Thao tác</th></tr></thead><tbody>{reviewTransactions.map((item) => <tr key={item.order_code}><td>{item.invoice_number}</td><td>{item.patient_name}</td><td>{item.payos_reference || item.order_code}</td><td>{item.amount.toLocaleString('vi-VN')} ₫</td><td><button type="button" className="button-secondary" disabled={busy} onClick={() => { setReviewToResolve(item); setReviewAction('CONFIRM_RECEIVED'); setReviewReason(''); setReviewReference(item.payos_reference) }}>Đối soát</button></td></tr>)}</tbody></table></div></section>}
-    <InvoiceReadyAppointmentQueue
+    <section className="invoice-overview" aria-labelledby="invoice-overview-title">
+      <div className="invoice-section-heading"><div><span className="invoice-kicker">01 · Tổng quan thanh toán</span><h2 id="invoice-overview-title">Việc cần xử lý trước</h2></div><small>Số liệu theo chi nhánh đang chọn</small></div>
+      <div className="invoice-kpi-grid">
+        <article><span className="invoice-kpi-icon is-amber">▤</span><div><small>Chờ lập hóa đơn</small><strong>{loadingReadyAppointments ? '—' : readyAppointmentCount.toLocaleString('vi-VN')}</strong><p>Lượt khám đã hoàn tất</p></div></article>
+        <article><span className="invoice-kpi-icon is-blue">▣</span><div><small>Đã phát hành · chờ thu</small><strong>{issuedCount === null ? '—' : issuedCount.toLocaleString('vi-VN')}</strong><p>Hóa đơn chưa thanh toán</p></div></article>
+        <article className={reviewTransactions.length ? 'has-review' : ''}><span className="invoice-kpi-icon is-red">◇</span><div><small>payOS cần đối soát</small><strong>{reviewTransactions.length.toLocaleString('vi-VN')}</strong><p>Cần xác minh tiền thực nhận</p></div></article>
+        <article><span className="invoice-kpi-icon is-green">✓</span><div><small>Đã thanh toán</small><strong>{paidCount === null ? '—' : paidCount.toLocaleString('vi-VN')}</strong><p>Hóa đơn đã ghi nhận</p></div></article>
+      </div>
+      {reviewTransactions.length > 0 && <aside className="invoice-review-alert"><span aria-hidden="true">!</span><div><strong>{reviewTransactions.length} giao dịch payOS đang cần đối soát</strong><p>Chỉ xác nhận sau khi kiểm tra khoản tiền thực nhận và mã tham chiếu. Không tự chuyển hóa đơn sang “Đã thanh toán”.</p></div><button type="button" onClick={() => document.getElementById('payos-review-heading')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Kiểm tra giao dịch ›</button></aside>}
+    </section>
+    <div className="invoice-work-grid">
+    <section className="invoice-queue-panel" aria-labelledby="invoice-queue-title">
+      <header className="invoice-panel-heading"><div><span className="invoice-kicker">02 · Hàng đợi thu ngân</span><h2 id="invoice-queue-title">Hóa đơn cần xử lý</h2><p>Ưu tiên các hồ sơ cần lập hóa đơn và hóa đơn đã phát hành.</p></div><button type="button" className="invoice-view-all" onClick={() => { setQueueMode('ISSUED'); setStatus('ISSUED'); setOffset(0) }}>Xem tất cả ›</button></header>
+      <div className="invoice-queue-tabs" role="tablist" aria-label="Hàng đợi hóa đơn">
+        <button type="button" role="tab" aria-selected={queueMode === 'READY'} className={queueMode === 'READY' ? 'is-active' : ''} onClick={() => setQueueMode('READY')}>Chờ lập hóa đơn ({readyAppointmentCount})</button>
+        <button type="button" role="tab" aria-selected={queueMode === 'ISSUED'} className={queueMode === 'ISSUED' ? 'is-active' : ''} onClick={() => setQueueMode('ISSUED')}>Chờ thu tiền ({issuedCount ?? '—'})</button>
+      </div>
+      {queueMode === 'READY' ? <InvoiceReadyAppointmentQueue
       appointments={readyAppointments}
       loading={loadingReadyAppointments}
       error={readyAppointmentsError}
@@ -421,9 +480,13 @@ export function BranchInvoicesPage() {
       onPageChange={setReadyAppointmentOffset}
       onCreate={(appointment) => { setAppointmentCode(appointment.appointment_code); setShowCreate(true) }}
       onRetry={() => void loadReadyAppointments()}
-    />
-    <section className="branch-management-schedule invoice-management-section"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
-      {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} />}
+      /> : issuedQueueLoading ? <p className="invoice-queue-message">Đang tải hóa đơn chờ thu...</p> : invoiceSummaryError ? <div className="invoice-queue-message" role="alert">{invoiceSummaryError} <button className="invoice-queue-retry" type="button" onClick={() => { setIssuedQueueLoading(true); void loadInvoiceSummary() }}>Thử lại</button></div> : issuedQueue.length ? <div className="invoice-issued-queue">{issuedQueue.map((invoice) => <article key={invoice.id_invoice}><span className="invoice-patient-avatar">{invoice.patient_name.split(/\s+/).slice(-2).map((part) => part[0]).join('').toUpperCase()}</span><div className="invoice-issued-identity"><strong>{invoice.patient_name}</strong><small>{invoice.invoice_number} · {invoice.appointment_code}</small><small>{invoice.lines.map((line) => line.description).join(', ')}</small></div><div className="invoice-issued-total"><strong>{Number(invoice.total).toLocaleString('vi-VN')} ₫</strong><small>Giá trị hóa đơn</small></div><button type="button" onClick={() => void selectInvoice(invoice)}>Xem &amp; thu tiền</button></article>)}</div> : <p className="invoice-queue-message">Hiện không có hóa đơn chờ thu tiền.</p>}
+    </section>
+    <aside className="invoice-process-panel"><h2><span aria-hidden="true">↗</span> Quy trình thu tiền</h2><ol><li><b>01</b><div><strong>Lập và kiểm tra hóa đơn</strong><p>Chọn lượt khám đã hoàn tất, kiểm tra dịch vụ, giá và chiết khấu.</p></div></li><li><b>02</b><div><strong>Phát hành hóa đơn</strong><p>Xác nhận nội dung trước khi hóa đơn được phép thanh toán.</p></div></li><li><b>03</b><div><strong>Thu tiền hoặc tạo QR payOS</strong><p>Tiền mặt ghi nhận tại quầy; QR chờ hệ thống xác nhận kết quả.</p></div></li></ol><p className="invoice-process-note">✓ Tiền mặt và payOS là hai luồng riêng. Không ghi nhận trùng thanh toán khi QR còn hiệu lực.</p></aside>
+    </div>
+    {reviewTransactions.length > 0 && <section className="invoice-review-panel" aria-labelledby="payos-review-heading"><header className="invoice-panel-heading"><div><span className="invoice-kicker">Đối soát thủ công payOS</span><h2 id="payos-review-heading">Giao dịch cần kiểm tra</h2><p>Chỉ xác nhận sau khi đã đối chiếu tiền thực nhận và mã tham chiếu.</p></div></header><div className="invoice-review-list">{reviewTransactions.map((item) => <article key={item.order_code}><div><strong>{item.invoice_number}</strong><small>{item.patient_name} · {item.order_code}</small></div><strong>{item.amount.toLocaleString('vi-VN')} ₫</strong><button type="button" disabled={busy} onClick={() => { setReviewToResolve(item); setReviewAction('CONFIRM_RECEIVED'); setReviewReason(''); setReviewReference(item.payos_reference) }}>Đối soát</button></article>)}</div></section>}
+    <section className="invoice-list-panel"><InvoiceFilters status={status} appointmentCode={appointmentFilterInput} count={invoiceCount} onStatusChange={(nextStatus) => { setStatus(nextStatus); setOffset(0) }} onAppointmentCodeChange={setAppointmentFilterInput} onSearch={searchInvoices} onClear={clearAppointmentFilter} />
+      {loading ? <div className="staff-schedule-empty">Đang tải hóa đơn...</div> : <><div className="invoice-desktop-table"><InvoiceTable items={items} onSelect={(invoice) => void selectInvoice(invoice)} /></div><div className="invoice-mobile-list"><InvoiceList items={items} onSelect={(invoice) => void selectInvoice(invoice)} /></div></>}
       {!loading && <InvoicePagination count={invoiceCount} limit={INVOICE_PAGE_SIZE} offset={offset} onChange={setOffset} />}
     </section>
   </div>
