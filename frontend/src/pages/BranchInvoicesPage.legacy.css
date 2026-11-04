@@ -709,6 +709,33 @@
 .invoice-queue-panel .invoice-ready-queue { margin: 0; padding: 8px 18px 18px; border: 0; border-radius: 0; box-shadow: none; }
 .invoice-queue-panel .invoice-ready-queue > header { display: none; }
 .invoice-queue-panel .invoice-ready-filters { margin-top: 0; }
+.invoice-management-page .invoice-queue-panel form.invoice-ready-filters > button[type="submit"] {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid #078ba8;
+  border-radius: 8px;
+  background: #078ba8;
+  color: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+.invoice-management-page .invoice-queue-panel form.invoice-ready-filters > button[type="submit"]:hover {
+  background: #06778f;
+  box-shadow: 0 4px 10px rgb(7 139 168 / 18%);
+}
+.invoice-management-page .invoice-queue-panel form.invoice-ready-filters > button[type="submit"]:focus-visible {
+  outline: 3px solid rgb(7 139 168 / 24%);
+  outline-offset: 2px;
+}
 .invoice-queue-panel .invoice-ready-list article { padding: 10px 4px; border-width: 0 0 1px; border-radius: 0; }
 .invoice-queue-panel .invoice-ready-action { min-width: 145px; }
 .invoice-queue-panel .invoice-ready-action strong { color: #133d56; }

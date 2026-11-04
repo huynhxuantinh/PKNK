@@ -104,8 +104,8 @@ function pageText(renderer: ReactTestRenderer) {
 describe('DentistDashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('window', { setInterval: () => 1, clearInterval: vi.fn() })
-    vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    vi.stubGlobal('window', { setInterval: () => 1, clearInterval: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn(), getElementById: vi.fn(() => null) })
     mocks.auth = { user: dentist, isAuthenticated: true }
     mocks.getBranch.mockResolvedValue({ data: branch })
     mocks.listSchedule.mockResolvedValue({ data: [] })
@@ -119,6 +119,22 @@ describe('DentistDashboardPage', () => {
     expect(pageText(renderer)).toContain('Chưa có bệnh nhân cần xử lý ngay.')
     expect(pageText(renderer)).toContain('Chưa có lịch khám trong khoảng đã chọn.')
     expect(renderer.root.findAllByType('a').some((node) => node.children.join('').includes('Đổi chi nhánh'))).toBe(false)
+  })
+
+  it('connects dashboard anchors to their sections and the branch link to branch selection', async () => {
+    const renderer = await renderDashboard()
+    const overviewLink = renderer.root.findAllByType('a').find((node) => node.props.href === '#overview')
+    const scheduleLink = renderer.root.findAllByType('a').find((node) => node.props.href === '#schedule')
+    const branchLink = renderer.root.findAllByType('a').find((node) => node.children.join('') === 'Chi nhánh')
+
+    expect(overviewLink).toBeDefined()
+    expect(scheduleLink).toBeDefined()
+    expect(renderer.root.findByProps({ id: 'overview' })).toBeDefined()
+    expect(renderer.root.findByProps({ id: 'schedule' })).toBeDefined()
+    expect(branchLink?.props.href).toBe('/bac-si/chon-chi-nhanh')
+
+    await act(async () => { scheduleLink!.props.onClick() })
+    expect(renderer.root.findAllByType('a').find((node) => node.props.href === '#schedule')?.props.className).toBe('is-active')
   })
 
   it('offers branch switching when the dentist is assigned to several branches', async () => {

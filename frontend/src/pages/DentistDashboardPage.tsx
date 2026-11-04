@@ -71,6 +71,7 @@ export function DentistDashboardPage() {
   const [branchReload, setBranchReload] = useState(0);
   const [scheduleView, setScheduleView] =
     useState<DentistScheduleView>("UPCOMING");
+  const [activeNavSection, setActiveNavSection] = useState<"overview" | "schedule" | "branch">("overview");
   const [selectedDate, setSelectedDate] = useState(() => hcmDate(new Date()));
   const [dayFilter, setDayFilter] = useState<"ALL" | "TODAY" | "TOMORROW">(
     "ALL",
@@ -79,6 +80,19 @@ export function DentistDashboardPage() {
     "ALL" | DentistAppointmentStatus
   >("ALL");
   const selectedBranchId = Number(searchParams.get("chi-nhanh")) || null;
+
+  useEffect(() => {
+    const updateActiveSection = () => {
+      const branchTop = document.getElementById("branch")?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+      const scheduleTop = document.getElementById("schedule")?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+      if (scheduleTop <= 100) setActiveNavSection("schedule");
+      else if (branchTop <= 100) setActiveNavSection("branch");
+      else setActiveNavSection("overview");
+    };
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    updateActiveSection();
+    return () => window.removeEventListener("scroll", updateActiveSection);
+  }, []);
 
   const assignedBranchIds = useMemo(
     () => activeBranchIdsForRole(user, "DENTIST"),
@@ -259,9 +273,9 @@ export function DentistDashboardPage() {
           />
         </Link>
         <nav className="dentist-dashboard-nav" aria-label="Điều hướng nha sĩ">
-          <a className="is-active" href="#overview">Tổng quan</a>
-          <a href="#schedule">Lịch khám</a>
-          <a href="#branch">Chi nhánh</a>
+          <a className={activeNavSection === "overview" ? "is-active" : ""} aria-current={activeNavSection === "overview" ? "location" : undefined} href="#overview" onClick={() => setActiveNavSection("overview")}>Tổng quan</a>
+          <a className={activeNavSection === "schedule" ? "is-active" : ""} aria-current={activeNavSection === "schedule" ? "location" : undefined} href="#schedule" onClick={() => setActiveNavSection("schedule")}>Lịch khám</a>
+          <Link className={activeNavSection === "branch" ? "is-active" : ""} aria-current={activeNavSection === "branch" ? "location" : undefined} to="/bac-si/chon-chi-nhanh">Chi nhánh</Link>
         </nav>
         <div className="dentist-account">
           <span className="dentist-account-avatar" aria-hidden="true">

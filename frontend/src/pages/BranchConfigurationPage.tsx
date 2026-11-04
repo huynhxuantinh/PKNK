@@ -582,12 +582,6 @@ export function BranchConfigurationPage() {
                         })
                       }
                     />
-                    <small>
-                      Để trống để kế thừa thời lượng chuẩn
-                      {selectedCatalogService
-                        ? `: ${selectedCatalogService.standard_duration_minutes} phút`
-                        : "."}
-                    </small>
                   </label>
                   <label>
                     Đệm
@@ -603,12 +597,6 @@ export function BranchConfigurationPage() {
                         })
                       }
                     />
-                    <small>
-                      Để trống để kế thừa thời gian đệm chuẩn
-                      {selectedCatalogService
-                        ? `: ${selectedCatalogService.buffer_minutes} phút`
-                        : "."}
-                    </small>
                   </label>
                   <button disabled={busy || !scopeReady}>
                     {editingService ? "Lưu" : "Thêm"}
