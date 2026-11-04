@@ -13,6 +13,7 @@ export function ClinicalImageLightbox({
 }) {
   const [url, setUrl] = useState("");
   const [failed, setFailed] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
 
@@ -24,6 +25,7 @@ export function ClinicalImageLightbox({
     let active = true;
     let blobUrl = "";
     setFailed(false);
+    setUrl("");
     authenticatedFileBlobUrl(attachment.download_url)
       .then((nextUrl) => {
         blobUrl = nextUrl;
@@ -37,7 +39,7 @@ export function ClinicalImageLightbox({
       active = false;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [attachment.download_url]);
+  }, [attachment.download_url, retryAttempt]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -80,7 +82,12 @@ export function ClinicalImageLightbox({
           </button>
         </header>
         {failed ? (
-          <p>Không tải được ảnh.</p>
+          <p>
+            Không tải được ảnh.
+            <button type="button" onClick={() => setRetryAttempt((attempt) => attempt + 1)}>
+              Thử tải lại
+            </button>
+          </p>
         ) : url ? (
           <img src={url} alt={attachment.description || "Ảnh bệnh án"} />
         ) : (

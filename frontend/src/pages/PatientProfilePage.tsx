@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 import { AuthBar } from "../auth/AuthBar";
 import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
+import { PatientAccountNavigation } from "../components/patient/PatientAccountNavigation";
 import { useAuth } from "../auth/AuthContext";
 import styles from "./PatientProfilePage.module.css";
 import {
@@ -11,6 +12,7 @@ import {
   displayProfileValue,
 } from "../features/profile/profileFormat";
 import { Seo } from "../seo/Seo";
+import { hcmDate as hcmCalendarDate } from "../utils/hcmDateTime";
 import type {
   AdministrativeOption,
   AdministrativeOptionsResponse,
@@ -172,6 +174,7 @@ export function PatientProfilePage() {
           <h1>Hồ sơ bệnh nhân</h1>
           <p>Thông tin dùng khi đặt lịch và tiếp nhận tại phòng khám.</p>
         </div>
+        <PatientAccountNavigation />
 
         {error ? (
           <div className="profile-state">{error}</div>
@@ -232,7 +235,7 @@ export function PatientProfilePage() {
                   Ngày sinh
                   <input
                     type="date"
-                    max={new Date().toISOString().slice(0, 10)}
+                    max={hcmCalendarDate(new Date())}
                     value={form.dateOfBirth}
                     onChange={(event) =>
                       setForm({ ...form, dateOfBirth: event.target.value })

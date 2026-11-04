@@ -29,7 +29,7 @@ const privacySections: LegalSection[] = [
   },
   {
     title: '5. Bảo mật và liên hệ',
-    paragraphs: ['DentaVie áp dụng phân quyền, mã hóa đường truyền, nhật ký truy cập và các biện pháp vận hành phù hợp để bảo vệ dữ liệu. Nếu có câu hỏi, liên hệ cskh@dentavie.vn hoặc đường dây nóng 1900 2102.'],
+    paragraphs: ['DentaVie áp dụng phân quyền, mã hóa đường truyền, nhật ký truy cập và các biện pháp vận hành phù hợp để bảo vệ dữ liệu. Nếu có câu hỏi, liên hệ contact@dentavie.id.vn hoặc số điện thoại 0899 595 464.'],
   },
 ]
 
@@ -94,7 +94,7 @@ function LegalPage({
           <aside className="legal-summary">
             <strong>Nội dung chính</strong>
             <p>Chúng tôi trình bày chính sách bằng ngôn ngữ rõ ràng để bạn biết dữ liệu và quyền của mình.</p>
-            <a href="mailto:cskh@dentavie.vn">cskh@dentavie.vn</a>
+            <a href="mailto:contact@dentavie.id.vn">contact@dentavie.id.vn</a>
           </aside>
           <article className="legal-content">
             {sections.map((section) => (

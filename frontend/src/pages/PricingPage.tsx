@@ -197,9 +197,9 @@ export function PricingPage() {
                       <tbody>
                         {group.items.map((item) => (
                           <tr key={item.name}>
-                            <td>{item.name}</td>
-                            <td>{item.unit}</td>
-                            <td>
+                            <td data-label="Dịch vụ">{item.name}</td>
+                            <td data-label="Đơn vị">{item.unit}</td>
+                            <td data-label="Giá tham khảo">
                               <strong>{item.price}</strong>
                               {item.note && <small>{item.note}</small>}
                             </td>

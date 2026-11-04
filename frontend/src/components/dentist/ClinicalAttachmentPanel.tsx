@@ -5,6 +5,7 @@ import { deleteClinicalAttachment, uploadClinicalAttachment } from '../../api/de
 import type { ClinicalAttachment } from '../../types/api'
 import { ConfirmationModal } from '../ConfirmationModal'
 import { AuthenticatedThumbnail } from '../clinical/AuthenticatedThumbnail'
+import { ClinicalImageLightbox } from '../clinical/ClinicalImageLightbox'
 
 type AttachmentDraft = {
   id: string
@@ -59,6 +60,7 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [attachmentToRemove, setAttachmentToRemove] = useState<ClinicalAttachment | null>(null)
+  const [attachmentToPreview, setAttachmentToPreview] = useState<ClinicalAttachment | null>(null)
 
   useEffect(() => {
     onPendingChange(drafts.length)
@@ -161,7 +163,16 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
       {attachments.length > 0 && <div className="clinical-attachment-grid">
         {attachments.filter((item) => item.content_type.startsWith('image/')).map((attachment) => (
           <article className="clinical-attachment-card" key={attachment.id_clinical_attachment}>
-            <div className="clinical-attachment-preview"><AuthenticatedThumbnail attachment={attachment} /></div>
+            <div className="clinical-attachment-preview">
+              <button
+                type="button"
+                className="clinical-attachment-open"
+                aria-label={`Xem ảnh: ${attachment.description || 'Ảnh bệnh án'}`}
+                onClick={() => setAttachmentToPreview(attachment)}
+              >
+                <AuthenticatedThumbnail attachment={attachment} />
+              </button>
+            </div>
             <div><strong>{attachment.kind === 'XRAY' ? 'Phim X-quang' : 'Ảnh lâm sàng'}</strong><p>{attachment.description || 'Không có mô tả'}</p></div>
             {!disabled && <button type="button" disabled={busy} onClick={() => setAttachmentToRemove(attachment)}>Xóa</button>}
           </article>
@@ -218,6 +229,12 @@ export function ClinicalAttachmentPanel({ encounterId, attachments, disabled, on
           busy={busy}
           onCancel={() => setAttachmentToRemove(null)}
           onConfirm={() => void removeAttachment(attachmentToRemove)}
+        />
+      )}
+      {attachmentToPreview && (
+        <ClinicalImageLightbox
+          attachment={attachmentToPreview}
+          onClose={() => setAttachmentToPreview(null)}
         />
       )}
     </section>

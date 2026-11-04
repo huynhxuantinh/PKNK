@@ -89,39 +89,6 @@ const services = [
   },
 ];
 
-const recognitions = [
-  {
-    image: "/images/recognition/dental-care-award.png",
-    webpSrcSet: "/images/recognition/dental-care-award-400.webp 400w, /images/recognition/dental-care-award-800.webp 800w",
-    title: "DentaVie Awards 2024",
-    description: "Dấu ấn trong hoạt động chăm sóc sức khỏe răng miệng.",
-  },
-  {
-    image: "/images/recognition/iso-9001-certificate.png",
-    webpSrcSet: "/images/recognition/iso-9001-certificate-400.webp 400w, /images/recognition/iso-9001-certificate-800.webp 800w",
-    title: "Chứng nhận ISO 9001:2015",
-    description: "Hệ thống quản lý chất lượng dịch vụ khám và chữa răng.",
-  },
-  {
-    image: "/images/recognition/national-brand-award.png",
-    webpSrcSet: "/images/recognition/national-brand-award-400.webp 400w, /images/recognition/national-brand-award-800.webp 800w",
-    title: "Top 10 thương hiệu mạnh",
-    description: "Chứng nhận thương hiệu mạnh quốc gia năm 2025.",
-  },
-  {
-    image: "/images/recognition/appreciation-certificate-gold.png",
-    webpSrcSet: "/images/recognition/appreciation-certificate-gold-400.webp 400w, /images/recognition/appreciation-certificate-gold-800.webp 800w",
-    title: "Certificate of Appreciation",
-    description: "Ghi nhận đóng góp cho giáo dục và sức khỏe cộng đồng.",
-  },
-  {
-    image: "/images/recognition/appreciation-certificate.png",
-    webpSrcSet: "/images/recognition/appreciation-certificate-400.webp 400w, /images/recognition/appreciation-certificate-800.webp 800w",
-    title: "Global Leadership Program",
-    description: "Ghi nhận sự đồng hành và đóng góp trong chương trình.",
-  },
-];
-
 function HeroSlider() {
   const [active, setActive] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -220,59 +187,6 @@ function HeroSlider() {
         ))}
       </div>
     </section>
-  );
-}
-
-function RecognitionCarousel() {
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: -1 | 1) => {
-    const track = trackRef.current;
-    if (!track) return;
-
-    track.scrollBy({
-      left: direction * Math.min(track.clientWidth * 0.8, 320),
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <div className="recognition-carousel">
-      <div className="recognition-carousel-actions" aria-label="Điều hướng chứng nhận">
-        <button type="button" onClick={() => scroll(-1)} aria-label="Xem chứng nhận trước">
-          ‹
-        </button>
-        <button type="button" onClick={() => scroll(1)} aria-label="Xem chứng nhận tiếp theo">
-          ›
-        </button>
-      </div>
-      <div
-        ref={trackRef}
-        className="recognition-grid"
-        role="region"
-        aria-label="Danh sách chứng nhận và thành tựu, vuốt ngang để xem thêm"
-        tabIndex={0}
-      >
-        {recognitions.map((item) => (
-          <figure className="recognition-card" key={item.image}>
-            <div className="recognition-image-wrap">
-              <picture>
-                <source
-                  type="image/webp"
-                  srcSet={item.webpSrcSet}
-                  sizes="(max-width: 760px) min(252px, calc(100vw - 76px)), 230px"
-                />
-                <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
-              </picture>
-            </div>
-            <figcaption>
-              <strong>{item.title}</strong>
-              <span>{item.description}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -513,6 +427,9 @@ export function HomePage() {
         aria-label="Menu di động"
       >
         <nav className="mobile-nav-links">
+          <Link to="/dat-lich" onClick={() => setMobileMenuOpen(false)}>
+            Đặt lịch khám
+          </Link>
           <Link to="/bang-gia" onClick={() => setMobileMenuOpen(false)}>
             Bảng giá
           </Link>
@@ -534,6 +451,14 @@ export function HomePage() {
         </h1>
         <section className="hero-wrap">
           <HeroSlider />
+          <div className="hero-actions">
+            <Link className="hero-booking-cta" to="/dat-lich">
+              Đặt lịch khám
+            </Link>
+            <a className="hero-branch-cta" href="#chi-nhanh">
+              Tìm chi nhánh <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </section>
 
         <section className="trust-strip" aria-label="Cam kết DentaVie">
@@ -588,25 +513,14 @@ export function HomePage() {
                   <p>{service.description}</p>
                   <a
                     href="#chi-nhanh"
-                    aria-label={`Xem chi nhánh cung cấp ${service.title}`}
+                    aria-label={`Tìm chi nhánh cho dịch vụ ${service.title}`}
                   >
-                    Xem chi nhánh <span>→</span>
+                    Tìm chi nhánh <span>→</span>
                   </a>
                 </div>
               </article>
             ))}
           </div>
-        </section>
-
-        <section className="recognition-section">
-          <div className="section-heading-centered" id="ly-do">
-            <h2>Những dấu ấn trên hành trình chăm sóc nụ cười.</h2>
-            <p>
-              Các chứng nhận ghi dấu cam kết về chất lượng chuyên môn và đóng
-              góp cộng đồng của DentaVie.
-            </p>
-          </div>
-          <RecognitionCarousel />
         </section>
 
         <section className="branches-section">
@@ -904,7 +818,7 @@ export function HomePage() {
             <p>Gọi đường dây nóng hoặc chọn chi nhánh gần bạn để được hỗ trợ.</p>
           </div>
           <div className="support-actions">
-            <a href="tel:19002102">Gọi 1900 2102</a>
+            <a href="tel:0899595464">Gọi 0899 595 464</a>
             <a href="#chi-nhanh">Xem chi nhánh</a>
           </div>
         </section>

@@ -1720,21 +1720,6 @@ body {
 
 
 
-.clinic-hour-row.today .hour-weekday::after {
-  content: "Hôm nay";
-  margin-left: 8px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--aurelia-cyan);
-  color: var(--aurelia-blue-dark);
-  font-size: 9.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-
-
-
 @media (max-width: 640px) {
   .legal-main {
     width: calc(100% - 24px);

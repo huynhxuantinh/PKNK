@@ -602,7 +602,12 @@ export function BranchDetailPage() {
                   key={item.weekday}
                   className={`clinic-hour-row ${item.weekday === (new Date().getDay() || 7) ? "today" : ""}`}
                 >
-                  <span className="hour-weekday">{item.weekday_label}</span>
+                  <span className="hour-weekday">
+                    {item.weekday_label}
+                    {item.weekday === (new Date().getDay() || 7) && (
+                      <small className="clinic-hour-today">Hôm nay</small>
+                    )}
+                  </span>
                   <strong className="hour-time">
                     {item.is_closed
                       ? "Nghỉ"
@@ -616,6 +621,35 @@ export function BranchDetailPage() {
             </p>
           </article>
         </section>
+
+        {/* Dentists Section */}
+        {branch.dentists.length > 0 && (
+          <section className="clinic-dentists-section">
+            <div className="section-heading-centered">
+              <h2>Bác sĩ tại chi nhánh</h2>
+              <p>Bác sĩ phụ trách tại cơ sở.</p>
+            </div>
+            <div className="clinic-dentist-grid">
+              {branch.dentists.map((dentist) => (
+                <article key={dentist.id_dentist} className="dentist-card">
+                  <div className="dentist-avatar" aria-hidden="true">
+                    {dentist.full_name
+                      .split(" ")
+                      .slice(-2)
+                      .map((part) => part[0])
+                      .join("")}
+                  </div>
+                  <div className="dentist-info">
+                    <strong>{dentist.full_name}</strong>
+                    <span className="dentist-license">
+                      CCHN: {dentist.license_number}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Location & Interactive Route Map Section */}
         <section className="clinic-location-section" id="vi-tri-chi-nhanh">
@@ -778,34 +812,6 @@ export function BranchDetailPage() {
           </div>
         </section>
 
-        {/* Dentists Section */}
-        {branch.dentists.length > 0 && (
-          <section className="clinic-dentists-section">
-            <div className="section-heading-centered">
-              <h2>Bác sĩ tại chi nhánh</h2>
-              <p>Bác sĩ phụ trách tại cơ sở.</p>
-            </div>
-            <div className="clinic-dentist-grid">
-              {branch.dentists.map((dentist) => (
-                <article key={dentist.id_dentist} className="dentist-card">
-                  <div className="dentist-avatar" aria-hidden="true">
-                    {dentist.full_name
-                      .split(" ")
-                      .slice(-2)
-                      .map((part) => part[0])
-                      .join("")}
-                  </div>
-                  <div className="dentist-info">
-                    <strong>{dentist.full_name}</strong>
-                    <span className="dentist-license">
-                      CCHN: {dentist.license_number}
-                    </span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
 
       <PublicFooter />

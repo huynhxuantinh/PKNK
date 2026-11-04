@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   Navigate,
   useBlocker,
-  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -103,7 +102,6 @@ function patientDate(value: string | null) {
 export function DentistExaminationPage() {
   const { publicCode = "" } = useParams();
   const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [appointment, setAppointment] = useState<DentistAppointment | null>(
     null,
@@ -112,8 +110,11 @@ export function DentistExaminationPage() {
   const [patientSummary, setPatientSummary] =
     useState<DentistPatientSummary | null>(null);
   const [branchServices, setBranchServices] = useState<BranchService[]>([]);
+  const [branchServicesLoading, setBranchServicesLoading] = useState(false);
+  const [branchServicesAttempt, setBranchServicesAttempt] = useState(0);
   const [branchServicesError, setBranchServicesError] = useState("");
   const [patientSummaryError, setPatientSummaryError] = useState("");
+  const [patientSummaryAttempt, setPatientSummaryAttempt] = useState(0);
   const [form, setForm] = useState<ClinicalForm>(emptyForm);
   const [serverForm, setServerForm] = useState<ClinicalForm | null>(null);
   const [draftReadyFor, setDraftReadyFor] = useState("");
@@ -128,15 +129,22 @@ export function DentistExaminationPage() {
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [performedServicesDirty, setPerformedServicesDirty] = useState(false);
+  const [workflowDirty, setWorkflowDirty] = useState<Record<string, boolean>>({});
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
-  const redirectTimerRef = useRef<number | null>(null);
+  const [showPatientHistory, setShowPatientHistory] = useState(true);
   const encounterCreationRef = useRef<{
     publicCode: string;
     request: ReturnType<typeof createClinicalEncounter>;
   } | null>(null);
 
   const branchId = Number(searchParams.get("chi-nhanh")) || null;
+  const updateWorkflowDirty = useCallback((key: string, dirty: boolean) => {
+    setWorkflowDirty((current) => {
+      if (current[key] === dirty) return current;
+      return { ...current, [key]: dirty };
+    });
+  }, []);
   const currentUserId = user?.id_user;
   const isDentist = hasActiveRole(user, ["DENTIST"]);
   const textFormDirty = Boolean(
@@ -148,17 +156,10 @@ export function DentistExaminationPage() {
   const isDirty =
     textFormDirty ||
     performedServicesDirty ||
+    Object.values(workflowDirty).some(Boolean) ||
     pendingAttachmentCount > 0 ||
     isUploadingAttachments;
   const navigationBlocker = useBlocker(isDirty);
-
-  useEffect(
-    () => () => {
-      if (redirectTimerRef.current !== null)
-        window.clearTimeout(redirectTimerRef.current);
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!isDirty) return;
@@ -202,10 +203,14 @@ export function DentistExaminationPage() {
     let active = true;
     setLoadState("loading");
     setLoadError("");
+    setError("");
+    setNotice("");
     setDraftReadyFor("");
     setBranchServices([]);
+    setBranchServicesLoading(false);
     setBranchServicesError("");
     setPerformedServicesDirty(false);
+    setWorkflowDirty({});
 
     const loadEncounter = async () => {
       try {
@@ -263,22 +268,6 @@ export function DentistExaminationPage() {
         if (localDraft && !clinicalFormsEqual(localDraft, latestServerForm)) {
           setNotice("Đã khôi phục bản nháp lưu trên thiết bị.");
         }
-        return listDentistAssignedBranchServices(
-          appointmentResponse.data.branch_id,
-        )
-          .then((servicesResponse) => {
-            if (active) setBranchServices(servicesResponse.data);
-          })
-          .catch((servicesReason) => {
-            if (active) {
-              setBranchServices([]);
-              setBranchServicesError(
-                servicesReason instanceof Error
-                  ? servicesReason.message
-                  : "Không thể tải danh mục dịch vụ của chi nhánh.",
-              );
-            }
-          });
       })
       .catch((reason) => {
         if (active) {
@@ -294,6 +283,32 @@ export function DentistExaminationPage() {
       active = false;
     };
   }, [currentUserId, isAuthenticated, loadAttempt, publicCode]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !appointment?.branch_id) return;
+    let active = true;
+    setBranchServicesLoading(true);
+    setBranchServicesError("");
+    listDentistAssignedBranchServices(appointment.branch_id)
+      .then((response) => {
+        if (active) setBranchServices(response.data);
+      })
+      .catch((reason) => {
+        if (!active) return;
+        setBranchServices([]);
+        setBranchServicesError(
+          reason instanceof Error
+            ? reason.message
+            : "Không thể tải danh mục dịch vụ của chi nhánh.",
+        );
+      })
+      .finally(() => {
+        if (active) setBranchServicesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [appointment?.branch_id, branchServicesAttempt, isAuthenticated]);
 
   useEffect(() => {
     if (
@@ -322,7 +337,7 @@ export function DentistExaminationPage() {
     return () => {
       active = false;
     };
-  }, [appointment]);
+  }, [appointment, patientSummaryAttempt]);
 
   async function saveDraft() {
     if (!encounter) return;
@@ -399,9 +414,6 @@ export function DentistExaminationPage() {
       if (currentUserId)
         clearClinicalDraft(sessionStorage, currentUserId, publicCode);
       setNotice("Đã hoàn tất lượt khám.");
-      redirectTimerRef.current = window.setTimeout(() => {
-        navigate(branchId ? `/bac-si?chi-nhanh=${branchId}` : "/bac-si");
-      }, 900);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -431,6 +443,9 @@ export function DentistExaminationPage() {
   const isFinalized = encounter?.status === "FINALIZED";
   const isReadOnly = isFinalized || appointment?.status === "COMPLETED";
   const isFormLocked = isReadOnly || isSaving;
+  const hasSavedClinicalData = Boolean(
+    serverForm && Object.values(serverForm).some((value) => value.trim()),
+  );
 
   return (
     <div className={`dentist-page examination-page ${styles.page}`}>
@@ -467,7 +482,16 @@ export function DentistExaminationPage() {
         )}
         {notice && (
           <div className="examination-notice" role="status">
-            {notice}
+            <p>{notice}</p>
+            {appointment?.status === "COMPLETED" && (
+              <nav className="examination-success-actions" aria-label="Thao tác tiếp theo">
+                <a href="#clinical-record">Xem bệnh án đã chốt</a>
+                <a href="#treatment-plans">Lập kế hoạch điều trị</a>
+                <Link to={branchId ? `/bac-si?chi-nhanh=${branchId}` : "/bac-si"}>
+                  Quay lại lịch khám
+                </Link>
+              </nav>
+            )}
           </div>
         )}
         {loadState === "loading" ? (
@@ -526,117 +550,312 @@ export function DentistExaminationPage() {
               </dl>
             </section>
             <section className="examination-layout">
-              <div className="examination-form-card">
-                <header>
-                  <div>
-                    <p className="eyebrow">Bệnh án điện tử</p>
-                    <h2>{isReadOnly ? "Bệnh án đã chốt" : "Ghi nhận khám"}</h2>
-                  </div>
-                  <span>{isReadOnly ? "Chỉ đọc" : "Bản nháp"}</span>
-                </header>
-                {isReadOnly ? (
-                  <div className="examination-readonly-fields">
-                    <ReadOnlyClinicalField
-                      label="Lý do khám"
-                      value={form.chief_complaint}
-                    />
-                    <ReadOnlyClinicalField
-                      label="Tiền sử sức khỏe"
-                      value={form.medical_history}
-                    />
-                    <ReadOnlyClinicalField
-                      label="Chẩn đoán"
-                      value={form.diagnosis_summary}
-                    />
-                    <ReadOnlyClinicalField
-                      label="Ghi chú nội bộ"
-                      value={form.notes}
-                    />
-                    <ReadOnlyClinicalField
-                      label="Dặn dò sau khám"
-                      value={form.aftercare_instructions}
-                    />
+              <div className="examination-primary">
+                <section
+                  className="examination-history"
+                  aria-labelledby="patient-history-title"
+                >
+                  <header>
+                    <div>
+                      <p className="eyebrow">Hồ sơ người bệnh</p>
+                      <h2 id="patient-history-title">Thông tin và lịch sử khám</h2>
+                    </div>
+                    <button
+                      className="examination-history-toggle"
+                      type="button"
+                      aria-expanded={showPatientHistory}
+                      aria-controls="patient-history-content"
+                      onClick={() => setShowPatientHistory((visible) => !visible)}
+                    >
+                      {showPatientHistory ? "Thu gọn" : "Mở hồ sơ"}
+                    </button>
+                  </header>
+                  {showPatientHistory && (
+                    <div id="patient-history-content">
+                      {patientSummaryError ? (
+                        <div className="app-error" role="alert">
+                          {patientSummaryError}
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() =>
+                              setPatientSummaryAttempt((attempt) => attempt + 1)
+                            }
+                          >
+                            Thử tải lại
+                          </button>
+                        </div>
+                      ) : !patientSummary ? (
+                        <div className="examination-history-loading">
+                          Đang tải hồ sơ người bệnh...
+                        </div>
+                      ) : (
+                        <>
+                          <dl className="examination-profile-summary">
+                            <div>
+                              <dt>Họ và tên</dt>
+                              <dd>{patientSummary.full_name}</dd>
+                            </div>
+                            <div>
+                              <dt>Ngày sinh</dt>
+                              <dd>{patientDate(patientSummary.date_of_birth)}</dd>
+                            </div>
+                            <div>
+                              <dt>Giới tính</dt>
+                              <dd>{patientGenderLabel(patientSummary.gender)}</dd>
+                            </div>
+                            <div>
+                              <dt>Số điện thoại</dt>
+                              <dd>{patientSummary.phone || "Chưa cập nhật"}</dd>
+                            </div>
+                          </dl>
+                          <div className="examination-history-list">
+                            {patientSummary.clinical_history.length === 0 ? (
+                              <p className="examination-history-empty">
+                                Chưa có bệnh án đã chốt tại chi nhánh này.
+                              </p>
+                            ) : (
+                              patientSummary.clinical_history.map((item) => (
+                                <article key={item.id_clinical_encounter}>
+                                  <header>
+                                    <div>
+                                      <strong>{item.service_name}</strong>
+                                      <span>
+                                        {item.branch_name} · {item.dentist_name}
+                                      </span>
+                                    </div>
+                                    <time dateTime={item.finalized_at}>
+                                      {patientDate(item.finalized_at.slice(0, 10))}
+                                    </time>
+                                  </header>
+                                  <dl>
+                                    <div>
+                                      <dt>Lý do khám</dt>
+                                      <dd>
+                                        {item.chief_complaint || "Chưa ghi nhận"}
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>Chẩn đoán</dt>
+                                      <dd>
+                                        {item.diagnosis_summary || "Chưa ghi nhận"}
+                                      </dd>
+                                    </div>
+                                    {item.aftercare_instructions && (
+                                      <div>
+                                        <dt>Dặn dò</dt>
+                                        <dd>{item.aftercare_instructions}</dd>
+                                      </div>
+                                    )}
+                                  </dl>
+                                </article>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                <div className="examination-form-card" id="clinical-record">
+                  <header>
+                    <div>
+                      <p className="eyebrow">Bệnh án điện tử</p>
+                      <h2>{isReadOnly ? "Bệnh án đã chốt" : "Ghi nhận khám"}</h2>
+                    </div>
+                    <span>{isReadOnly ? "Chỉ đọc" : "Bản nháp"}</span>
+                  </header>
+                  {isReadOnly ? (
+                    <div className="examination-readonly-fields">
+                      <ReadOnlyClinicalField
+                        label="Lý do khám"
+                        value={form.chief_complaint}
+                      />
+                      <ReadOnlyClinicalField
+                        label="Tiền sử sức khỏe"
+                        value={form.medical_history}
+                      />
+                      <ReadOnlyClinicalField
+                        label="Chẩn đoán"
+                        value={form.diagnosis_summary}
+                      />
+                      <ReadOnlyClinicalField
+                        label="Ghi chú nội bộ"
+                        value={form.notes}
+                      />
+                      <ReadOnlyClinicalField
+                        label="Dặn dò sau khám"
+                        value={form.aftercare_instructions}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <label>
+                        Lý do khám
+                        <textarea
+                          value={form.chief_complaint}
+                          disabled={isFormLocked}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              chief_complaint: event.target.value,
+                            })
+                          }
+                          placeholder="Ví dụ: đau răng số 7, ê buốt khi ăn..."
+                        />
+                      </label>
+                      <label>
+                        Tiền sử sức khỏe
+                        <textarea
+                          value={form.medical_history}
+                          disabled={isFormLocked}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              medical_history: event.target.value,
+                            })
+                          }
+                          placeholder="Dị ứng thuốc, bệnh nền hoặc thông tin cần lưu ý"
+                        />
+                      </label>
+                      <label>
+                        Chẩn đoán <b>*</b>
+                        <textarea
+                          value={form.diagnosis_summary}
+                          disabled={isFormLocked}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              diagnosis_summary: event.target.value,
+                            })
+                          }
+                          placeholder="Tóm tắt chẩn đoán sau khi khám"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Ghi chú nội bộ
+                        <textarea
+                          value={form.notes}
+                          disabled={isFormLocked}
+                          onChange={(event) =>
+                            setForm({ ...form, notes: event.target.value })
+                          }
+                          placeholder="Ghi chú chuyên môn chỉ dành cho nhân viên y tế"
+                        />
+                      </label>
+                      <label>
+                        Dặn dò sau khám
+                        <textarea
+                          value={form.aftercare_instructions}
+                          disabled={isFormLocked}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              aftercare_instructions: event.target.value,
+                            })
+                          }
+                          placeholder="Hướng dẫn chăm sóc để người bệnh xem trong hồ sơ"
+                        />
+                      </label>
+                    </>
+                  )}
+                  {pendingAttachmentCount > 0 && (
+                    <div
+                      className="examination-pending-attachments"
+                      role="status"
+                    >
+                      Còn {pendingAttachmentCount} ảnh chưa tải lên.
+                    </div>
+                  )}
+
+                </div>
+
+                {branchServicesLoading ? (
+                  <section className="performed-services" aria-live="polite">
+                    <p>Đang tải dịch vụ của chi nhánh...</p>
+                  </section>
+                ) : branchServicesError ? (
+                  <div className="app-error" role="alert">
+                    {branchServicesError}
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() =>
+                        setBranchServicesAttempt((attempt) => attempt + 1)
+                      }
+                    >
+                      Thử tải lại
+                    </button>
                   </div>
                 ) : (
+                  <PerformedServicesPanel
+                    encounter={encounter}
+                    branchServices={branchServices}
+                    disabled={isFormLocked}
+                    onDirtyChange={setPerformedServicesDirty}
+                    onSaved={(result) =>
+                      setEncounter((current) =>
+                        current
+                          ? {
+                              ...current,
+                              performed_services_confirmed: result.confirmed,
+                              performed_services: result.items,
+                              updated_at: result.updated_at,
+                            }
+                          : current,
+                      )
+                    }
+                  />
+                )}
+
+                <ClinicalAttachmentPanel
+                  encounterId={encounter.id_clinical_encounter}
+                  attachments={encounter.attachments}
+                  disabled={isFormLocked}
+                  onChange={(attachments) =>
+                    setEncounter((current) =>
+                      current ? { ...current, attachments } : current,
+                    )
+                  }
+                  onPendingChange={setPendingAttachmentCount}
+                  onUploadStateChange={setIsUploadingAttachments}
+                />
+                {isFinalized && (
                   <>
-                    <label>
-                      Lý do khám
-                      <textarea
-                        value={form.chief_complaint}
-                        disabled={isFormLocked}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            chief_complaint: event.target.value,
-                          })
-                        }
-                        placeholder="Ví dụ: đau răng số 7, ê buốt khi ăn..."
-                      />
-                    </label>
-                    <label>
-                      Tiền sử sức khỏe
-                      <textarea
-                        value={form.medical_history}
-                        disabled={isFormLocked}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            medical_history: event.target.value,
-                          })
-                        }
-                        placeholder="Dị ứng thuốc, bệnh nền hoặc thông tin cần lưu ý"
-                      />
-                    </label>
-                    <label>
-                      Chẩn đoán <b>*</b>
-                      <textarea
-                        value={form.diagnosis_summary}
-                        disabled={isFormLocked}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            diagnosis_summary: event.target.value,
-                          })
-                        }
-                        placeholder="Tóm tắt chẩn đoán sau khi khám"
-                        required
-                      />
-                    </label>
-                    <label>
-                      Ghi chú nội bộ
-                      <textarea
-                        value={form.notes}
-                        disabled={isFormLocked}
-                        onChange={(event) =>
-                          setForm({ ...form, notes: event.target.value })
-                        }
-                        placeholder="Ghi chú chuyên môn chỉ dành cho nhân viên y tế"
-                      />
-                    </label>
-                    <label>
-                      Dặn dò sau khám
-                      <textarea
-                        value={form.aftercare_instructions}
-                        disabled={isFormLocked}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            aftercare_instructions: event.target.value,
-                          })
-                        }
-                        placeholder="Hướng dẫn chăm sóc để người bệnh xem trong hồ sơ"
-                      />
-                    </label>
+                    <TreatmentPlanPanel
+                      onDirtyChange={updateWorkflowDirty}
+                      encounterId={encounter.id_clinical_encounter}
+                      plans={encounter.treatment_plans}
+                      services={branchServices}
+                      onChange={(plans) =>
+                        setEncounter((current) =>
+                          current
+                            ? { ...current, treatment_plans: plans }
+                            : current,
+                        )
+                      }
+                    />
+                    <ClinicalAmendmentsPanel
+                      onDirtyChange={updateWorkflowDirty}
+                      encounterId={encounter.id_clinical_encounter}
+                      amendments={encounter.amendments}
+                      canCreate
+                      onCreated={(amendment) =>
+                        setEncounter((current) =>
+                          current
+                            ? {
+                                ...current,
+                                amendments: [...current.amendments, amendment],
+                              }
+                            : current,
+                        )
+                      }
+                    />
                   </>
                 )}
-                {pendingAttachmentCount > 0 && (
-                  <div
-                    className="examination-pending-attachments"
-                    role="status"
-                  >
-                    Còn {pendingAttachmentCount} ảnh chưa tải lên.
-                  </div>
-                )}
+
                 {appointment.status !== "COMPLETED" && (
                   <footer>
                     {textFormDirty && (
@@ -681,156 +900,62 @@ export function DentistExaminationPage() {
                 <strong>{appointment.public_code}</strong>
                 <span>Ghế khám</span>
                 <strong>{appointment.chair_name}</strong>
+                <hr />
+                <h3>Tiến độ hoàn tất</h3>
+                <ol className="examination-progress">
+                  <li className={patientSummary ? "is-complete" : "is-pending"}>
+                    <span>Hồ sơ người bệnh</span>
+                    <strong>{patientSummary ? "Đã tải" : "Đang chờ"}</strong>
+                  </li>
+                  <li
+                    className={
+                      isReadOnly || (hasSavedClinicalData && !textFormDirty)
+                        ? "is-complete"
+                        : "is-pending"
+                    }
+                  >
+                    <span>Bệnh án</span>
+                    <strong>
+                      {isReadOnly
+                        ? "Đã chốt"
+                        : textFormDirty
+                          ? "Chưa lưu"
+                          : hasSavedClinicalData
+                            ? "Đã lưu"
+                            : "Chưa ghi"}
+                    </strong>
+                  </li>
+                  <li
+                    className={
+                      encounter.performed_services_confirmed
+                        ? "is-complete"
+                        : "is-pending"
+                    }
+                  >
+                    <span>Dịch vụ thực hiện</span>
+                    <strong>
+                      {encounter.performed_services_confirmed
+                        ? "Đã xác nhận"
+                        : "Chưa xác nhận"}
+                    </strong>
+                  </li>
+                  <li
+                    className={
+                      encounter.attachments.length > 0
+                        ? "is-complete"
+                        : "is-pending"
+                    }
+                  >
+                    <span>Ảnh và phim chụp</span>
+                    <strong>
+                      {encounter.attachments.length > 0
+                        ? `${encounter.attachments.length} tệp`
+                        : "Tùy chọn"}
+                    </strong>
+                  </li>
+                </ol>
               </aside>
             </section>
-            {branchServicesError ? (
-              <div className="app-error" role="alert">
-                {branchServicesError}
-              </div>
-            ) : (
-              <PerformedServicesPanel
-                encounter={encounter}
-                branchServices={branchServices}
-                disabled={isFormLocked}
-                onDirtyChange={setPerformedServicesDirty}
-                onSaved={(result) =>
-                  setEncounter((current) =>
-                    current
-                      ? {
-                          ...current,
-                          performed_services_confirmed: result.confirmed,
-                          performed_services: result.items,
-                          updated_at: result.updated_at,
-                        }
-                      : current,
-                  )
-                }
-              />
-            )}
-            <section
-              className="examination-history"
-              aria-labelledby="patient-history-title"
-            >
-              <header>
-                <div>
-                  <p className="eyebrow">Hồ sơ người bệnh</p>
-                  <h2 id="patient-history-title">Thông tin và lịch sử khám</h2>
-                </div>
-                <span>Chỉ xem tại chi nhánh này</span>
-              </header>
-              {patientSummaryError ? (
-                <div className="app-error" role="alert">
-                  {patientSummaryError}
-                </div>
-              ) : !patientSummary ? (
-                <div className="examination-history-loading">
-                  Đang tải hồ sơ người bệnh...
-                </div>
-              ) : (
-                <>
-                  <dl className="examination-profile-summary">
-                    <div>
-                      <dt>Họ và tên</dt>
-                      <dd>{patientSummary.full_name}</dd>
-                    </div>
-                    <div>
-                      <dt>Ngày sinh</dt>
-                      <dd>{patientDate(patientSummary.date_of_birth)}</dd>
-                    </div>
-                    <div>
-                      <dt>Giới tính</dt>
-                      <dd>{patientGenderLabel(patientSummary.gender)}</dd>
-                    </div>
-                    <div>
-                      <dt>Số điện thoại</dt>
-                      <dd>{patientSummary.phone || "Chưa cập nhật"}</dd>
-                    </div>
-                  </dl>
-                  <div className="examination-history-list">
-                    {patientSummary.clinical_history.length === 0 ? (
-                      <p className="examination-history-empty">
-                        Chưa có bệnh án đã chốt tại chi nhánh này.
-                      </p>
-                    ) : (
-                      patientSummary.clinical_history.map((item) => (
-                        <article key={item.id_clinical_encounter}>
-                          <header>
-                            <div>
-                              <strong>{item.service_name}</strong>
-                              <span>
-                                {item.branch_name} · {item.dentist_name}
-                              </span>
-                            </div>
-                            <time dateTime={item.finalized_at}>
-                              {patientDate(item.finalized_at.slice(0, 10))}
-                            </time>
-                          </header>
-                          <dl>
-                            <div>
-                              <dt>Lý do khám</dt>
-                              <dd>{item.chief_complaint || "Chưa ghi nhận"}</dd>
-                            </div>
-                            <div>
-                              <dt>Chẩn đoán</dt>
-                              <dd>
-                                {item.diagnosis_summary || "Chưa ghi nhận"}
-                              </dd>
-                            </div>
-                            {item.aftercare_instructions && (
-                              <div>
-                                <dt>Dặn dò</dt>
-                                <dd>{item.aftercare_instructions}</dd>
-                              </div>
-                            )}
-                          </dl>
-                        </article>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </section>
-            {isFinalized && (
-              <>
-                <TreatmentPlanPanel
-                  encounterId={encounter.id_clinical_encounter}
-                  plans={encounter.treatment_plans}
-                  services={branchServices}
-                  onChange={(plans) =>
-                    setEncounter((current) =>
-                      current ? { ...current, treatment_plans: plans } : current,
-                    )
-                  }
-                />
-                <ClinicalAmendmentsPanel
-                  encounterId={encounter.id_clinical_encounter}
-                  amendments={encounter.amendments}
-                  canCreate
-                  onCreated={(amendment) =>
-                    setEncounter((current) =>
-                      current
-                        ? {
-                            ...current,
-                            amendments: [...current.amendments, amendment],
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </>
-            )}
-            <ClinicalAttachmentPanel
-              encounterId={encounter.id_clinical_encounter}
-              attachments={encounter.attachments}
-              disabled={isFormLocked}
-              onChange={(attachments) =>
-                setEncounter((current) =>
-                  current ? { ...current, attachments } : current,
-                )
-              }
-              onPendingChange={setPendingAttachmentCount}
-              onUploadStateChange={setIsUploadingAttachments}
-            />
             {showCompleteConfirmation && (
               <ConfirmationModal
                 title={
@@ -852,7 +977,7 @@ export function DentistExaminationPage() {
             {navigationBlocker.state === "blocked" && (
               <ConfirmationModal
                 title="Rời trang khi chưa lưu?"
-                description="Các thay đổi chưa được lưu lên hệ thống. Bản nháp vẫn được giữ trên thiết bị này trong 24 giờ."
+                description="Bạn có thay đổi chưa lưu trên trang này. Nếu rời đi, phần chưa lưu sẽ bị mất."
                 confirmLabel="Rời trang"
                 danger
                 onCancel={() => navigationBlocker.reset()}

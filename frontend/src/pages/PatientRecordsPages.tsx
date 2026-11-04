@@ -17,6 +17,7 @@ import { hcmDate } from "../components/branch-management/appointmentPresentation
 import { AuthenticatedThumbnail } from "../components/clinical/AuthenticatedThumbnail";
 import { ClinicalImageLightbox } from "../components/clinical/ClinicalImageLightbox";
 import { PatientInvoiceActions } from "../components/billing/PatientInvoiceActions";
+import { PatientAccountNavigation } from "../components/patient/PatientAccountNavigation";
 import { dateInputValue } from "../features/booking/bookingState";
 import { formatHcmDateTime, formatHcmDayOfMonth, formatHcmShortMonth, formatHcmTime } from "../utils/hcmDateTime";
 import { Seo } from "../seo/Seo";
@@ -112,6 +113,7 @@ function RecordsLayout({
           <h1>{title}</h1>
           <p>{description}</p>
         </header>
+        <PatientAccountNavigation />
         {children}
       </main>
     </div>
@@ -124,13 +126,17 @@ function RecordState({ children }: { children: ReactNode }) {
 
 export function PatientAppointmentsPage() {
   const { isAuthenticated } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedAppointmentCode = searchParams.get("appointment");
   const [appointments, setAppointments] = useState<PatientAppointment[] | null>(
     null,
   );
   const [meta, setMeta] = useState<PatientAppointmentsResponse["meta"] | null>(
     null,
   );
-  const [scope, setScope] = useState<"UPCOMING" | "HISTORY">("UPCOMING");
+  const [scope, setScope] = useState<"UPCOMING" | "HISTORY">(() =>
+    searchParams.get("scope") === "HISTORY" ? "HISTORY" : "UPCOMING",
+  );
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -183,6 +189,22 @@ export function PatientAppointmentsPage() {
     setAppointments(null);
     setError("");
     try {
+      if (requestedAppointmentCode) {
+        const response = await apiRequest<{ data: PatientAppointment }>(
+          `/patients/me/appointments/${encodeURIComponent(requestedAppointmentCode)}/`,
+          { signal: controller.signal },
+          { auth: true },
+        );
+        if (controller.signal.aborted || requestId !== appointmentRequestId.current)
+          return;
+        const historyStatus = ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(
+          response.data.status,
+        );
+        setScope(historyStatus ? "HISTORY" : "UPCOMING");
+        setAppointments([response.data]);
+        setMeta({ count: 1, page: 1, page_size: 10, total_pages: 1 });
+        return;
+      }
       const response = await apiRequest<PatientAppointmentsResponse>(
         `/patients/me/appointments/?scope=${scope}&page=${page}&page_size=10`,
         { signal: controller.signal },
@@ -203,7 +225,7 @@ export function PatientAppointmentsPage() {
         return;
       setError("Không thể tải lịch hẹn. Vui lòng thử lại.");
     }
-  }, [isAuthenticated, page, scope]);
+  }, [isAuthenticated, page, requestedAppointmentCode, scope]);
 
   useEffect(() => {
     void loadAppointments();
@@ -218,6 +240,7 @@ export function PatientAppointmentsPage() {
     setScope(nextScope);
     setPage(1);
     setNotice("");
+    setSearchParams({ scope: nextScope });
   }
 
   async function findRescheduleSlots() {
@@ -682,13 +705,6 @@ export function PatientAppointmentsPage() {
               </button>
             </nav>
           )}
-          {meta && meta.total_pages > 1 && (
-            <nav className="patient-record-pagination" aria-label="Phân trang lịch hẹn">
-              <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Trước</button>
-              <span>Page {meta.page} / {meta.total_pages}</span>
-              <button type="button" disabled={page === meta.total_pages} onClick={() => setPage((current) => current + 1)}>Sau</button>
-            </nav>
-          )}
         </>
       )}
     </RecordsLayout>
@@ -701,18 +717,30 @@ export function PatientHistoryPage() {
     PatientClinicalEncounter[] | null
   >(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<ClinicalAttachment | null>(null);
 
-  useEffect(() => {
+  const loadEncounters = useCallback(async () => {
     if (!isAuthenticated) return;
-    apiRequest<PatientClinicalEncountersResponse>(
-      "/patients/me/clinical-encounters/",
-      {},
-      { auth: true },
-    )
-      .then((response) => setEncounters(response.data))
-      .catch(() => setError("Không thể tải lịch sử khám. Vui lòng thử lại."));
+    setLoading(true);
+    setError("");
+    try {
+      const response = await apiRequest<PatientClinicalEncountersResponse>(
+        "/patients/me/clinical-encounters/",
+        {},
+        { auth: true },
+      );
+      setEncounters(response.data);
+    } catch {
+      setError("Không thể tải lịch sử khám. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    void loadEncounters();
+  }, [loadEncounters]);
 
   if (!isAuthenticated) {
     return <Navigate to="/dang-nhap?returnTo=%2Flich-su-kham" replace />;
@@ -725,8 +753,13 @@ export function PatientHistoryPage() {
       path="/lich-su-kham"
     >
       {error ? (
-        <RecordState>{error}</RecordState>
-      ) : encounters === null ? (
+        <RecordState>
+          {error}
+          <button type="button" className="button button-secondary" onClick={() => void loadEncounters()}>
+            Tải lại
+          </button>
+        </RecordState>
+      ) : loading || encounters === null ? (
         <RecordState>Đang tải lịch sử khám...</RecordState>
       ) : encounters.length === 0 ? (
         <RecordState>
@@ -755,6 +788,13 @@ export function PatientHistoryPage() {
               <p className="record-branch">
                 {encounter.branch_name} · {encounter.dentist_name}
               </p>
+              <p className="history-diagnosis-preview">
+                <strong>Chẩn đoán:</strong>{" "}
+                {encounter.diagnosis_summary || "Chưa cập nhật"}
+              </p>
+              <details className="history-details">
+                <summary>Xem chi tiết bệnh án</summary>
+                <div className="history-details-content">
               <dl className="record-meta history-meta">
                 <div>
                   <dt>Lý do khám</dt>
@@ -881,6 +921,8 @@ export function PatientHistoryPage() {
                     ))}
                 </div>
               )}
+                </div>
+              </details>
             </article>
           ))}
         </div>
@@ -908,6 +950,7 @@ export function PatientInvoicesPage() {
   const [busyInvoiceId, setBusyInvoiceId] = useState<number | null>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<PatientInvoice | null>(null);
   const [invoiceDetailLoading, setInvoiceDetailLoading] = useState(false);
+  const invoiceDetailRequestRef = useRef<AbortController | null>(null);
 
   const loadInvoices = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -934,6 +977,14 @@ export function PatientInvoicesPage() {
     void loadInvoices();
   }, [loadInvoices]);
 
+  useEffect(
+    () => () => {
+      invoiceDetailRequestRef.current?.abort();
+      invoiceDetailRequestRef.current = null;
+    },
+    [],
+  );
+
   async function payInvoice(invoiceId: number) {
     setError("");
     setBusyInvoiceId(invoiceId);
@@ -950,21 +1001,36 @@ export function PatientInvoicesPage() {
     }
   }
 
+  function closeInvoiceDetail() {
+    invoiceDetailRequestRef.current?.abort();
+    invoiceDetailRequestRef.current = null;
+    setInvoiceDetail(null);
+    setInvoiceDetailLoading(false);
+  }
+
   async function viewInvoice(invoiceId: number) {
+    invoiceDetailRequestRef.current?.abort();
+    const controller = new AbortController();
+    invoiceDetailRequestRef.current = controller;
     setInvoiceDetail(null);
     setInvoiceDetailLoading(true);
     setError("");
     try {
-      const response = await getPatientInvoice(invoiceId);
+      const response = await getPatientInvoice(invoiceId, controller.signal);
+      if (invoiceDetailRequestRef.current !== controller) return;
       setInvoiceDetail(response.data);
     } catch (requestError) {
+      if (controller.signal.aborted || invoiceDetailRequestRef.current !== controller) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : "Không thể tải chi tiết hóa đơn.",
       );
     } finally {
-      setInvoiceDetailLoading(false);
+      if (invoiceDetailRequestRef.current === controller) {
+        invoiceDetailRequestRef.current = null;
+        setInvoiceDetailLoading(false);
+      }
     }
   }
   if (!isAuthenticated)
@@ -1068,7 +1134,7 @@ export function PatientInvoicesPage() {
             <button
               type="button"
               className="modal-close"
-              onClick={() => setInvoiceDetail(null)}
+              onClick={closeInvoiceDetail}
               aria-label="Đóng chi tiết hóa đơn"
             >
               ×
@@ -1107,6 +1173,7 @@ export function NotificationsPage() {
   const { isAuthenticated } = useAuth();
   const [readError, setReadError] = useState("");
   const [markingId, setMarkingId] = useState<number | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<NotificationsResponse["meta"] | null>(null);
   const [notifications, setNotifications] = useState<Notification[] | null>(
@@ -1128,7 +1195,7 @@ export function NotificationsPage() {
     if (isAuthenticated) void load();
   }, [isAuthenticated, load]);
   async function markRead(item: Notification) {
-    if (item.read_at || markingId === item.id_notification) return;
+    if (item.read_at || markingId === item.id_notification || markingAll) return;
     setMarkingId(item.id_notification);
     setReadError("");
     try {
@@ -1152,6 +1219,31 @@ export function NotificationsPage() {
       setMarkingId(null);
     }
   }
+  async function markAllRead() {
+    if (!meta?.unread_count || markingAll || markingId !== null) return;
+    setMarkingAll(true);
+    setReadError("");
+    try {
+      await apiRequest(
+        "/notifications/read-all/",
+        { method: "POST" },
+        { auth: true },
+      );
+      const readAt = new Date().toISOString();
+      setNotifications((current) => current?.map((item) =>
+        item.read_at ? item : { ...item, read_at: readAt },
+      ) ?? null);
+      setMeta((current) => current ? { ...current, unread_count: 0 } : current);
+    } catch (requestError) {
+      setReadError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể cập nhật thông báo. Vui lòng thử lại.",
+      );
+    } finally {
+      setMarkingAll(false);
+    }
+  }
   if (!isAuthenticated)
     return <Navigate to="/dang-nhap?returnTo=%2Fthong-bao" replace />;
   return (
@@ -1160,6 +1252,18 @@ export function NotificationsPage() {
       description="Cập nhật mới nhất về lịch hẹn và hóa đơn."
       path="/thong-bao"
     >
+      {notifications && meta && meta.unread_count > 0 && (
+        <div className="notification-toolbar">
+          <span>{meta.unread_count} thông báo chưa đọc</span>
+          <button
+            type="button"
+            disabled={markingAll || markingId !== null}
+            onClick={() => void markAllRead()}
+          >
+            {markingAll ? "Đang cập nhật..." : "Đánh dấu tất cả đã đọc"}
+          </button>
+        </div>
+      )}
       {error ? (
         <RecordState>{error}</RecordState>
       ) : notifications === null ? (
@@ -1182,15 +1286,22 @@ export function NotificationsPage() {
                 {item.read_at ? "" : " · Chưa đọc"}
               </small>
               <div className="notification-record-actions">
-                {item.resource_type === "Appointment" && (
-                  <Link to="/lich-hen">Xem lịch hẹn</Link>
-                )}
+                {item.resource_type === "Appointment" && (() => {
+                  const appointmentCode = item.payload.public_code;
+                  const status = item.payload.status;
+                  const history = ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(String(status));
+                  const scope = history ? "HISTORY" : "UPCOMING";
+                  const appointmentUrl = typeof appointmentCode === "string"
+                    ? `/lich-hen?scope=${scope}&appointment=${encodeURIComponent(appointmentCode)}`
+                    : `/lich-hen?scope=${scope}`;
+                  return <Link to={appointmentUrl}>Xem lịch hẹn</Link>;
+                })()}
                 {item.resource_type === "Invoice" && (
                   <Link to="/hoa-don">Xem hóa đơn</Link>
                 )}
                 <button
                   type="button"
-                  disabled={Boolean(item.read_at) || markingId === item.id_notification}
+                  disabled={Boolean(item.read_at) || markingId === item.id_notification || markingAll}
                   onClick={() => void markRead(item)}
                 >
                   {markingId === item.id_notification

@@ -68,6 +68,23 @@
   font-size: 13px;
   text-align: center;
 }
+.dialog > p button {
+  display: block;
+  min-height: 42px;
+  margin: 14px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgb(214 234 240 / 0.45);
+  border-radius: 8px;
+  background: #164858;
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+.dialog > p button:focus-visible {
+  outline: 3px solid #9de0e7;
+  outline-offset: 3px;
+}
 @media (max-width: 640px) {
   .backdrop {
     padding: 12px;

@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { ClinicalAttachmentPanel } from './ClinicalAttachmentPanel'
 import type { ClinicalAttachment } from '../../types/api'
+import { ClinicalImageLightbox } from '../clinical/ClinicalImageLightbox'
+
+const { authenticatedFileBlobUrl } = vi.hoisted(() => ({
+  authenticatedFileBlobUrl: vi.fn(),
+}))
+
+vi.mock('../../api/client', () => ({
+  authenticatedFileBlobUrl,
+  downloadAuthenticatedFile: vi.fn(),
+}))
 
 describe('ClinicalAttachmentPanel pending uploads', () => {
   it('reports selected and removed draft image counts to the parent', () => {
@@ -75,5 +85,40 @@ describe('ClinicalAttachmentPanel pending uploads', () => {
     const fileTypes = renderer!.root.findAll((node) => node.props.className === 'clinical-attachment-file-type')
     expect(fileTypes.map((node) => node.children.join(' '))).toEqual(['PDF', 'DICOM'])
     expect(renderer!.root.findAllByType('button').filter((button) => button.children.join('') === 'Xóa')).toHaveLength(2)
+  })
+
+  it('opens saved clinical images in the authenticated lightbox', async () => {
+    authenticatedFileBlobUrl.mockResolvedValue('blob:clinical-preview')
+    const attachment: ClinicalAttachment = {
+      id_clinical_attachment: 23,
+      kind: 'XRAY',
+      content_type: 'image/png',
+      size_bytes: 1024,
+      description: 'X-quang răng 36',
+      download_url: '/dentist/me/clinical-attachments/23/download/',
+    }
+    let renderer: ReactTestRenderer
+
+    await act(async () => {
+      renderer = create(
+        <ClinicalAttachmentPanel
+          encounterId={11}
+          attachments={[attachment]}
+          disabled
+          onChange={() => {}}
+          onPendingChange={() => {}}
+          onUploadStateChange={() => {}}
+        />,
+      )
+    })
+
+    const previewButton = renderer!.root.find(
+      (node) => node.props.className === 'clinical-attachment-open',
+    )
+    act(() => previewButton.props.onClick())
+    await act(async () => undefined)
+
+    expect(renderer!.root.findByType(ClinicalImageLightbox).props.attachment).toEqual(attachment)
+    expect(authenticatedFileBlobUrl).toHaveBeenCalledWith(attachment.download_url)
   })
 })

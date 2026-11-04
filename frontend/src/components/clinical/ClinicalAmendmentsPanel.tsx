@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { createClinicalAmendment } from '../../api/dentist'
 import type { ClinicalAmendment } from '../../types/api'
@@ -13,6 +13,7 @@ interface ClinicalAmendmentsPanelProps {
   encounterId: number
   amendments: ClinicalAmendment[]
   canCreate: boolean
+  onDirtyChange: (key: string, dirty: boolean) => void
   onCreated: (amendment: ClinicalAmendment) => void
 }
 
@@ -20,12 +21,17 @@ export function ClinicalAmendmentsPanel({
   encounterId,
   amendments,
   canCreate,
+  onDirtyChange,
   onCreated,
 }: ClinicalAmendmentsPanelProps) {
   const [content, setContent] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    onDirtyChange('clinical-amendment:create', Boolean(content || reason))
+  }, [content, onDirtyChange, reason])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -27,6 +27,12 @@ export const pricingSeo: SeoDefinition = {
   path: '/bang-gia',
 }
 
+export const aboutSeo: SeoDefinition = {
+  title: 'Phòng khám nha khoa DentaVie | Giới thiệu về DentaVie',
+  description: 'Tìm hiểu DentaVie, hệ thống phòng khám nha khoa tại TP.HCM với dịch vụ thăm khám, tư vấn và kế hoạch chăm sóc răng miệng phù hợp từng khách hàng.',
+  path: '/ve-dentavie',
+}
+
 export const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
@@ -36,7 +42,8 @@ export const organizationSchema = {
   logo: absoluteUrl('/branding/dentavie-logo-horizontal-color.png'),
   contactPoint: {
     '@type': 'ContactPoint',
-    telephone: '+84-1900-2102',
+    telephone: '+84-899-595-464',
+    email: 'contact@dentavie.id.vn',
     contactType: 'customer service',
     areaServed: 'VN',
     availableLanguage: 'Vietnamese',
@@ -51,4 +58,13 @@ export const websiteSchema = {
   name: SITE_NAME,
   inLanguage: 'vi-VN',
   publisher: { '@id': `${SITE_URL}/#organization` },
+}
+
+export const aboutPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  name: aboutSeo.title,
+  description: aboutSeo.description,
+  url: `${SITE_URL}${aboutSeo.path}`,
+  mainEntity: organizationSchema,
 }

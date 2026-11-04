@@ -14,6 +14,7 @@ import type {
   TreatmentPlanItemStatus,
   TreatmentPlanStatus,
 } from '../../types/api'
+import { ConfirmationModal } from '../ConfirmationModal'
 
 const statusLabels: Record<TreatmentPlanStatus, string> = {
   DRAFT: 'Bản nháp',
@@ -42,9 +43,10 @@ interface TreatmentPlanCardProps {
   plan: TreatmentPlan
   services: BranchService[]
   onChange: (plan: TreatmentPlan) => void
+  onDirtyChange: (key: string, dirty: boolean) => void
 }
 
-function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps) {
+function TreatmentPlanCard({ plan, services, onChange, onDirtyChange }: TreatmentPlanCardProps) {
   const [title, setTitle] = useState(plan.title)
   const [description, setDescription] = useState(plan.description)
   const [serviceId, setServiceId] = useState(services[0]?.id_service.toString() ?? '')
@@ -54,7 +56,17 @@ function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps)
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmation, setConfirmation] = useState<
+    | { type: 'cancel-plan' }
+    | { type: 'complete-plan' }
+    | { type: 'delete-item'; item: TreatmentPlanItem }
+    | null
+  >(null)
   const editable = plan.status === 'DRAFT' || plan.status === 'ACTIVE'
+
+  useEffect(() => {
+    onDirtyChange(`plan:${plan.id_treatment_plan}:details`, title !== plan.title || description !== plan.description)
+  }, [description, onDirtyChange, plan.description, plan.id_treatment_plan, plan.title, title])
 
   useEffect(() => {
     if (!serviceId && services[0]) {
@@ -149,6 +161,7 @@ function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps)
     setError('')
     try {
       await deleteTreatmentPlanItem(item.id_treatment_plan_item)
+      onDirtyChange(`plan:${plan.id_treatment_plan}:item:${item.id_treatment_plan_item}`, false)
       onChange(
         recalculateLocalTotal(
           plan,
@@ -211,8 +224,9 @@ function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps)
               key={item.id_treatment_plan_item}
               item={item}
               disabled={!editable || busy}
+              onDirtyChange={(dirty) => onDirtyChange(`plan:${plan.id_treatment_plan}:item:${item.id_treatment_plan_item}`, dirty)}
               onSave={(input) => void saveItem(item, input)}
-              onDelete={() => void removeItem(item)}
+              onDelete={() => setConfirmation({ type: 'delete-item', item })}
             />
           ))
         )}
@@ -246,16 +260,33 @@ function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps)
         {plan.status === 'DRAFT' && (
           <>
             <button type="button" disabled={busy} onClick={() => void changeStatus('ACTIVE')}>Công bố kế hoạch</button>
-            <button type="button" disabled={busy} onClick={() => void changeStatus('CANCELLED')}>Hủy kế hoạch</button>
+            <button type="button" disabled={busy} onClick={() => setConfirmation({ type: 'cancel-plan' })}>Hủy kế hoạch</button>
           </>
         )}
         {plan.status === 'ACTIVE' && (
           <>
-            <button type="button" disabled={busy} onClick={() => void changeStatus('COMPLETED')}>Đánh dấu hoàn thành</button>
-            <button type="button" disabled={busy} onClick={() => void changeStatus('CANCELLED')}>Hủy kế hoạch</button>
+            <button type="button" disabled={busy} onClick={() => setConfirmation({ type: 'complete-plan' })}>Đánh dấu hoàn thành</button>
+            <button type="button" disabled={busy} onClick={() => setConfirmation({ type: 'cancel-plan' })}>Hủy kế hoạch</button>
           </>
         )}
       </footer>
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.type === 'cancel-plan' ? 'Hủy kế hoạch điều trị?' : confirmation.type === 'complete-plan' ? 'Đánh dấu kế hoạch hoàn thành?' : 'Xóa mục điều trị?'}
+          description={confirmation.type === 'cancel-plan' ? 'Kế hoạch sẽ chuyển sang trạng thái đã hủy theo quy tắc hiện tại.' : confirmation.type === 'complete-plan' ? 'Xác nhận kế hoạch điều trị này đã hoàn thành.' : `Mục “${confirmation.item.service_name}” sẽ bị xóa khỏi kế hoạch.`}
+          confirmLabel={confirmation.type === 'cancel-plan' ? 'Hủy kế hoạch' : confirmation.type === 'complete-plan' ? 'Đánh dấu hoàn thành' : 'Xóa mục'}
+          danger={confirmation.type !== 'complete-plan'}
+          busy={busy}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            const action = confirmation
+            setConfirmation(null)
+            if (action.type === 'cancel-plan') void changeStatus('CANCELLED')
+            else if (action.type === 'complete-plan') void changeStatus('COMPLETED')
+            else void removeItem(action.item)
+          }}
+        />
+      )}
     </article>
   )
 }
@@ -263,6 +294,7 @@ function TreatmentPlanCard({ plan, services, onChange }: TreatmentPlanCardProps)
 interface TreatmentPlanItemEditorProps {
   item: TreatmentPlanItem
   disabled: boolean
+  onDirtyChange: (dirty: boolean) => void
   onSave: (input: {
     sequence: number
     planned_price: string
@@ -275,6 +307,7 @@ interface TreatmentPlanItemEditorProps {
 function TreatmentPlanItemEditor({
   item,
   disabled,
+  onDirtyChange,
   onSave,
   onDelete,
 }: TreatmentPlanItemEditorProps) {
@@ -282,12 +315,34 @@ function TreatmentPlanItemEditor({
   const [price, setPrice] = useState(item.planned_price)
   const [status, setStatus] = useState<TreatmentPlanItemStatus>(item.status)
   const [note, setNote] = useState(item.note)
+  const [confirmCompletion, setConfirmCompletion] = useState(false)
+
+  useEffect(() => {
+    setSequence(String(item.sequence))
+    setPrice(item.planned_price)
+    setStatus(item.status)
+    setNote(item.note)
+  }, [item.note, item.planned_price, item.sequence, item.status])
+
+  useEffect(() => {
+    onDirtyChange(Number(sequence) !== item.sequence || price !== item.planned_price || status !== item.status || note !== item.note)
+  }, [item.note, item.planned_price, item.sequence, item.status, note, onDirtyChange, price, sequence, status])
+
+  function save() {
+    setConfirmCompletion(false)
+    onSave({ sequence: Number(sequence), planned_price: price, status, note })
+  }
+
   return (
     <form
       className="clinical-plan-item"
       onSubmit={(event) => {
         event.preventDefault()
-        onSave({ sequence: Number(sequence), planned_price: price, status, note })
+        if (status === 'COMPLETED' && item.status !== 'COMPLETED') {
+          setConfirmCompletion(true)
+          return
+        }
+        save()
       }}
     >
       <strong>{item.service_name}</strong>
@@ -317,6 +372,15 @@ function TreatmentPlanItemEditor({
           <button type="button" onClick={onDelete}>Xóa mục</button>
         </div>
       )}
+      {confirmCompletion && (
+        <ConfirmationModal
+          title="Đánh dấu mục điều trị hoàn thành?"
+          description={`Xác nhận dịch vụ “${item.service_name}” đã hoàn thành.`}
+          confirmLabel="Đánh dấu hoàn thành"
+          onCancel={() => setConfirmCompletion(false)}
+          onConfirm={save}
+        />
+      )}
     </form>
   )
 }
@@ -327,6 +391,7 @@ interface TreatmentPlanPanelProps {
   services: BranchService[]
   disabled?: boolean
   onChange: (plans: TreatmentPlan[]) => void
+  onDirtyChange: (key: string, dirty: boolean) => void
 }
 
 export function TreatmentPlanPanel({
@@ -335,11 +400,16 @@ export function TreatmentPlanPanel({
   services,
   disabled = false,
   onChange,
+  onDirtyChange,
 }: TreatmentPlanPanelProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    onDirtyChange('treatment-plan:create', Boolean(title || description))
+  }, [description, onDirtyChange, title])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -367,7 +437,7 @@ export function TreatmentPlanPanel({
   }
 
   return (
-    <section className="examination-history clinical-workflow-panel">
+    <section id="treatment-plans" className="examination-history clinical-workflow-panel">
       <header>
         <div>
           <p className="eyebrow">Điều trị tiếp theo</p>
@@ -382,6 +452,7 @@ export function TreatmentPlanPanel({
           plan={plan}
           services={services}
           onChange={replacePlan}
+          onDirtyChange={onDirtyChange}
         />
       ))}
       {plans.length === 0 && <p>Chưa có kế hoạch điều trị.</p>}

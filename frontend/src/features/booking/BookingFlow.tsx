@@ -126,6 +126,11 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   });
   const [contactDraft, setContactDraft] = useState(contact);
   const [patientNote, setPatientNote] = useState("");
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const serviceStepRef = useRef<HTMLElement>(null);
+  const timeStepRef = useRef<HTMLElement>(null);
+  const dentistStepRef = useRef<HTMLElement>(null);
+  const confirmStepRef = useRef<HTMLElement>(null);
   const initialBranchApplied = useRef<number | null>(null);
   const restoredDraftBranchId = useRef(selection.branch?.id_branch ?? null);
   const branchesRequestId = useRef(0);
@@ -458,6 +463,16 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
   // A live hold owns the slot until it is confirmed or released, so the
   // selection controls must not drift away from what the summary shows.
   const selectionLocked = Boolean(heldAppointment);
+
+  function scrollToBookingStep(element: HTMLElement | null) {
+    if (!element || !window.matchMedia("(max-width: 760px)").matches) return;
+    element.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+  }
   const summaryContactName = heldAppointment
     ? heldAppointment.contact_name_snapshot || contact.name || "Chưa cập nhật"
     : contact.name || "Chưa đăng nhập";
@@ -496,6 +511,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       setDentists([]);
     }
     dispatch({ type: "select_branch", branch });
+    scrollToBookingStep(serviceStepRef.current);
   }
 
   function selectService(service: BranchService) {
@@ -507,6 +523,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
       setDentists([]);
     }
     dispatch({ type: "select_service", service });
+    scrollToBookingStep(timeStepRef.current);
   }
 
   function selectDate(date: string) {
@@ -865,7 +882,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         )}
 
         <div className="booking-context-grid">
-          <section className="flow-section booking-panel booking-panel-branch">
+          <section
+            id="booking-step-branch"
+            className="flow-section booking-panel booking-panel-branch"
+          >
             <div className="section-heading">
               <div>
                 <h2>
@@ -900,33 +920,35 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             ) : displayedBranches.length === 0 ? (
               <EmptyState label="Không tìm thấy chi nhánh phù hợp." />
             ) : (
-              <div
-                className={`card-grid ${initialBranchId ? "fixed-branch-grid" : ""}`}
-              >
-                {displayedBranches.map((branch) => (
-                  <button
-                    type="button"
-                    key={branch.id_branch}
-                    className={`choice-card ${selection.branch?.id_branch === branch.id_branch ? "selected" : ""}`}
-                    onClick={() => {
-                      if (!initialBranchId)
-                        selectBranch(branch);
-                    }}
-                    aria-disabled={Boolean(initialBranchId)}
-                    disabled={selectionLocked}
-                  >
-                    <span
-                      className={`status-dot ${branch.is_open_now ? "open" : ""}`}
-                    />
-                    <strong>{branch.name}</strong>
-                    <span>{branch.full_address}</span>
-                    <small>
-                      {branch.is_open_now
-                        ? "Đang mở cửa"
-                        : "Hiện đang đóng cửa"}
-                    </small>
-                  </button>
-                ))}
+              <div className="branch-list-scroll">
+                <div
+                  className={`card-grid ${initialBranchId ? "fixed-branch-grid" : ""}`}
+                >
+                  {displayedBranches.map((branch) => (
+                    <button
+                      type="button"
+                      key={branch.id_branch}
+                      className={`choice-card ${selection.branch?.id_branch === branch.id_branch ? "selected" : ""}`}
+                      onClick={() => {
+                        if (!initialBranchId)
+                          selectBranch(branch);
+                      }}
+                      aria-disabled={Boolean(initialBranchId)}
+                      disabled={selectionLocked}
+                    >
+                      <span
+                        className={`status-dot ${branch.is_open_now ? "open" : ""}`}
+                      />
+                      <strong>{branch.name}</strong>
+                      <span>{branch.full_address}</span>
+                      <small>
+                        {branch.is_open_now
+                          ? "Đang mở cửa"
+                          : "Hiện đang đóng cửa"}
+                      </small>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -1036,11 +1058,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         </div>
 
         <section
+          id="booking-step-service"
+          ref={serviceStepRef}
           className={`flow-section booking-panel ${!selection.branch ? "disabled-section" : ""}`}
         >
           <div className="section-heading">
             <div>
               <h2>Chọn dịch vụ</h2>
+              {!selection.branch && <small className="booking-locked-hint">Chọn chi nhánh để tiếp tục</small>}
             </div>
           </div>
           {!selection.branch ? (
@@ -1089,11 +1114,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         </section>
 
         <section
+          id="booking-step-time"
+          ref={timeStepRef}
           className={`flow-section booking-panel ${!selection.service ? "disabled-section" : ""}`}
         >
           <div className="section-heading">
             <div>
               <h2>Chọn ngày và giờ</h2>
+              {!selection.service && <small className="booking-locked-hint">Chọn dịch vụ để tiếp tục</small>}
             </div>
             <div className="slot-refresh-controls">
               <label className="date-field">
@@ -1132,7 +1160,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   type="button"
                   key={slot.starts_at}
                   className={`slot-button ${selection.slot?.starts_at === slot.starts_at ? "selected" : ""}`}
-                  onClick={() => dispatch({ type: "select_slot", slot })}
+                  onClick={() => {
+                    dispatch({ type: "select_slot", slot });
+                    scrollToBookingStep(dentistStepRef.current);
+                  }}
                   disabled={selectionLocked}
                 >
                   {time.format(new Date(slot.starts_at))}
@@ -1144,11 +1175,14 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         </section>
 
         <section
+          id="booking-step-dentist"
+          ref={dentistStepRef}
           className={`flow-section booking-panel ${!selection.slot ? "disabled-section" : ""}`}
         >
           <div className="section-heading">
             <div>
               <h2>Chọn bác sĩ</h2>
+              {!selection.slot && <small className="booking-locked-hint">Chọn ngày giờ để tiếp tục</small>}
             </div>
           </div>
           {!selection.slot ? (
@@ -1166,7 +1200,10 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
                   type="button"
                   key={dentist.id_dentist}
                   className={`dentist-choice ${selection.dentist?.id_dentist === dentist.id_dentist ? "selected" : ""}`}
-                  onClick={() => dispatch({ type: "select_dentist", dentist })}
+                  onClick={() => {
+                    dispatch({ type: "select_dentist", dentist });
+                    scrollToBookingStep(confirmStepRef.current);
+                  }}
                   disabled={selectionLocked}
                 >
                   <span className="dentist-choice-avatar" aria-hidden="true">
@@ -1187,8 +1224,28 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
         </section>
       </div>
 
-      <aside className="booking-summary booking-summary--refined">
+      <aside
+        id="booking-step-confirm"
+        ref={confirmStepRef}
+        className="booking-summary booking-summary--refined"
+      >
         <h2>Tóm tắt lịch hẹn</h2>
+        <dl className="booking-summary-compact">
+          <div className="booking-summary-service"><dt>Dịch vụ</dt><dd>{summaryServiceName}</dd></div>
+          <div><dt>Chi nhánh</dt><dd>{summaryBranchName}</dd></div>
+          <div><dt>Bác sĩ</dt><dd>{summaryDentistName}</dd></div>
+          <div><dt>Thời gian</dt><dd>{summaryStartsAt}</dd></div>
+          <div><dt>Giá dự kiến</dt><dd>{summaryPrice}</dd></div>
+        </dl>
+        <button
+          type="button"
+          className="booking-summary-toggle"
+          aria-expanded={summaryExpanded}
+          onClick={() => setSummaryExpanded((expanded) => !expanded)}
+        >
+          {summaryExpanded ? "Ẩn chi tiết" : "Xem tóm tắt đầy đủ"}
+        </button>
+        <div className={`booking-summary-details ${summaryExpanded ? "expanded" : ""}`}>
         {heldAppointment && (
           <p className="summary-note warning">
             Tóm tắt bên dưới là chỗ bạn đang giữ. Hãy xác nhận hoặc chọn giờ
@@ -1248,6 +1305,7 @@ export function BookingFlow({ initialBranchId }: BookingFlowProps) {
             </Link>
           </p>
         )}
+        </div>
         {heldAppointment ? (
           <div className="booking-held-actions">
             <button

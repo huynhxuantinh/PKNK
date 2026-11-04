@@ -85,4 +85,24 @@ describe('ClinicalImageLightbox', () => {
     expect(markup).toContain('Không tải được ảnh.')
     expect(renderer!.root.findAllByType('img')).toHaveLength(0)
   })
+
+  it('retries loading a failed image', async () => {
+    authenticatedFileBlobUrl.mockRejectedValueOnce(new Error('offline'))
+    authenticatedFileBlobUrl.mockResolvedValueOnce('blob:retried-preview')
+    let renderer: ReactTestRenderer
+    await act(async () => {
+      renderer = create(
+        <ClinicalImageLightbox attachment={attachment} onClose={() => {}} />,
+      )
+    })
+    await act(async () => undefined)
+
+    const retry = renderer!.root.findAllByType('button').find(
+      (button) => button.children.join('') === 'Thử tải lại',
+    )
+    await act(async () => retry!.props.onClick())
+    await act(async () => undefined)
+
+    expect(renderer!.root.findByType('img').props.src).toBe('blob:retried-preview')
+  })
 })

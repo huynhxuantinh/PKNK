@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 import { AuthBar } from "../auth/AuthBar";
 import { useAuth } from "../auth/AuthContext";
+import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { Seo } from "../seo/Seo";
 import "./AuthPages.css";
 
@@ -60,7 +61,7 @@ export function AccountSecurityPage() {
         path="/doi-mat-khau"
         noIndex
       />
-      <header className="site-header site-header--scroll-nav">
+      <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
           <img
             src="/branding/dentavie-logo-horizontal-color.png"
@@ -71,7 +72,15 @@ export function AccountSecurityPage() {
           <Link to="/">Trang chủ</Link>
           <Link to="/chinh-sach-bao-mat">Bảo mật</Link>
         </nav>
-        <AuthBar />
+        <div className="header-actions">
+          <AuthBar />
+          <PublicMobileNavigation
+            links={[
+              { to: "/", label: "Trang chủ" },
+              { to: "/chinh-sach-bao-mat", label: "Bảo mật" },
+            ]}
+          />
+        </div>
       </header>
       <main className="security-main">
         <section className="security-card">

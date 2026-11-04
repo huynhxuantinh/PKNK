@@ -4,6 +4,7 @@ import { AuthBar } from "../auth/AuthBar";
 import { PublicMobileNavigation } from "../components/public/PublicMobileNavigation";
 import { PublicFooter } from "../components/public/PublicFooter";
 import { Seo } from "../seo/Seo";
+import { aboutPageSchema, aboutSeo } from "../seo/seoConfig";
 import styles from "./AboutDentaViePage.module.css";
 
 const recognitions = [
@@ -58,9 +59,8 @@ export function AboutDentaViePage() {
   return (
     <div className={`site-shell ${styles.page}`}>
       <Seo
-        title="Về DentaVie | Chăm sóc nụ cười rõ ràng"
-        description="Thông tin về DentaVie, định hướng chăm sóc và các chứng nhận, thành tựu."
-        path="/ve-dentavie"
+        {...aboutSeo}
+        jsonLd={aboutPageSchema}
       />
       <header className="site-header">
         <Link className="brand" to="/" aria-label="Trang chủ DentaVie">
@@ -92,14 +92,71 @@ export function AboutDentaViePage() {
 
       <main>
         <section className="about-hero">
-          <div>
+          <div className="about-hero-copy">
             <p className="eyebrow">Về DentaVie</p>
-            <h1>Chứng nhận &amp; thành tựu</h1>
+            <h1>Chăm sóc nụ cười, bắt đầu từ sự thấu hiểu.</h1>
             <p>
-              Những chứng nhận và dấu mốc ghi nhận hành trình DentaVie theo đuổi
-              chất lượng chuyên môn, phục vụ minh bạch và đóng góp cho cộng
-              đồng.
+              DentaVie là hệ thống nha khoa tại TP.HCM, hướng đến trải nghiệm
+              thăm khám tận tâm, tư vấn dễ hiểu và lựa chọn chăm sóc phù hợp với
+              từng khách hàng.
             </p>
+            <div className="about-intro-actions">
+              <Link className="button button-primary" to="/dat-lich">
+                Đặt lịch khám
+              </Link>
+              <Link className="button button-secondary" to="/#chi-nhanh">
+                Tìm chi nhánh
+              </Link>
+            </div>
+          </div>
+          <figure className="about-intro-visual">
+            <img
+              src="/images/services/general-dentistry.jpg"
+              alt="Hình minh họa một buổi thăm khám nha khoa"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>
+              Thăm khám cẩn thận, trao đổi rõ ràng
+            </figcaption>
+          </figure>
+        </section>
+
+        <section className="about-intro" aria-labelledby="about-intro-title">
+          <div className="about-section-heading">
+            <p className="eyebrow">Trải nghiệm tại DentaVie</p>
+            <h2 id="about-intro-title">Mỗi bước chăm sóc đều rõ ràng</h2>
+            <p>
+              Chúng tôi lắng nghe nhu cầu, giải thích tình trạng răng miệng và
+              cùng khách hàng lựa chọn hướng chăm sóc phù hợp. Thông tin thăm
+              khám được ghi nhận để thuận tiện theo dõi qua các lần hẹn.
+            </p>
+          </div>
+          <div className="about-values-grid" aria-label="Cam kết chăm sóc">
+            <article className="about-value-card">
+              <span>01</span>
+              <h3>Tư vấn dễ hiểu</h3>
+              <p>
+                Thông tin về tình trạng răng miệng và phương án chăm sóc được
+                trao đổi rõ ràng.
+              </p>
+            </article>
+            <article className="about-value-card">
+              <span>02</span>
+              <h3>Kế hoạch phù hợp</h3>
+              <p>
+                Lựa chọn dịch vụ dựa trên nhu cầu, tình trạng thực tế và trao
+                đổi giữa bác sĩ với khách hàng.
+              </p>
+            </article>
+            <article className="about-value-card">
+              <span>03</span>
+              <h3>Đồng hành lâu dài</h3>
+              <p>
+                Lịch hẹn và thông tin chăm sóc được ghi nhận để hỗ trợ theo dõi
+                hành trình điều trị.
+              </p>
+            </article>
           </div>
         </section>
 
@@ -110,11 +167,10 @@ export function AboutDentaViePage() {
           <div className="about-section-heading">
             <p className="eyebrow">Chứng nhận & thành tựu</p>
             <h2 id="about-recognition-title">
-              Giới thiệu các chứng nhận của DentaVie
+              Những dấu mốc đáng nhớ
             </h2>
             <p>
-              Mỗi chứng nhận dưới đây thể hiện một khía cạnh trong định hướng
-              phát triển và chất lượng phục vụ của DentaVie.
+              Một số ghi nhận trong hành trình phát triển và đồng hành cùng cộng đồng.
             </p>
           </div>
           <div className="about-recognition-grid">

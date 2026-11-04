@@ -199,6 +199,48 @@
   font-size: 13px;
   font-weight: 750;
 }
+.page :global(.history-diagnosis-preview) {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.page :global(.history-diagnosis-preview strong) {
+  color: var(--primary-dark);
+}
+.page :global(.history-details) {
+  margin-top: 14px;
+  border-top: 1px solid #e7eff1;
+}
+.page :global(.history-details > summary) {
+  width: fit-content;
+  padding: 13px 0 0;
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+.page :global(.history-details > summary::-webkit-details-marker) {
+  display: none;
+}
+.page :global(.history-details > summary::after) {
+  margin-left: 8px;
+  content: "+";
+  font-size: 16px;
+}
+.page :global(.history-details[open] > summary::after) {
+  content: "−";
+}
+.page :global(.history-details-content) {
+  padding-top: 17px;
+  display: grid;
+  gap: 18px;
+}
 .page :global(.record-meta) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -463,7 +505,7 @@
 .page :global(.invoice-detail-totals > div:last-child) { color: var(--ink); font-weight: 750; }
 .page :global(.appointment-modal-backdrop) {
   position: fixed;
-  z-index: 20;
+  z-index: 40;
   inset: 0;
   display: grid;
   place-items: center;
@@ -511,6 +553,31 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.page :global(.notification-toolbar) {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.page :global(.notification-toolbar button) {
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.page :global(.notification-toolbar button:disabled) {
+  cursor: wait;
+  opacity: 0.65;
 }
 .page :global(.appointment-modal button) {
   padding: 9px 12px;
@@ -597,6 +664,13 @@
   .page :global(.patient-record-content),
   .page :global(.history-record) {
     padding: 18px;
+  }
+  .page :global(.notification-toolbar) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .page :global(.notification-toolbar button) {
+    align-self: flex-start;
   }
   .page :global(.patient-record-title-row),
   .page :global(.reschedule-controls) {

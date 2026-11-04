@@ -58,6 +58,42 @@
   background: #dceff4;
   box-shadow: 0 12px 28px rgba(35, 101, 119, 0.1);
 }
+.hero-actions {
+  width: min(1200px, 100%);
+  margin: 18px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.hero-booking-cta,
+.hero-branch-cta {
+  min-height: 44px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.hero-booking-cta {
+  background: var(--aurelia-blue);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(17, 128, 157, 0.2);
+}
+.hero-booking-cta:hover {
+  transform: translateY(-1px);
+  background: var(--aurelia-blue-dark);
+}
+.hero-branch-cta {
+  color: var(--aurelia-blue-dark);
+}
+.hero-branch-cta:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
 .hero-slides {
   height: 100%;
   display: flex;
@@ -1056,6 +1092,9 @@
   .hero-slider {
     aspect-ratio: 2.42 / 1;
     border-radius: 14px;
+  }
+  .hero-actions {
+    margin-top: 14px;
   }
   .hero-slides img {
     object-fit: contain;

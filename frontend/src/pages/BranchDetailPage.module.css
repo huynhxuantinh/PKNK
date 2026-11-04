@@ -549,8 +549,7 @@
   color: var(--aurelia-blue-dark);
   font-weight: 700;
 }
-:global .clinic-hour-row.today .hour-weekday::after {
-  content: "HĂ´m nay";
+:global .clinic-hour-today {
   margin-left: 8px;
   padding: 2px 7px;
   border-radius: 999px;
