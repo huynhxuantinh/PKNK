@@ -20,10 +20,10 @@ type NavigationItem = { label: string; path: string; icon: NavigationIcon }
 
 const branchItems: NavigationItem[] = [
   { label: 'Tổng quan', path: '/quan-ly-chi-nhanh', icon: 'overview' },
+  { label: 'Hóa đơn', path: '/quan-ly-chi-nhanh/hoa-don', icon: 'invoice' },
   { label: 'Lịch hẹn', path: '/quan-ly-chi-nhanh/lich-hen', icon: 'calendar' },
   { label: 'Ca làm & nghỉ phép', path: '/quan-ly-chi-nhanh/ca-lam', icon: 'schedule' },
   { label: 'Báo cáo', path: '/quan-ly-chi-nhanh/bao-cao', icon: 'reports' },
-  { label: 'Hóa đơn', path: '/quan-ly-chi-nhanh/hoa-don', icon: 'invoice' },
   { label: 'Thông báo', path: ADMIN_BRANCH_NOTIFICATIONS_PATH, icon: 'notifications' },
   { label: 'Cấu hình', path: '/quan-ly-chi-nhanh/cau-hinh', icon: 'settings' },
 ]

@@ -1,253 +1,326 @@
 .root {
-  max-width: 1180px;
+  width: min(1320px, 100%);
   margin: 0 auto;
-  padding: 32px 28px 48px;
+  padding: 24px 28px 32px;
 }
 .hero {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 30px 32px;
+  gap: 22px;
+  min-height: 132px;
+  padding: 24px 26px;
   border-radius: var(--admin-radius-xl);
-  background: linear-gradient(
-    115deg,
-    var(--admin-navy-900),
-    var(--admin-teal-600)
-  );
+  background: linear-gradient(112deg, #082f4b, #117f9a);
   color: #fff;
 }
 .hero :global(.eyebrow) {
-  color: #aeeefa;
+  margin: 0 0 8px;
+  color: #bdeaf0;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
 }
 .hero h1 {
-  margin: 6px 0 4px;
-  font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.1;
+  margin: 0 0 7px;
+  font-size: clamp(23px, 3vw, 30px);
+  line-height: 1.2;
 }
-.hero > div > p:last-child {
-  margin: 0;
-  color: #d7f4f8;
-  font-size: 13px;
-}
+.hero > div > p:last-child { margin: 0; color: #d6edf1; font-size: 11px; }
 .hero :global(.admin-button) {
-  flex: none;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 17px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 9%);
+  color: #fff;
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
 }
-.kpis {
+.hero :global(.admin-button:hover) { background: rgb(255 255 255 / 17%); }
+.invoiceSection,
+.scheduleSection { margin-top: 24px; }
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 13px;
+}
+.sectionHeading :global(.eyebrow) {
+  margin: 0 0 5px;
+  color: var(--admin-teal-700);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.sectionHeading h2 { margin: 0; color: var(--admin-navy-900); font-size: 21px; line-height: 1.3; }
+.sectionHeading > div > p:last-child { margin: 4px 0 0; color: var(--admin-muted); font-size: 11px; }
+.sectionHeading > :global(.admin-button) {
+  min-height: 40px;
+  flex: 0 0 auto;
+  padding-inline: 14px;
+  font-size: 10px;
+  text-decoration: none;
+}
+.invoiceStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.invoiceStat {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin: 22px 0;
+  min-width: 0;
+  min-height: 134px;
+  align-content: start;
+  gap: 4px;
+  padding: 17px 18px 14px 52px;
 }
-.kpi {
-  padding: 20px;
-}
-.kpi span,
-.kpi small {
-  display: block;
-  color: var(--admin-muted);
-  font-size: 12px;
-}
-.kpi span {
+.invoiceStat::before {
+  position: absolute;
+  top: 18px;
+  left: 16px;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff1dd;
+  color: #a76a09;
+  content: "↗";
+  font-size: 16px;
   font-weight: 800;
 }
-.kpi strong {
-  display: block;
-  margin: 7px 0 5px;
-  color: var(--admin-navy-900);
-  font-size: 32px;
-  line-height: 1;
+.invoiceIssued::before { background: #e8f6f9; color: #087c9d; content: "▣"; }
+.invoiceReview::before { background: #fff0f1; color: #bd4c4f; content: "!"; }
+.invoiceStat > span { color: #46616f; font-size: 10px; font-weight: 800; line-height: 1.35; }
+.invoiceStat > strong { margin-top: 2px; color: var(--admin-navy-900); font-size: 28px; line-height: 1.1; }
+.invoiceStat > small { color: var(--admin-muted); font-size: 10px; }
+.statDash { color: #94a7af !important; }
+.statSkeleton { width: 52px; min-height: 32px; margin-top: 3px; }
+.invoiceReady { border-top: 3px solid #f1b354; }
+.invoiceIssued { border-top: 3px solid #31a5bd; }
+.invoiceReview { border-top: 3px solid #df777c; }
+.invoiceJobLink,
+.retryLink {
+  justify-self: start;
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--admin-teal-700);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
 }
-.warning {
-  border-top: 3px solid var(--admin-warning);
-}
-.success {
-  border-top: 3px solid var(--admin-success);
-}
-.info {
-  border-top: 3px solid var(--admin-info);
-}
-.kpiSkeleton {
-  grid-column: 1/-1;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 20px;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-lg);
-  background: #fff;
-}
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.8fr);
-  gap: 18px;
-}
-.upcoming,
-.quickActions {
-  padding: 22px;
-}
+.invoiceJobLink:hover,
+.retryLink:hover { text-decoration: underline; text-underline-offset: 3px; }
+.retryLink { color: var(--admin-danger); }
+.invoiceQueue { margin-top: 12px; padding: 18px 19px 10px; }
+.invoiceQueue > header,
 .upcoming > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
+  gap: 14px;
+  padding-bottom: 13px;
   border-bottom: 1px solid var(--admin-border);
 }
-.upcoming h2,
-.quickActions h2 {
-  margin: 4px 0 0;
-  color: var(--admin-navy-900);
-  font-size: 21px;
+.invoiceQueue h3,
+.upcoming h3,
+.quickActions h3 { margin: 0; color: var(--admin-navy-900); font-size: 16px; }
+.invoiceQueue > header p,
+.upcoming > header p { margin: 4px 0 0; color: var(--admin-muted); font-size: 10px; }
+.invoiceQueue > header > a,
+.upcoming > header > a { color: var(--admin-teal-700); font-size: 10px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.invoiceQueue > header > a:hover,
+.upcoming > header > a:hover { text-decoration: underline; }
+.invoiceJobs { display: grid; }
+.invoiceJob {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 115px 140px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 12px 4px;
+  border-bottom: 1px solid #e6eef1;
 }
-.upcoming header > a {
+.invoiceJob:last-of-type { border-bottom: 0; }
+.jobPriority {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff4df;
+  color: #94620b;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+.reviewJob .jobPriority { background: #fff0f1; color: #a8444b; }
+.jobIdentity { display: grid; min-width: 0; gap: 3px; }
+.jobIdentity strong { overflow: hidden; color: #193f53; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.jobIdentity span,
+.jobIdentity small { overflow: hidden; color: #718793; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.jobAmount { color: #173d51; font-size: 11px; font-weight: 850; white-space: nowrap; }
+.invoiceJob > :global(.invoice-job-link) { min-height: 36px; }
+.invoiceJob > .invoiceJobLink {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 8px;
   color: var(--admin-teal-700);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   text-decoration: none;
 }
-.appointments {
-  display: grid;
-}
-.appointments article {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 0;
-  border-bottom: 1px solid var(--admin-border);
-}
-.appointments article:last-child {
-  border: 0;
-}
-.appointments time {
-  color: var(--admin-teal-700);
-  font-size: 13px;
-  font-weight: 900;
-}
-.appointments strong,
-.appointments span {
-  display: block;
-}
-.appointments strong {
-  color: var(--admin-navy-900);
-  font-size: 13px;
-}
-.appointments span {
-  margin-top: 3px;
-  color: var(--admin-muted);
-  font-size: 11px;
-}
-.quickActions > div {
-  display: grid;
-  gap: 5px;
-  margin-top: 16px;
-}
-.quickActions a {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 14px;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  color: inherit;
-  text-decoration: none;
-}
-.quickActions a + a {
-  border-top: 1px solid var(--admin-border);
-}
-.quickActions b {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: var(--admin-teal-100);
-  color: var(--admin-teal-700);
-  font-size: 9px;
-}
-.quickActions strong,
-.quickActions small {
-  display: block;
-}
-.quickActions strong {
-  color: var(--admin-navy-900);
-  font-size: 12px;
-}
-.quickActions small {
-  margin-top: 3px;
-  color: var(--admin-muted);
-  font-size: 11px;
-}
-.quickActions i {
-  color: var(--admin-teal-700);
-  font-style: normal;
-}
-.error {
-  margin: 18px 0;
-  color: var(--admin-danger);
-  font-size: 13px;
-}
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--admin-border);
-}
-.pagination button {
-  min-width: 64px;
-  min-height: 32px;
-  padding: 6px 10px;
+.invoiceJob > .invoiceJobLink:hover { border-color: var(--admin-teal-700); background: #f0fafb; }
+.invoiceQueueError,
+.scheduleError { padding: 18px 10px; color: var(--admin-danger); font-size: 11px; }
+.invoiceQueueError p,
+.scheduleError p { margin: 0 0 9px; }
+.invoiceQueueError button,
+.scheduleError button,
+.inlineError button {
+  min-height: 34px;
+  padding: 5px 10px;
   border: 1px solid var(--admin-border-strong);
   border-radius: 7px;
   background: #fff;
   color: var(--admin-teal-700);
   font: inherit;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
+  cursor: pointer;
 }
-.pagination button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.moreJobs { margin: 0; padding: 10px 4px; color: var(--admin-muted); font-size: 10px; }
+.inlineError { margin: 0; padding: 9px 4px; color: var(--admin-danger); font-size: 10px; }
+.inlineError button { min-height: 27px; margin-left: 6px; padding-block: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin: 15px 0; }
+.kpi { min-width: 0; padding: 15px 16px; }
+.kpi span,
+.kpi small { display: block; color: var(--admin-muted); font-size: 10px; }
+.kpi span { font-weight: 800; }
+.kpi strong { display: block; margin: 7px 0 5px; color: var(--admin-navy-900); font-size: 27px; line-height: 1; }
+.warning { border-top: 3px solid var(--admin-warning); }
+.success { border-top: 3px solid var(--admin-success); }
+.info { border-top: 3px solid var(--admin-info); }
+.kpiSkeleton { grid-column: 1 / -1; grid-template-columns: repeat(4, 1fr); padding: 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: #fff; }
+.scheduleGrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .8fr); align-items: start; gap: 14px; }
+.upcoming,
+.quickActions { min-width: 0; padding: 18px; }
+.appointments { display: grid; }
+.appointments article { display: grid; grid-template-columns: 53px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 12px 0; border-bottom: 1px solid var(--admin-border); }
+.appointments article:last-child { border-bottom: 0; }
+.appointments time { color: var(--admin-teal-700); font-size: 12px; font-weight: 900; }
+.appointmentIdentity { display: grid; min-width: 0; gap: 3px; }
+.appointmentIdentity strong { overflow: hidden; color: var(--admin-navy-900); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.appointmentIdentity span { overflow: hidden; color: var(--admin-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.appointments :global(.admin-status) { font-size: 10px; }
+.quickActions > :global(.eyebrow) { margin: 0 0 6px; color: var(--admin-teal-700); font-size: 9px; font-weight: 850; letter-spacing: .07em; }
+.quickActions > div { display: grid; gap: 0; margin-top: 10px; }
+.quickActions a { display: grid; grid-template-columns: 32px minmax(0, 1fr) 12px; align-items: center; gap: 9px; min-width: 0; padding: 10px 0; color: inherit; text-decoration: none; }
+.quickActions a + a { border-top: 1px solid var(--admin-border); }
+.quickActions b { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 8px; background: var(--admin-teal-100); color: var(--admin-teal-700); font-size: 9px; }
+.quickActions strong,
+.quickActions small { display: block; }
+.quickActions strong { color: var(--admin-navy-900); font-size: 10px; }
+.quickActions small { margin-top: 3px; color: var(--admin-muted); font-size: 9px; }
+.quickActions i { color: var(--admin-teal-700); font-size: 17px; font-style: normal; }
+.quickActions a:hover strong { color: var(--admin-teal-700); }
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding-top: 11px; border-top: 1px solid var(--admin-border); }
+.pagination button { min-width: 65px; min-height: 34px; padding: 5px 9px; border: 1px solid var(--admin-border-strong); border-radius: 7px; background: #fff; color: var(--admin-teal-700); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.pagination button:disabled { cursor: not-allowed; opacity: .45; }
+.pagination span { color: var(--admin-muted); font-size: 10px; font-weight: 800; }
+.footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; color: #718793; font-size: 9px; }
+.footer strong { font-weight: 800; }
+.footer span { font-weight: 400; }
+.root :global(a:focus-visible),
+.root :global(button:focus-visible) { outline: 3px solid rgb(8 127 115 / .28); outline-offset: 3px; }
+
+@media (max-width: 1100px) {
+  .root { padding-inline: 20px; }
+  .scheduleGrid { grid-template-columns: minmax(0, 1.25fr) minmax(245px, .8fr); }
+  .invoiceJob { grid-template-columns: 74px minmax(0, 1fr) 98px 124px; gap: 10px; }
 }
-.pagination span {
-  color: var(--admin-muted);
-  font-size: 12px;
-  font-weight: 800;
+@media (max-width: 900px) {
+  .root { padding: 20px 18px 28px; }
+  .invoiceStats { gap: 9px; }
+  .invoiceStat { padding-right: 12px; padding-left: 46px; }
+  .invoiceStat::before { left: 12px; }
+  .scheduleGrid { grid-template-columns: 1fr; }
+  .quickActions > div { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .quickActions a { grid-template-columns: 30px minmax(0, 1fr); align-items: start; padding: 9px; border: 1px solid var(--admin-border) !important; border-radius: 10px; }
+  .quickActions i { display: none; }
 }
-@media (max-width: 880px) {
-  .kpis {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 580px) {
-  .root {
-    padding: 20px 12px 36px;
-  }
-  .hero {
-    align-items: start;
-    flex-direction: column;
-    padding: 24px;
-  }
-  .hero :global(.admin-button) {
-    width: 100%;
-  }
-  .kpis {
-    grid-template-columns: 1fr;
-  }
-  .kpiSkeleton {
-    grid-template-columns: 1fr;
-  }
-  .appointments article {
-    grid-template-columns: 48px minmax(0, 1fr);
-  }
-  .appointments :global(.admin-status) {
-    grid-column: 2;
-  }
+@media (max-width: 620px) {
+  .root { padding: 14px 12px 22px; }
+  .hero { align-items: stretch; flex-direction: column; gap: 15px; min-height: 0; padding: 18px; border-radius: 16px; }
+  .hero h1 { margin-bottom: 5px; font-size: 22px; }
+  .hero > div > p:last-child { font-size: 10px; }
+  .hero :global(.admin-button) { width: 100%; min-height: 46px; }
+  .invoiceSection,
+  .scheduleSection { margin-top: 20px; }
+  .sectionHeading { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .sectionHeading h2 { font-size: 18px; }
+  .sectionHeading > div > p:last-child { font-size: 10px; }
+  .sectionHeading > :global(.admin-button) { width: 100%; min-height: 44px; }
+  .invoiceStats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .invoiceStat { min-height: 138px; padding: 14px 10px 11px 43px; }
+  .invoiceStat::before { top: 13px; left: 10px; width: 25px; height: 25px; }
+  .invoiceStat > span { font-size: 9px; }
+  .invoiceStat > strong { font-size: 25px; }
+  .invoiceStat > small { font-size: 9px; line-height: 1.35; }
+  .invoiceJobLink,
+  .retryLink { min-height: 30px; display: inline-flex; align-items: center; font-size: 10px; }
+  .invoiceQueue { padding: 14px 13px 8px; }
+  .invoiceQueue > header { align-items: flex-start; }
+  .invoiceQueue h3 { font-size: 14px; }
+  .invoiceQueue > header p { max-width: 220px; font-size: 9px; line-height: 1.45; }
+  .invoiceQueue > header > a { max-width: 96px; white-space: normal; text-align: right; line-height: 1.4; }
+  .invoiceJob { grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; padding: 12px 2px; }
+  .jobPriority { grid-column: 1; justify-self: start; min-height: 24px; font-size: 10px; }
+  .jobIdentity { grid-column: 1 / -1; grid-row: 2; }
+  .jobIdentity strong { font-size: 11px; }
+  .jobIdentity span,
+  .jobIdentity small { font-size: 10px; }
+  .jobAmount { grid-column: 1; grid-row: 3; align-self: center; font-size: 11px; }
+  .invoiceJob > .invoiceJobLink { grid-column: 2; grid-row: 3; min-width: 116px; min-height: 44px; }
+  .invoiceQueueError { padding-inline: 2px; }
+  .invoiceQueueError button,
+  .scheduleError button,
+  .inlineError button { min-height: 42px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+  .kpi { padding: 12px; }
+  .kpi span,
+  .kpi small { font-size: 9px; }
+  .kpi strong { font-size: 24px; }
+  .kpiSkeleton { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .upcoming,
-  .quickActions {
-    padding: 18px;
-  }
+  .quickActions { padding: 14px; }
+  .upcoming h3,
+  .quickActions h3 { font-size: 14px; }
+  .upcoming > header { align-items: flex-start; }
+  .upcoming > header > a { max-width: 76px; white-space: normal; text-align: right; }
+  .appointments article { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; padding: 12px 0; }
+  .appointments time { font-size: 12px; }
+  .appointmentIdentity strong { font-size: 10px; }
+  .appointmentIdentity span { font-size: 9px; }
+  .appointments :global(.admin-status) { grid-column: 2; font-size: 11px; }
+  .quickActions > div { grid-template-columns: 1fr; gap: 0; }
+  .quickActions a { min-height: 54px; align-items: center; padding: 9px 3px; border: 0 !important; border-radius: 0; }
+  .quickActions a + a { border-top: 1px solid var(--admin-border) !important; }
+  .quickActions i { display: block; }
+  .pagination button { min-height: 40px; }
+  .footer { flex-direction: column; gap: 4px; font-size: 9px; }
 }
