@@ -293,6 +293,11 @@ class OrganizationHolidayListCreateAPIView(ManagementAPIView):
         branch = serializer.validated_data.get("branch")
         if branch and branch.organization_id != organization.pk:
             raise ValidationError({"branch_id": "Chi nhánh không thuộc organization."})
+        # Match BookingService.create_hold's lock order so a hold cannot pass
+        # availability checks while this closure is being created.
+        organization = Organization.objects.select_for_update().get(
+            pk=organization.pk
+        )
         if Holiday.objects.filter(
             organization=organization,
             branch=branch,
@@ -326,6 +331,10 @@ class HolidayDetailAPIView(ManagementAPIView):
     @transaction.atomic
     def patch(self, request, holiday_id):
         holiday = self.get_object(holiday_id)
+        organization = Organization.objects.select_for_update().get(
+            pk=holiday.organization_id
+        )
+        holiday.refresh_from_db()
         serializer = HolidayManagementSerializer(holiday, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         branch = serializer.validated_data.get("branch", holiday.branch)
@@ -351,7 +360,7 @@ class HolidayDetailAPIView(ManagementAPIView):
                 "Ngày nghỉ xung đột với lịch đang hoạt động.", **filters
             )
         serializer.save()
-        audit_model_change(request=request, instance=holiday, action="HOLIDAY_UPDATED", organization=holiday.organization)
+        audit_model_change(request=request, instance=holiday, action="HOLIDAY_UPDATED", organization=organization)
         return Response({"data": serializer.data})
 
     @transaction.atomic

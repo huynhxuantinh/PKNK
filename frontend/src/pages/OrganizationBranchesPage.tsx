@@ -144,9 +144,14 @@ export function OrganizationBranchesPage() {
 
   useEffect(() => {
     if (!selectedBranch) return;
+    setBranchDetails({ dentists: 0, activeServices: 0, activeChairs: 0 });
+    setDetailsError("");
+    if (!selectedBranch.is_active) {
+      setDetailsLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setDetailsLoading(true);
-    setDetailsError("");
     Promise.all([
       listManagedBranchDentists(selectedBranch.id_branch, controller.signal),
       listManagedBranchServices(selectedBranch.id_branch, controller.signal),
@@ -217,7 +222,7 @@ export function OrganizationBranchesPage() {
 
   function openBranchDetails(branch: OrganizationBranch) {
     setBranchDetails({ dentists: 0, activeServices: 0, activeChairs: 0 });
-    setDetailsLoading(true);
+    setDetailsLoading(branch.is_active);
     setDetailsError("");
     setSelectedBranch(branch);
   }
@@ -541,7 +546,9 @@ export function OrganizationBranchesPage() {
                 <dd>{selectedBranch.email || "Chưa cập nhật"}</dd>
               </div>
             </dl>
-            {detailsLoading ? (
+            {!selectedBranch.is_active ? (
+              <p>Chi nhánh đã ngưng hoạt động; số liệu vận hành không khả dụng.</p>
+            ) : detailsLoading ? (
               <p role="status">Đang tải tình hình vận hành...</p>
             ) : !detailsError ? (
               <section className="organization-detail-kpis">
@@ -559,7 +566,7 @@ export function OrganizationBranchesPage() {
                 </article>
               </section>
             ) : null}
-            <div className="organization-row-actions organization-detail-links">
+            {selectedBranch.is_active && <div className="organization-row-actions organization-detail-links">
               <Link
                 to={`/quan-ly-chi-nhanh?chi-nhanh=${selectedBranch.id_branch}`}
               >
@@ -580,7 +587,7 @@ export function OrganizationBranchesPage() {
               >
                 Cấu hình
               </Link>
-            </div>
+            </div>}
           </div>
         </AdminModal>
       )}

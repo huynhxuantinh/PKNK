@@ -220,6 +220,7 @@ export interface ChairUtilizationChairRow {
   chair_id: number
   chair_code: string
   chair_name: string
+  is_active: boolean
   available_minutes: number
   occupied_minutes: number
   utilization_rate_percent: string
@@ -229,6 +230,7 @@ export interface ChairUtilizationBranchRow {
   branch_id: number
   branch_name: string
   chair_count: number
+  current_active_chair_count: number
   open_days: number
   available_minutes: number
   occupied_minutes: number
@@ -243,6 +245,7 @@ export interface ChairUtilizationReport {
   timezone: string
   included_statuses: string[]
   total_chairs: number
+  current_active_chair_count: number
   available_minutes: number
   occupied_minutes: number
   utilization_rate_percent: string

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import {
   getOrganization,
@@ -28,6 +28,8 @@ function toForm(organization: ManagedOrganization): OrganizationFormState {
 }
 
 export function OrganizationSettingsPanel({ organizationId }: { organizationId: number }) {
+  const organizationIdRef = useRef(organizationId)
+  organizationIdRef.current = organizationId
   const [organization, setOrganization] = useState<ManagedOrganization | null>(null)
   const [form, setForm] = useState<OrganizationFormState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,11 +40,19 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
 
   useEffect(() => {
     const controller = new AbortController()
+    setOrganization(null)
+    setForm(null)
     setLoading(true)
+    setBusy(false)
     setError('')
     setNotice('')
+    setSensitiveConfirmOpen(false)
     getOrganization(organizationId, controller.signal)
       .then((response) => {
+        if (response.data.id_organization !== organizationId) {
+          setError('Loaded organization does not match the selected organization.')
+          return
+        }
         setOrganization(response.data)
         setForm(toForm(response.data))
       })
@@ -75,7 +85,12 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
   }
 
   async function save() {
-    if (!form || !organization) return
+    if (
+      !form ||
+      !organization ||
+      organization.id_organization !== organizationIdRef.current
+    ) return
+    const requestedOrganizationId = organizationIdRef.current
     const name = form.name.trim()
     if (!name) {
       setError('Tên tổ chức không được để trống.')
@@ -93,20 +108,27 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
         cancellation_cutoff_minutes: Number(form.cancellationCutoffMinutes),
         no_show_grace_minutes: Number(form.noShowGraceMinutes),
       })
+      if (organizationIdRef.current !== requestedOrganizationId) return
+      if (response.data.id_organization !== requestedOrganizationId) {
+        setError('Saved organization does not match the selected organization.')
+        return
+      }
       setOrganization(response.data)
       setForm(toForm(response.data))
       setSensitiveConfirmOpen(false)
       setNotice('Đã lưu cài đặt tổ chức.')
     } catch (caught) {
+      if (organizationIdRef.current !== requestedOrganizationId) return
       setSensitiveConfirmOpen(false)
       setError(caught instanceof Error ? caught.message : 'Không thể lưu cài đặt tổ chức.')
     } finally {
-      setBusy(false)
+      if (organizationIdRef.current === requestedOrganizationId) setBusy(false)
     }
   }
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    if (organization?.id_organization !== organizationIdRef.current || !form) return
     if (operationalChanges().length > 0) {
       setSensitiveConfirmOpen(true)
       return
@@ -127,9 +149,9 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
       {error && <div className="app-error" role="alert">{error}</div>}
       {notice && <div className="staff-schedule-notice" role="status">{notice}</div>}
 
-      {loading ? (
+      {loading || (organization !== null && organization.id_organization !== organizationId) ? (
         <p role="status">Đang tải cài đặt tổ chức...</p>
-      ) : form && organization ? (
+      ) : form && organization && organization.id_organization === organizationId ? (
         <form className="organization-settings-form" onSubmit={submit}>
           <label>
             Tên tổ chức
@@ -191,7 +213,7 @@ export function OrganizationSettingsPanel({ organizationId }: { organizationId: 
             <p>
               Thay đổi quy tắc đặt, hủy hoặc xác nhận lịch sẽ cần xác nhận trước khi lưu.
             </p>
-            <button type="submit" disabled={busy}>
+            <button type="submit" disabled={busy || organization.id_organization !== organizationId}>
               {busy ? 'Đang lưu...' : 'Lưu cài đặt'}
             </button>
           </div>

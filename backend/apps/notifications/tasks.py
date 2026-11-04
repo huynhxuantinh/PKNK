@@ -165,26 +165,35 @@ def recover_notification_email_deliveries(now=None):
     retry_lock_expired = Q(locked_at__isnull=True) | Q(locked_at__lte=retry_cutoff)
 
     with transaction.atomic():
-        exhausted_rows = list(
+        exhausted_deliveries = list(
             base.filter(exhausted_filter)
             .select_for_update(skip_locked=True)
             .order_by("pk")
-            .values_list("pk", "attempts")[:EMAIL_DELIVERY_RECOVERY_BATCH_SIZE]
+            [:EMAIL_DELIVERY_RECOVERY_BATCH_SIZE]
         )
-        exhausted_ids = [delivery_id for delivery_id, _ in exhausted_rows]
-        if exhausted_ids:
-            base.filter(pk__in=exhausted_ids).update(
-                status=NotificationDelivery.Status.FAILED,
-                locked_at=None,
-                last_error="MAX_ATTEMPTS_EXCEEDED",
-                updated_at=now,
+        exhausted_ids = [delivery.pk for delivery in exhausted_deliveries]
+        for delivery in exhausted_deliveries:
+            # The database trigger allows PENDING -> SENDING -> FAILED and
+            # FAILED -> SENDING -> FAILED, but rejects same-state updates.
+            if delivery.status in {
+                NotificationDelivery.Status.PENDING,
+                NotificationDelivery.Status.FAILED,
+            }:
+                delivery.status = NotificationDelivery.Status.SENDING
+                delivery.locked_at = now
+                delivery.save(update_fields=["status", "locked_at", "updated_at"])
+            delivery.status = NotificationDelivery.Status.FAILED
+            delivery.locked_at = None
+            delivery.last_error = "MAX_ATTEMPTS_EXCEEDED"
+            delivery.updated_at = now
+            delivery.save(
+                update_fields=["status", "locked_at", "last_error", "updated_at"]
             )
-            for delivery_id, attempts in exhausted_rows:
-                logger.error(
-                    "Notification email exhausted retries delivery_id=%s attempts=%s",
-                    delivery_id,
-                    attempts,
-                )
+            logger.error(
+                "Notification email exhausted retries delivery_id=%s attempts=%s",
+                delivery.pk,
+                delivery.attempts,
+            )
 
         remaining = EMAIL_DELIVERY_RECOVERY_BATCH_SIZE - len(exhausted_ids)
         recoverable = base.filter(recoverable_filter).filter(
@@ -198,13 +207,16 @@ def recover_notification_email_deliveries(now=None):
         delivery_ids = []
         for delivery in deliveries:
             if delivery.status == NotificationDelivery.Status.SENDING:
+                # Recover an abandoned worker through an allowed transition.
                 delivery.status = NotificationDelivery.Status.FAILED
                 delivery.last_error = "SENDING_LOCK_EXPIRED"
-            delivery.locked_at = now
-            delivery.updated_at = now
-            delivery.save(
-                update_fields=["status", "locked_at", "last_error", "updated_at"]
-            )
+                delivery.locked_at = None
+                delivery.updated_at = now
+                delivery.save(
+                    update_fields=["status", "locked_at", "last_error", "updated_at"]
+                )
+            # Leave PENDING/FAILED unchanged; the delivery task acquires its
+            # own lock and performs the valid transition to SENDING.
             delivery_ids.append(delivery.pk)
 
         if delivery_ids:

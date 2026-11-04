@@ -290,21 +290,20 @@ class ChairUtilizationReportService:
         chairs = list(
             Chair.objects.filter(
                 branch_id__in=branch_ids,
-                branch__is_active=True,
                 resource_type=Chair.ResourceType.CHAIR,
-                is_active=True,
             ).order_by("branch_id", "code", "id_chair")
         )
         chairs_by_branch = defaultdict(list)
+        current_active_chairs_by_branch = defaultdict(int)
         for chair_item in chairs:
             chairs_by_branch[chair_item.branch_id].append(chair_item)
+            if chair_item.is_active:
+                current_active_chairs_by_branch[chair_item.branch_id] += 1
 
         opening_windows = {}
         available_by_branch = defaultdict(int)
         open_days_by_branch = defaultdict(int)
         for branch_item in branches:
-            if not branch_item.is_active:
-                continue
             for target_date in cls._dates(date_from, date_to):
                 if (
                     target_date in organization_closed_dates
@@ -366,6 +365,7 @@ class ChairUtilizationReportService:
                     "chair_id": chair_item.pk,
                     "chair_code": chair_item.code,
                     "chair_name": chair_item.name,
+                    "is_active": chair_item.is_active,
                     "available_minutes": available_per_chair,
                     "occupied_minutes": occupied_minutes,
                     "utilization_rate_percent": cls._rate(
@@ -379,6 +379,7 @@ class ChairUtilizationReportService:
                 "branch_id": branch_item.pk,
                 "branch_name": branch_item.name,
                 "chair_count": len(chair_rows),
+                "current_active_chair_count": current_active_chairs_by_branch[branch_item.pk],
                 "open_days": open_days_by_branch[branch_item.pk],
                 "available_minutes": branch_available,
                 "occupied_minutes": branch_occupied,
@@ -395,6 +396,7 @@ class ChairUtilizationReportService:
             "timezone": organization.timezone,
             "included_statuses": cls.INCLUDED_STATUSES,
             "total_chairs": len(chairs),
+            "current_active_chair_count": sum(current_active_chairs_by_branch.values()),
             "available_minutes": total_available,
             "occupied_minutes": total_occupied,
             "utilization_rate_percent": cls._rate(total_occupied, total_available),

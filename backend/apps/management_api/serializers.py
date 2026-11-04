@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from django.contrib.gis.geos import Point
 from django.utils import timezone
 from rest_framework import serializers
@@ -17,6 +19,13 @@ from .exceptions import ManagementConflict
 
 
 class OrganizationManagementSerializer(serializers.ModelSerializer):
+    def validate_timezone(self, value):
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError):
+            raise serializers.ValidationError("Múi giờ không hợp lệ.")
+        return value
+
     class Meta:
         model = Organization
         fields = (
@@ -24,7 +33,12 @@ class OrganizationManagementSerializer(serializers.ModelSerializer):
             "slot_hold_minutes", "cancellation_cutoff_minutes",
             "no_show_grace_minutes", "is_active", "created_at", "updated_at",
         )
-        read_only_fields = ("id_organization", "slug", "created_at", "updated_at")
+        # Organization deactivation has no dedicated recovery workflow. Keep it
+        # out of ordinary settings updates so an admin cannot revoke their own
+        # organization scope through this endpoint.
+        read_only_fields = (
+            "id_organization", "slug", "is_active", "created_at", "updated_at"
+        )
 
 
 class BranchManagementSerializer(serializers.ModelSerializer):

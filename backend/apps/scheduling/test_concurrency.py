@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import Dentist, PatientProfile, User
 from apps.catalog.models import BranchService, DentistService, Service
-from apps.locations.models import Branch, BranchOpeningHour, Chair, Province, Ward
+from apps.locations.models import Branch, BranchOpeningHour, Chair, Holiday, Province, Ward
 from apps.organizations.models import Membership, Organization
 
 from .availability import AvailabilityService
@@ -280,6 +280,106 @@ class BookingScheduleConcurrencyTests(TransactionTestCase):
         self.assertEqual(len(booking_result), 1)
         self.assertIsInstance(booking_result[0], SlotUnavailableError)
         self.assertFalse(Appointment.objects.exists())
+
+    def test_organization_holiday_creation_serializes_with_booking_hold(self):
+        organization_admin = User.objects.create_user(
+            email="holiday-concurrency-admin@example.com",
+            password="StrongPassword!2026",
+            full_name="Organization Admin",
+            email_verified_at=timezone.now(),
+        )
+        Membership.objects.create(
+            user=organization_admin,
+            organization=self.organization,
+            role=Membership.Role.ORGANIZATION_ADMIN,
+        )
+        holiday_checked = Event()
+        allow_holiday_commit = Event()
+        booking_started = Event()
+        booking_finished = Event()
+        holiday_result = []
+        booking_result = []
+        worker_errors = []
+        from apps.management_api.services import ensure_no_active_future_appointments
+
+        def check_then_pause(message, **filters):
+            ensure_no_active_future_appointments(message, **filters)
+            holiday_checked.set()
+            if not allow_holiday_commit.wait(timeout=5):
+                raise TimeoutError("Timed out waiting to commit holiday")
+
+        def create_holiday():
+            close_old_connections()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=organization_admin)
+                with patch(
+                    "apps.management_api.views.ensure_no_active_future_appointments",
+                    side_effect=check_then_pause,
+                ):
+                    response = client.post(
+                        reverse(
+                            "management:organization-holidays",
+                            kwargs={"organization_id": self.organization.pk},
+                        ),
+                        {
+                            "branch_id": None,
+                            "holiday_date": self.target_date.isoformat(),
+                            "name": "Clinic holiday",
+                            "is_closed": True,
+                        },
+                        format="json",
+                    )
+                holiday_result.append((response.status_code, response.data))
+            except Exception as error:  # pragma: no cover - surfaced below
+                worker_errors.append(error)
+            finally:
+                close_old_connections()
+
+        def create_hold():
+            close_old_connections()
+            try:
+                booking_started.set()
+                BookingService.create_hold(
+                    patient_user=User.objects.get(pk=self.patient_user.pk),
+                    branch_service=BranchService.objects.select_related(
+                        "branch__organization", "service"
+                    ).get(pk=self.branch_service.pk),
+                    starts_at=self.starts_at,
+                )
+                booking_result.append("held")
+            except Exception as error:  # pragma: no cover - asserted below
+                booking_result.append(error)
+            finally:
+                booking_finished.set()
+                close_old_connections()
+
+        holiday_worker = Thread(target=create_holiday)
+        booking_worker = Thread(target=create_hold)
+        holiday_worker.start()
+        self.assertTrue(holiday_checked.wait(timeout=5), holiday_result)
+        booking_worker.start()
+        self.assertTrue(booking_started.wait(timeout=5))
+        self.assertFalse(booking_finished.wait(timeout=0.2))
+        allow_holiday_commit.set()
+        holiday_worker.join(timeout=5)
+        booking_worker.join(timeout=5)
+
+        self.assertFalse(holiday_worker.is_alive())
+        self.assertFalse(booking_worker.is_alive())
+        self.assertEqual(worker_errors, [])
+        self.assertEqual(holiday_result[0][0], status.HTTP_201_CREATED)
+        self.assertEqual(len(booking_result), 1)
+        self.assertIsInstance(booking_result[0], SlotUnavailableError)
+        self.assertFalse(Appointment.objects.exists())
+        self.assertTrue(
+            Holiday.objects.filter(
+                organization=self.organization,
+                branch__isnull=True,
+                holiday_date=self.target_date,
+                is_closed=True,
+            ).exists()
+        )
 
     def test_opening_hours_change_serializes_with_booking_hold(self):
         target_weekday = self.target_date.isoweekday()
