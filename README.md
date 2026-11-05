@@ -72,9 +72,18 @@ Danh sách trên dành cho database local được tạo bằng lệnh seed. Tà
 - **Bệnh nhân:** `patient@demo.pknk.vn`, `patient2@demo.pknk.vn`
 - **Quản trị toàn hệ thống:** `admin@demo.pknk.vn`
 - **Quản lý chi nhánh:**
-  - Q1, Thủ Đức, Phú Nhuận: `branch.admin.q1@demo.pknk.vn`, `branch.admin.td@demo.pknk.vn`, `branch.admin.pn@demo.pknk.vn`
-  - Q3, Q5, Q7: `branch.admin.q3@demo.pknk.vn`, `branch.admin.q5@demo.pknk.vn`, `branch.admin.q7@demo.pknk.vn`
-  - Bình Thạnh, Gò Vấp, Tân Bình: `branch.admin.bt@demo.pknk.vn`, `branch.admin.gv@demo.pknk.vn`, `branch.admin.tb@demo.pknk.vn`
+
+  | Chi nhánh | Email đăng nhập |
+  | --- | --- |
+  | DentaVie Sài Gòn | `branch.admin.q1@demo.pknk.vn` |
+  | DentaVie An Khánh | `branch.admin.td@demo.pknk.vn` |
+  | DentaVie Cầu Kiệu | `branch.admin.pn@demo.pknk.vn` |
+  | DentaVie Bàn Cờ | `branch.admin.q3@demo.pknk.vn` |
+  | DentaVie An Đông | `branch.admin.q5@demo.pknk.vn` |
+  | DentaVie Tân Thuận | `branch.admin.q7@demo.pknk.vn` |
+  | DentaVie Thạnh Mỹ Tây | `branch.admin.bt@demo.pknk.vn` |
+  | DentaVie Thông Tây Hội | `branch.admin.gv@demo.pknk.vn` |
+  | DentaVie Bảy Hiền | `branch.admin.tb@demo.pknk.vn` |
 `seed_full_demo` tạo tổng cộng 31 tài khoản nha sĩ: 10 nha sĩ nền và 21 nha sĩ bổ sung theo chi nhánh/chuyên môn để phủ các dịch vụ. Tài khoản demo dùng chung mật khẩu `Demo123!` trên database local. Danh sách:
 
 | STT | Họ tên | Email | Nhóm |
