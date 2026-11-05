@@ -75,38 +75,41 @@ Danh sách trên dành cho database local được tạo bằng lệnh seed. Tà
   - Q1, Thủ Đức, Phú Nhuận: `branch.admin.q1@demo.pknk.vn`, `branch.admin.td@demo.pknk.vn`, `branch.admin.pn@demo.pknk.vn`
   - Q3, Q5, Q7: `branch.admin.q3@demo.pknk.vn`, `branch.admin.q5@demo.pknk.vn`, `branch.admin.q7@demo.pknk.vn`
   - Bình Thạnh, Gò Vấp, Tân Bình: `branch.admin.bt@demo.pknk.vn`, `branch.admin.gv@demo.pknk.vn`, `branch.admin.tb@demo.pknk.vn`
-- **10 nha sĩ nền:** `minh.dentist@demo.pknk.vn`, `lan.dentist@demo.pknk.vn`, `huy.dentist@demo.pknk.vn`, `an.dentist@demo.pknk.vn`, `thao.dentist@demo.pknk.vn`, `khoa.dentist@demo.pknk.vn`, `nhu.dentist@demo.pknk.vn`, `phong.dentist@demo.pknk.vn`, `mai.dentist@demo.pknk.vn`, `son.dentist@demo.pknk.vn`
+`seed_full_demo` tạo tổng cộng 31 tài khoản nha sĩ: 10 nha sĩ nền và 21 nha sĩ bổ sung theo chi nhánh/chuyên môn để phủ các dịch vụ. Tài khoản demo dùng chung mật khẩu `Demo123!` trên database local. Danh sách:
 
-`seed_full_demo` bổ sung nha sĩ theo chi nhánh và chuyên môn khi thiếu người phụ trách dịch vụ. Email có dạng `staff.<mã-chi-nhánh>.<mã-chuyên-môn>@demo.pknk.vn` (ví dụ: `staff.q5.pediatric@demo.pknk.vn`); các tài khoản demo dùng chung mật khẩu `Demo123!`.
-
-<details>
-<summary>Danh sách 21 nha sĩ được bổ sung trong database local</summary>
-
-| Họ tên | Email |
-| --- | --- |
-| BS. Nguyễn Minh Anh | `staff.bt.implant@demo.pknk.vn` |
-| BS. Trần Quốc Bảo | `staff.bt.orthodontics@demo.pknk.vn` |
-| BS. Lê Ngọc Hân | `staff.bt.root_canal@demo.pknk.vn` |
-| BS. Phạm Hoàng Nam | `staff.gv.cosmetic@demo.pknk.vn` |
-| BS. Võ Thị Thanh Trúc | `staff.gv.implant@demo.pknk.vn` |
-| BS. Huỳnh Gia Huy | `staff.gv.orthodontics@demo.pknk.vn` |
-| BS. Đặng Thảo Nguyên | `staff.pn.cosmetic@demo.pknk.vn` |
-| BS. Bùi Đức Anh | `staff.pn.orthodontics@demo.pknk.vn` |
-| BS. Nguyễn Khánh Linh | `staff.q1.implant@demo.pknk.vn` |
-| BS. Trương Minh Khang | `staff.q3.implant@demo.pknk.vn` |
-| BS. Phan Bảo Ngọc | `staff.q3.orthodontics@demo.pknk.vn` |
-| BS. Lý Thành Đạt | `staff.q3.pediatric@demo.pknk.vn` |
-| BS. Đỗ Phương Thảo | `staff.q5.cosmetic@demo.pknk.vn` |
-| BS. Nguyễn Anh Tuấn | `staff.q5.orthodontics@demo.pknk.vn` |
-| BS. Trần Mỹ Duyên | `staff.q5.pediatric@demo.pknk.vn` |
-| BS. Lê Hoàng Phúc | `staff.q7.cosmetic@demo.pknk.vn` |
-| BS. Phạm Quỳnh Như | `staff.q7.implant@demo.pknk.vn` |
-| BS. Võ Nhật Minh | `staff.q7.root_canal@demo.pknk.vn` |
-| BS. Huỳnh Ngọc Diệp | `staff.tb.implant@demo.pknk.vn` |
-| BS. Đặng Quốc Hưng | `staff.tb.pediatric@demo.pknk.vn` |
-| BS. Bùi Thanh Hằng | `staff.tb.root_canal@demo.pknk.vn` |
-
-</details>
+| STT | Họ tên | Email | Nhóm |
+| ---: | --- | --- | --- |
+| 1 | BS. Nguyễn Hoàng Minh | `minh.dentist@demo.pknk.vn` | Nền |
+| 2 | BS. Trần Ngọc Lan | `lan.dentist@demo.pknk.vn` | Nền |
+| 3 | BS. Lê Quốc Huy | `huy.dentist@demo.pknk.vn` | Nền |
+| 4 | BS. Phạm Thùy An | `an.dentist@demo.pknk.vn` | Nền |
+| 5 | BS. Đặng Minh Thảo | `thao.dentist@demo.pknk.vn` | Nền |
+| 6 | BS. Vũ Anh Khoa | `khoa.dentist@demo.pknk.vn` | Nền |
+| 7 | BS. Nguyễn Quỳnh Như | `nhu.dentist@demo.pknk.vn` | Nền |
+| 8 | BS. Trương Quốc Phong | `phong.dentist@demo.pknk.vn` | Nền |
+| 9 | BS. Lê Thanh Mai | `mai.dentist@demo.pknk.vn` | Nền |
+| 10 | BS. Phan Hoàng Sơn | `son.dentist@demo.pknk.vn` | Nền |
+| 11 | BS. Nguyễn Minh Anh | `staff.bt.implant@demo.pknk.vn` | Bổ sung |
+| 12 | BS. Trần Quốc Bảo | `staff.bt.orthodontics@demo.pknk.vn` | Bổ sung |
+| 13 | BS. Lê Ngọc Hân | `staff.bt.root_canal@demo.pknk.vn` | Bổ sung |
+| 14 | BS. Phạm Hoàng Nam | `staff.gv.cosmetic@demo.pknk.vn` | Bổ sung |
+| 15 | BS. Võ Thị Thanh Trúc | `staff.gv.implant@demo.pknk.vn` | Bổ sung |
+| 16 | BS. Huỳnh Gia Huy | `staff.gv.orthodontics@demo.pknk.vn` | Bổ sung |
+| 17 | BS. Đặng Thảo Nguyên | `staff.pn.cosmetic@demo.pknk.vn` | Bổ sung |
+| 18 | BS. Bùi Đức Anh | `staff.pn.orthodontics@demo.pknk.vn` | Bổ sung |
+| 19 | BS. Nguyễn Khánh Linh | `staff.q1.implant@demo.pknk.vn` | Bổ sung |
+| 20 | BS. Trương Minh Khang | `staff.q3.implant@demo.pknk.vn` | Bổ sung |
+| 21 | BS. Phan Bảo Ngọc | `staff.q3.orthodontics@demo.pknk.vn` | Bổ sung |
+| 22 | BS. Lý Thành Đạt | `staff.q3.pediatric@demo.pknk.vn` | Bổ sung |
+| 23 | BS. Đỗ Phương Thảo | `staff.q5.cosmetic@demo.pknk.vn` | Bổ sung |
+| 24 | BS. Nguyễn Anh Tuấn | `staff.q5.orthodontics@demo.pknk.vn` | Bổ sung |
+| 25 | BS. Trần Mỹ Duyên | `staff.q5.pediatric@demo.pknk.vn` | Bổ sung |
+| 26 | BS. Lê Hoàng Phúc | `staff.q7.cosmetic@demo.pknk.vn` | Bổ sung |
+| 27 | BS. Phạm Quỳnh Như | `staff.q7.implant@demo.pknk.vn` | Bổ sung |
+| 28 | BS. Võ Nhật Minh | `staff.q7.root_canal@demo.pknk.vn` | Bổ sung |
+| 29 | BS. Huỳnh Ngọc Diệp | `staff.tb.implant@demo.pknk.vn` | Bổ sung |
+| 30 | BS. Đặng Quốc Hưng | `staff.tb.pediatric@demo.pknk.vn` | Bổ sung |
+| 31 | BS. Bùi Thanh Hằng | `staff.tb.root_canal@demo.pknk.vn` | Bổ sung |
 
 ### Tạo bộ dữ liệu demo đầy đủ
 
