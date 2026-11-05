@@ -67,6 +67,8 @@ Các lệnh frontend: `npm run build`, `npm run lint`, `npm test` và `npm run p
 
 Chạy `seed_demo` để tạo tài khoản cơ bản; chạy thêm `seed_full_demo` để tạo đủ nha sĩ theo dịch vụ và chi nhánh trước khi đăng nhập. Mật khẩu chung: **`Demo123!`** (chỉ dùng local/demo).
 
+Danh sách trên dành cho database local được tạo bằng lệnh seed. Tài khoản trên Neon có mật khẩu riêng; sau khi cấu hình Django trỏ đúng database Neon, đổi mật khẩu bằng `python manage.py changepassword <email>`. Không lưu mật khẩu Neon hoặc thông tin đăng nhập đang hoạt động trong README hay Git.
+
 - **Bệnh nhân:** `patient@demo.pknk.vn`, `patient2@demo.pknk.vn`
 - **Quản trị toàn hệ thống:** `admin@demo.pknk.vn`
 - **Quản lý chi nhánh:**
